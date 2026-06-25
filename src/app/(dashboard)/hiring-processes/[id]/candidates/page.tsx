@@ -14,7 +14,7 @@ import Button from '@/components/ui/Button';
 import Header from '@/components/layout/Header';
 import { formatPercent } from '@/lib/utils';
 import type { MatchCategory } from '@/lib/types';
-import type { DualMatchCandidate, DualKanbanResponse } from '@/lib/mockData';
+import type { DualMatchCandidate, DualKanbanResponse } from '@/lib/types';
 
 // ─── View mode ───────────────────────────────────────────────────────────────
 type ViewMode = 'both' | 'cv' | 'profiling';

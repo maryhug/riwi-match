@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { use } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
   ArrowLeft, FileText, Upload, BarChart2, Phone,
-  CheckCircle2, Circle, ChevronRight, Sparkles,
-  AlertTriangle, RefreshCw, Users,
+  CheckCircle2, ChevronRight, Sparkles,
+  AlertTriangle, RefreshCw, Users, Paperclip, ExternalLink, X,
 } from 'lucide-react';
 import { processesApi } from '@/lib/api';
+import type { JobDescription } from '@/lib/types';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -62,17 +63,66 @@ function Stepper({ currentStep }: { currentStep: number }) {
   );
 }
 
+// ─── File attachment banner ───────────────────────────────────────────────────
+function JDFileBanner({
+  filename,
+  fileUrl,
+  onRemove,
+}: {
+  filename: string;
+  fileUrl: string;
+  onRemove?: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between bg-primary-xlight border border-primary-light rounded-xl px-5 py-4">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-primary-dark/10 rounded-lg flex items-center justify-center shrink-0">
+          <Paperclip className="w-5 h-5 text-primary-dark" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-slate-900">{filename}</p>
+          <p className="text-xs text-slate-500">Archivo adjunto al JD · acceso con sesión</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-dark text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          Ver / descargar
+        </a>
+        {onRemove && (
+          <button onClick={onRemove} className="text-slate-400 hover:text-red-500 transition-colors p-1">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Step 0: Job Description ─────────────────────────────────────────────────
 function JDStep({ processId }: { processId: string }) {
   const qc = useQueryClient();
   const [rawText, setRawText] = useState('');
   const [structuredJD, setStructuredJD] = useState<StructuredJD | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [jdFile, setJdFile] = useState<File | null>(null);
+  const [uploadMode, setUploadMode] = useState<'file' | 'text'>('text');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: existingJD } = useQuery({
     queryKey: ['jd', processId],
-    queryFn: () => processesApi.getJD(processId).then((r) => r.data).catch(() => null),
+    queryFn: () => processesApi.getJD(processId).then((r) => r.data as (JobDescription & { jd_file_url?: string | null; original_filename?: string | null }) | null).catch(() => null),
   });
+
+  // Pre-popula el textarea con la JD existente al cargar
+  useEffect(() => {
+    if (existingJD?.jd_raw_text && !rawText) setRawText(existingJD.jd_raw_text);
+  }, [existingJD]);
 
   const parseMutation = useMutation({
     mutationFn: () => processesApi.parseJD(processId, rawText),
@@ -80,43 +130,135 @@ function JDStep({ processId }: { processId: string }) {
   });
 
   const saveMutation = useMutation({
-    mutationFn: () => processesApi.saveJD(processId, structuredJD!),
+    mutationFn: () => processesApi.saveJD(processId, rawText),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['hiring-processes'] });
       qc.invalidateQueries({ queryKey: ['process', processId] });
+      qc.invalidateQueries({ queryKey: ['jd', processId] });
+    },
+  });
+
+  const uploadFileMutation = useMutation({
+    mutationFn: () => processesApi.uploadJDFile(processId, jdFile!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['jd', processId] });
+      qc.invalidateQueries({ queryKey: ['process', processId] });
+      setJdFile(null);
     },
   });
 
   const jd = structuredJD ?? existingJD?.structured_jd;
+  const fileDownloadUrl = processesApi.getJDFileUrl(processId);
 
   return (
     <div className="space-y-5">
+      {/* Archivo adjunto existente */}
+      {existingJD?.jd_file_url && (
+        <JDFileBanner
+          filename={existingJD.original_filename ?? 'job_description.pdf'}
+          fileUrl={fileDownloadUrl}
+        />
+      )}
+
+      {/* Subir nuevo archivo */}
       <Card>
         <CardHeader>
-          <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            Parsear Job Description con IA
-          </h3>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Pega el texto crudo de la vacante y la IA lo estructurará automáticamente
-          </p>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              Job Description
+            </h3>
+            {/* Tab toggle */}
+            <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+              {(['file', 'text'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setUploadMode(m)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
+                    uploadMode === m ? 'bg-primary-dark text-white' : 'text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  {m === 'file' ? <Paperclip className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+                  {m === 'file' ? 'Subir archivo' : 'Pegar texto'}
+                </button>
+              ))}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Textarea
-            label="Texto del Job Description"
-            placeholder="Pega aquí el texto completo del Job Description..."
-            rows={8}
-            value={rawText}
-            onChange={(e) => setRawText(e.target.value)}
-          />
-          <Button
-            onClick={() => parseMutation.mutate()}
-            loading={parseMutation.isPending}
-            disabled={!rawText.trim()}
-          >
-            <Sparkles className="w-4 h-4" />
-            Analizar con IA
-          </Button>
+          {/* ─── File tab ─── */}
+          {uploadMode === 'file' && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.doc,.txt"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) setJdFile(f); }}
+              />
+              {!jdFile ? (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center gap-3 hover:border-primary-light hover:bg-primary-xlight/50 transition-colors"
+                >
+                  <Paperclip className="w-9 h-9 text-slate-300" />
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-slate-700">Haz clic para seleccionar el archivo</p>
+                    <p className="text-xs text-slate-400 mt-1">PDF, DOCX o TXT · máx. 10 MB</p>
+                  </div>
+                </button>
+              ) : (
+                <div className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 border border-slate-200">
+                  <div className="flex items-center gap-3">
+                    <Paperclip className="w-5 h-5 text-primary-dark" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{jdFile.name}</p>
+                      <p className="text-xs text-slate-400">{(jdFile.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setJdFile(null)} className="text-slate-300 hover:text-red-400 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              <Button
+                onClick={() => uploadFileMutation.mutate()}
+                loading={uploadFileMutation.isPending}
+                disabled={!jdFile}
+                className="w-full"
+              >
+                <Paperclip className="w-4 h-4" />
+                {existingJD?.jd_file_url ? 'Reemplazar archivo' : 'Subir archivo JD'}
+              </Button>
+              {uploadFileMutation.isSuccess && (
+                <p className="text-sm text-emerald-600 bg-emerald-50 px-4 py-2 rounded-lg">
+                  ✓ Archivo subido. El texto se extrajo automáticamente.
+                </p>
+              )}
+            </>
+          )}
+
+          {/* ─── Text tab ─── */}
+          {uploadMode === 'text' && (
+            <>
+              <Textarea
+                label="Texto del Job Description"
+                placeholder="Pega aquí el texto completo del Job Description..."
+                rows={8}
+                value={rawText}
+                onChange={(e) => setRawText(e.target.value)}
+              />
+              <Button
+                onClick={() => parseMutation.mutate()}
+                loading={parseMutation.isPending}
+                disabled={!rawText.trim()}
+                variant="outline"
+              >
+                <Sparkles className="w-4 h-4" />
+                Analizar con IA
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -159,7 +301,7 @@ function JDStep({ processId }: { processId: string }) {
               <Button
                 onClick={() => saveMutation.mutate()}
                 loading={saveMutation.isPending}
-                disabled={!jd}
+                disabled={!rawText.trim()}
               >
                 <CheckCircle2 className="w-4 h-4" />
                 Confirmar y guardar JD
@@ -361,19 +503,36 @@ function MatchStep({ processId }: { processId: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">Resultados del análisis de IA por candidato</p>
-        <Link href={`/hiring-processes/${processId}/candidates`}>
-          <Button>
-            <Users className="w-4 h-4" />
-            Ver Kanban completo
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/hiring-processes/${processId}/ranking`}>
+            <Button>
+              <BarChart2 className="w-4 h-4" />
+              Ver Ranking
+            </Button>
+          </Link>
+          <Link href={`/hiring-processes/${processId}/candidates`}>
+            <Button variant="outline">
+              <Users className="w-4 h-4" />
+              Kanban
+            </Button>
+          </Link>
+        </div>
       </div>
-      <div className="p-8 text-center bg-white rounded-xl border border-slate-200">
-        <BarChart2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-        <p className="text-slate-500 font-medium">Accede al Kanban para ver el ranking completo</p>
-        <p className="text-sm text-slate-400 mt-1">
-          Los candidatos están agrupados por categoría HIGH / MEDIUM / LOW
-        </p>
+      <div className="grid grid-cols-2 gap-4">
+        <Link href={`/hiring-processes/${processId}/ranking`} className="group">
+          <div className="p-6 text-center bg-white rounded-2xl border border-slate-200 hover:border-primary-light hover:shadow-md transition-all cursor-pointer">
+            <BarChart2 className="w-10 h-10 text-primary-dark mx-auto mb-3 opacity-80" />
+            <p className="font-semibold text-slate-800">Ranking de candidatos</p>
+            <p className="text-sm text-slate-400 mt-1">Tabla ordenada por match % con filtros y profiling</p>
+          </div>
+        </Link>
+        <Link href={`/hiring-processes/${processId}/candidates`} className="group">
+          <div className="p-6 text-center bg-white rounded-2xl border border-slate-200 hover:border-primary-light hover:shadow-md transition-all cursor-pointer">
+            <Users className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+            <p className="font-semibold text-slate-800">Vista Kanban</p>
+            <p className="text-sm text-slate-400 mt-1">Columnas por categoría: Alto / Medio / Bajo</p>
+          </div>
+        </Link>
       </div>
     </div>
   );
@@ -481,7 +640,7 @@ export default function ProcessDetailPage({ params }: { params: Promise<{ id: st
   const currentStep = getProcessStep(process.status);
 
   return (
-    <div className="max-w-3xl">
+    <div>
       <Header title={process.name} subtitle={`${process.job_title} · ${process.area} · ${process.seniority}`}>
         <Link href="/hiring-processes">
           <Button variant="outline" size="sm">
@@ -508,7 +667,13 @@ export default function ProcessDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Link href={`/hiring-processes/${id}/ranking`}>
+            <Button variant="outline" size="sm">
+              <BarChart2 className="w-4 h-4" />
+              Ranking
+            </Button>
+          </Link>
           <Link href={`/hiring-processes/${id}/candidates`}>
             <Button variant="outline" size="sm">
               <Users className="w-4 h-4" />

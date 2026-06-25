@@ -7,9 +7,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Mail, Lock, AlertCircle, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { authApi } from '@/lib/api';
 import { Input } from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import type { Role } from '@/lib/types';
 
 const schema = z.object({
   email:    z.string().email('Email invalido'),
@@ -18,14 +18,8 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const DEMO_USERS: Record<string, { password: string; role: Role }> = {
-  'admin@riwi.com':     { password: 'admin123',     role: 'ADMIN' },
-  'recruiter@riwi.com': { password: 'recruiter123', role: 'RECRUITER' },
-  'leader@riwi.com':    { password: 'leader123',    role: 'TA_LEADER' },
-};
-
 export default function LoginPage() {
-  const router   = useRouter();
+  const router    = useRouter();
   const { login } = useAuth();
   const [error, setError] = useState('');
   const [view, setView] = useState<'login' | 'forgot' | 'sent'>('login');
@@ -40,13 +34,18 @@ export default function LoginPage() {
 
   const onSubmit = async (data: FormData) => {
     setError('');
-    const demo = DEMO_USERS[data.email];
-    if (demo && demo.password === data.password) {
-      login('demo-token', demo.role);
+    try {
+      const res = await authApi.login(data.email, data.password);
+      login(res.data.access_token, res.data.role);
       router.push('/dashboard');
-      return;
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
+      if (axiosErr?.response?.status === 401) {
+        setError('Credenciales incorrectas.');
+      } else {
+        setError(axiosErr?.response?.data?.detail ?? 'Error al conectar con el servidor.');
+      }
     }
-    setError('Credenciales incorrectas. Usa los accesos de demo.');
   };
 
   const handleRecover = (e: React.FormEvent) => {
@@ -224,33 +223,26 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              {/* Demo credentials */}
+              {/* Acceso rápido */}
               <div
-                className="mt-7 rounded-2xl p-4 space-y-2"
+                className="mt-7 rounded-2xl p-4"
                 style={{ background: 'var(--color-primary-light)', border: '1.5px solid #D0C8FC' }}
               >
                 <p className="text-xs font-bold mb-3" style={{ color: 'var(--color-primary-dark)' }}>
-                  Credenciales de demo
+                  Acceso rapido
                 </p>
-                {[
-                  { role: 'Admin',      email: 'admin@riwi.com',     pass: 'admin123' },
-                  { role: 'Reclutador', email: 'recruiter@riwi.com', pass: 'recruiter123' },
-                  { role: 'TA Leader',  email: 'leader@riwi.com',    pass: 'leader123' },
-                ].map((u) => (
-                  <button
-                    key={u.email}
-                    type="button"
-                    onClick={() => { setValue('email', u.email); setValue('password', u.pass); }}
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors"
-                    style={{ background: 'rgba(255,255,255,0.6)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.6)'; }}
-                  >
-                    <span className="text-xs font-semibold" style={{ color: 'var(--color-ink)' }}>{u.role}</span>
-                    <span className="text-xs" style={{ color: 'var(--color-primary)' }}>{u.email}</span>
-                  </button>
-                ))}
-                <p className="text-xs pt-1" style={{ color: 'var(--color-text-muted)' }}>
+                <button
+                  type="button"
+                  onClick={() => { setValue('email', 'recruiter@riwi.io'); setValue('password', 'riwi2026'); }}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.6)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.6)'; }}
+                >
+                  <span className="text-xs font-semibold" style={{ color: 'var(--color-ink)' }}>Recruiter</span>
+                  <span className="text-xs" style={{ color: 'var(--color-primary)' }}>recruiter@riwi.io</span>
+                </button>
+                <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>
                   Haz clic para autocompletar, luego presiona Ingresar.
                 </p>
               </div>

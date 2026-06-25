@@ -13,24 +13,10 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'integraciones', label: 'Integraciones' },
 ];
 
-const INITIAL_USERS = [
-  { id: 1, name: 'Camila Restrepo', email: 'camila@riwi.io', role: 'Recruiter', status: 'Activo' },
-  { id: 2, name: 'Julián Marín', email: 'julian@riwi.io', role: 'Recruiter', status: 'Activo' },
-  { id: 3, name: 'Andrés López', email: 'andres@riwi.io', role: 'Recruiter', status: 'Activo' },
-  { id: 4, name: 'Laura Vélez', email: 'laura@riwi.io', role: 'Recruiter', status: 'Inactivo' },
-  { id: 5, name: 'Sofía Henríquez', email: 'sofia@riwi.io', role: 'Líder TA', status: 'Activo' },
-  { id: 6, name: 'Mateo Vargas', email: 'mateo@riwi.io', role: 'Administrador', status: 'Activo' },
-];
-
 const ROLES = ['Recruiter', 'Líder TA', 'Administrador'];
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('usuarios');
-  const [users, setUsers] = useState(INITIAL_USERS);
-
-  const handleRoleChange = (id: number, newRole: string) => {
-    setUsers(users.map(u => u.id === id ? { ...u, role: newRole } : u));
-  };
 
   return (
     <div>
@@ -59,52 +45,12 @@ export default function SettingsPage() {
 
       {activeTab === 'usuarios' && (
         <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
-          <CardContent className="p-0">
-            <table className="w-full text-sm text-left">
-              <thead>
-                <tr className="border-b border-slate-100 bg-white">
-                  <th className="px-8 py-4 font-semibold text-slate-500 uppercase tracking-wide text-xs">USUARIO</th>
-                  <th className="px-8 py-4 font-semibold text-slate-500 uppercase tracking-wide text-xs">EMAIL</th>
-                  <th className="px-8 py-4 font-semibold text-slate-500 uppercase tracking-wide text-xs">ROL</th>
-                  <th className="px-8 py-4 font-semibold text-slate-500 uppercase tracking-wide text-xs">ESTADO</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-8 py-5 font-medium text-slate-900">{user.name}</td>
-                    <td className="px-8 py-5 text-slate-500">{user.email}</td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center">
-                        <select
-                          value={user.role}
-                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                          className="text-sm border-none bg-transparent text-slate-700 font-medium cursor-pointer focus:ring-0 focus:outline-none pr-2"
-                          style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
-                        >
-                          {ROLES.map(role => (
-                            <option key={role} value={role}>{role}</option>
-                          ))}
-                        </select>
-                        {/* Custom dropdown arrow */}
-                        <ChevronDown className="text-slate-400 w-4 h-4 shrink-0 pointer-events-none" />
-                      </div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <span
-                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold"
-                        style={{
-                          background: user.status === 'Activo' ? '#DAFBF2' : '#F3F4F6',
-                          color: user.status === 'Activo' ? '#8ED9C4' : '#6B7280'
-                        }}
-                      >
-                        {user.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <CardContent className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+            <Settings className="w-10 h-10 text-slate-200" />
+            <p className="font-medium text-slate-500">Gestión de usuarios</p>
+            <p className="text-sm text-slate-400 max-w-xs">
+              Este módulo estará disponible cuando el backend implemente el endpoint de administración de usuarios.
+            </p>
           </CardContent>
         </Card>
       )}

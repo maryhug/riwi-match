@@ -2,33 +2,19 @@ import axios from 'axios';
 import type {
   AuthResponse,
   HiringProcess,
-  JobDescription,
-  StructuredJD,
-  ProcessCandidate,
-  KanbanResponse,
-  QuestionSet,
-  ProfilingRun,
-  AIModelConfig,
-  AIPrompt,
-  GlobalSettings,
-  MetricsDashboard,
+  ProcessesListResponse,
+  ProcessDetail,
+  JobDescriptionSaved,
+  CandidateListResponse,
+  DualKanbanResponse,
+  DualMatchCandidate,
   CreateHiringProcessDTO,
+  QuestionSet,
   CreateQuestionSetDTO,
   ProfilingQuestion,
 } from './types';
-import {
-  MOCK_PROCESSES,
-  MOCK_KANBAN,
-  MOCK_PROFILING_RUNS,
-  MOCK_QUESTION_SETS,
-  MOCK_METRICS,
-  MOCK_AI_MODELS,
-  MOCK_AI_PROMPTS,
-  MOCK_JDS,
-} from './mockData';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -53,156 +39,319 @@ api.interceptors.response.use(
   }
 );
 
-function mock<T>(data: T): Promise<{ data: T }> {
-  return Promise.resolve({ data });
+// ─── Adapters ──────────────────────────────────────────────────────────────────
+
+/**
+ * El backend devuelve lista plana de candidatos ordenada por rank.
+ * El front espera { HIGH: [], MEDIUM: [], LOW: [], LOADED: [], PARSING: [] }.
+ */
+function adaptCandidatesToKanban(candidates: CandidateListResponse['candidates']): DualKanbanResponse {
+  const result: DualKanbanResponse = { HIGH: [], MEDIUM: [], LOW: [], LOADED: [], PARSING: [] };
+
+  for (const c of candidates) {
+    const dual: DualMatchCandidate = {
+      id: c.process_candidate_id,
+      process_id: '',
+      candidate_id: c.candidate_id,
+      status: c.status as DualMatchCandidate['status'],
+      match_percentage: c.match_percentage ?? 0,
+      match_category: (c.match_category as 'HIGH' | 'MEDIUM' | 'LOW') ?? null,
+      match_explanation: c.match_summary != null || (c.strengths && c.strengths.length > 0)
+        ? { summary: c.match_summary ?? '', strengths: c.strengths ?? [], gaps: c.gaps ?? [] }
+        : undefined,
+      cv_match_percentage: c.match_percentage ?? 0,
+      cv_match_category: (c.match_category as 'HIGH' | 'MEDIUM' | 'LOW') ?? 'LOW',
+      cv_match_explanation: {
+        summary: c.match_summary ?? '',
+        strengths: c.strengths ?? [],
+        gaps: c.gaps ?? [],
+      },
+      human_notes: undefined,
+      created_at: '',
+      updated_at: '',
+      candidate: {
+        id: c.candidate_id,
+        name: c.name.split(' ').slice(0, -1).join(' ') || c.name,
+        last_name: c.name.split(' ').slice(-1)[0] ?? '',
+        email: c.email,
+        phone: c.phone ?? '',
+        cv_file_url: c.normalized_cv_url ?? '',
+        created_at: '',
+        updated_at: '',
+      },
+    };
+
+    if (c.status === 'MATCHED' && c.match_category) {
+      const cat = c.match_category as 'HIGH' | 'MEDIUM' | 'LOW';
+      if (cat === 'HIGH' || cat === 'MEDIUM' || cat === 'LOW') {
+        result[cat].push(dual);
+      } else {
+        result.LOW.push(dual);
+      }
+    } else if (c.status === 'CV_PROCESSING' || c.status === 'MATCH_PROCESSING') {
+      result.PARSING.push(dual);
+    } else {
+      result.LOADED.push(dual);
+    }
+  }
+
+  return result;
 }
 
-function withFallback<T>(fn: () => Promise<{ data: T }>, fallback: T): Promise<{ data: T }> {
-  if (USE_MOCK) return mock(fallback);
-  return fn().catch(() => mock(fallback));
+function adaptProcess(p: ProcessesListResponse['processes'][number]): HiringProcess {
+  return {
+    id: p.process_id,
+    name: p.name,
+    job_title: p.job_title,
+    area: p.area,
+    seniority: p.seniority,
+    status: adaptStatus(p.status),
+    budget_max_usd: p.budget_max_usd ?? 0,
+    recruiter_id: '',
+    created_at: p.created_at,
+    updated_at: p.created_at,
+  };
 }
 
-// Auth
+function adaptProcessDetail(p: ProcessDetail): HiringProcess {
+  return {
+    id: p.process_id,
+    name: p.name,
+    job_title: p.job_title,
+    area: p.area,
+    seniority: p.seniority,
+    status: adaptStatus(p.status),
+    budget_max_usd: p.budget_max_usd ?? 0,
+    recruiter_id: '',
+    created_at: p.created_at,
+    updated_at: p.updated_at,
+    job_description_data: p.job_description
+      ? {
+          jd_id:             p.job_description.jd_id,
+          version:           p.job_description.version,
+          text_preview:      p.job_description.text_preview,
+          jd_raw_text:       p.job_description.jd_raw_text ?? '',
+          jd_file_url:       p.job_description.jd_file_url ?? null,
+          original_filename: p.job_description.original_filename ?? null,
+          created_at:        p.job_description.created_at,
+        }
+      : null,
+  };
+}
+
+/**
+ * Mapea statuses del backend a los del front.
+ * Backend: DRAFT | CVS_UPLOADED | MATCH_PROCESSING | MATCH_DONE | PROFILING_* | CLOSED | ARCHIVED
+ * Front:   DRAFT | READY_FOR_MATCH | CVS_UPLOADED | MATCHING | PROFILING_CONFIGURED | COMPLETED
+ */
+function adaptStatus(s: string): HiringProcess['status'] {
+  const map: Record<string, HiringProcess['status']> = {
+    DRAFT:                'DRAFT',
+    CVS_UPLOADED:         'CVS_UPLOADED',
+    MATCH_PROCESSING:     'MATCHING',
+    MATCH_DONE:           'PROFILING_CONFIGURED',
+    PROFILING_CONFIGURED: 'PROFILING_CONFIGURED',
+    PROFILING_ACTIVE:     'PROFILING_CONFIGURED',
+    PROFILING_COMPLETED:  'COMPLETED',
+    CLOSED:               'COMPLETED',
+    ARCHIVED:             'COMPLETED',
+  };
+  return map[s] ?? 'DRAFT';
+}
+
+// ─── Auth ──────────────────────────────────────────────────────────────────────
+
 export const authApi = {
   login: (email: string, password: string) =>
     api.post<AuthResponse>('/api/v1/auth/login', { email, password }),
 };
 
-// Hiring Processes
+// ─── Processes ─────────────────────────────────────────────────────────────────
+
 export const processesApi = {
   list: () =>
-    withFallback(
-      () => api.get<HiringProcess[]>('/api/v1/hiring-processes'),
-      MOCK_PROCESSES
-    ),
+    api.get<ProcessesListResponse>('/api/v1/processes').then((r) => ({
+      data: r.data.processes.map(adaptProcess),
+    })),
 
   create: (data: CreateHiringProcessDTO) =>
-    api.post<{ process_id: string }>('/api/v1/hiring-processes', data),
+    api.post<{ process_id: string }>('/api/v1/processes', data),
 
   get: (id: string) =>
-    withFallback(
-      () => api.get<HiringProcess>(`/api/v1/hiring-processes/${id}`),
-      MOCK_PROCESSES.find((p) => p.id === id) ?? MOCK_PROCESSES[0]
-    ),
-
-  parseJD: (id: string, rawText: string) =>
-    api.post<{ structured_jd: StructuredJD }>(`/api/v1/hiring-processes/${id}/job-description/parse`, {
-      raw_text: rawText,
-    }),
-
-  saveJD: (id: string, structuredJD: StructuredJD) =>
-    api.put<JobDescription>(`/api/v1/hiring-processes/${id}/job-description`, structuredJD),
+    api.get<ProcessDetail>(`/api/v1/processes/${id}`).then((r) => ({
+      data: adaptProcessDetail(r.data),
+    })),
 
   getJD: (id: string) =>
-    withFallback(
-      () => api.get<JobDescription>(`/api/v1/hiring-processes/${id}/job-description`),
-      MOCK_JDS[id] ?? MOCK_JDS['proc-001']
-    ),
+    api.get<ProcessDetail>(`/api/v1/processes/${id}`).then((r) => {
+      const jd = r.data.job_description;
+      if (!jd) return { data: null };
+      return {
+        data: {
+          id: jd.jd_id,
+          process_id: id,
+          version: jd.version,
+          jd_raw_text: jd.jd_raw_text ?? jd.text_preview,
+          jd_file_url: jd.jd_file_url ?? null,
+          original_filename: jd.original_filename ?? null,
+          structured_jd: {
+            must_have: [],
+            nice_to_have: [],
+            deal_breakers: [],
+            weights: {},
+            summary: jd.text_preview,
+          },
+          created_at: jd.created_at,
+        },
+      };
+    }),
 
-  uploadCandidates: (id: string, files: File[]) => {
+  /**
+   * El backend NO tiene endpoint de parseo IA de JD.
+   * Guardamos directamente el texto raw — cada POST crea una nueva versión.
+   */
+  parseJD: (_id: string, rawText: string) =>
+    Promise.resolve({
+      data: {
+        structured_jd: {
+          must_have: [] as string[],
+          nice_to_have: [] as string[],
+          deal_breakers: [] as string[],
+          weights: {} as Record<string, number>,
+          summary: rawText.slice(0, 300),
+        },
+      },
+    }),
+
+  saveJD: (id: string, rawText: string) =>
+    api.post<JobDescriptionSaved>(`/api/v1/processes/${id}/job-description`, {
+      jd_raw_text: rawText,
+    }),
+
+  uploadJDFile: (id: string, file: File) => {
     const form = new FormData();
-    files.forEach((f) => form.append('files', f));
-    return api.post<{ queued: number }>(`/api/v1/hiring-processes/${id}/candidates/upload`, form, {
+    form.append('file', file);
+    return api.post<{
+      jd_id: string;
+      version: number;
+      jd_file_url: string;
+      original_filename: string;
+      text_length: number;
+    }>(`/api/v1/processes/${id}/job-description/upload`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
 
+  getJDFileUrl: (id: string) =>
+    `${BASE_URL}/api/v1/processes/${id}/job-description/file`,
+
+  uploadCandidates: (id: string, files: File[]) => {
+    const form = new FormData();
+    files.forEach((f) => form.append('files', f));
+    return api
+      .post<{ uploaded: number }>(`/api/v1/processes/${id}/candidates/upload`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => ({ data: { queued: r.data.uploaded } }));
+  },
+
   startMatch: (id: string) =>
-    api.post<{ status: string }>(`/api/v1/hiring-processes/${id}/match`),
+    api.post<{ queued: number }>(`/api/v1/processes/${id}/match`).then((r) => ({
+      data: { status: `${r.data.queued} candidatos encolados` },
+    })),
 
+  getMatchStatus: (id: string) =>
+    api.get<{
+      process_status: string;
+      total_candidates: number;
+      matched: number;
+      match_pending: number;
+      progress_pct: number;
+      is_complete: boolean;
+    }>(`/api/v1/processes/${id}/match/status`),
+
+  /** Kanban: transforma lista plana al formato { HIGH, MEDIUM, LOW, LOADED, PARSING } */
   getKanban: (id: string) =>
-    withFallback(
-      () => api.get<KanbanResponse>(`/api/v1/hiring-processes/${id}/kanban`),
-      (MOCK_KANBAN[id] ?? MOCK_KANBAN['proc-001']) as KanbanResponse
-    ),
+    api.get<CandidateListResponse>(`/api/v1/processes/${id}/candidates`).then((r) => ({
+      data: adaptCandidatesToKanban(r.data.candidates),
+    })),
 
-  startProfiling: (id: string, candidateIds: string[]) =>
-    api.post<{ status: string }>(`/api/v1/hiring-processes/${id}/profiling/start`, {
-      candidate_ids: candidateIds,
-    }),
+  /** Lista plana para la vista de ranking con rank explícito */
+  getCandidatesList: (id: string) =>
+    api.get<CandidateListResponse>(`/api/v1/processes/${id}/candidates`),
 
-  getProfilingRuns: (id: string) =>
-    withFallback(
-      () => api.get<ProfilingRun[]>(`/api/v1/hiring-processes/${id}/profiling/runs`),
-      MOCK_PROFILING_RUNS[id] ?? []
-    ),
+  getCandidateDetail: (processId: string, pcId: string) =>
+    api.get(`/api/v1/processes/${processId}/candidates/${pcId}`),
+
+  /** Profiling aún no disponible en el back */
+  startProfiling: (_id: string, _candidateIds: string[]) =>
+    Promise.resolve({ data: { status: 'not_available' } }),
+
+  getProfilingRuns: (_id: string) =>
+    Promise.resolve({ data: [] as import('./types').ProfilingRun[] }),
 };
+
+// ─── Candidates ────────────────────────────────────────────────────────────────
 
 export const candidatesApi = {
-  updateNotes: (processCandidateId: string, notes: string) =>
-    api.patch<ProcessCandidate>(`/api/v1/process-candidates/${processCandidateId}/notes`, {
-      human_notes: notes,
-    }),
-  updateStatus: (processCandidateId: string, status: string) =>
-    api.patch<ProcessCandidate>(`/api/v1/process-candidates/${processCandidateId}/status`, {
-      status,
-    }),
+  updateNotes: (_pcId: string, _notes: string) =>
+    Promise.resolve({ data: {} }),
+  updateStatus: (_pcId: string, _status: string) =>
+    Promise.resolve({ data: {} }),
 };
 
-// Question Sets
+// ─── Question Sets ─────────────────────────────────────────────────────────────
+
 export const questionSetsApi = {
   list: () =>
-    withFallback(
-      () => api.get<QuestionSet[]>('/api/v1/question-sets'),
-      MOCK_QUESTION_SETS
-    ),
+    api.get<{ total: number; question_sets: QuestionSet[] }>('/api/v1/question-sets').then((r) => ({
+      data: r.data.question_sets,
+    })),
 
   get: (id: string) =>
-    withFallback(
-      () => api.get<QuestionSet>(`/api/v1/question-sets/${id}`),
-      MOCK_QUESTION_SETS.find((q) => q.id === id) ?? MOCK_QUESTION_SETS[0]
-    ),
+    api.get<QuestionSet>(`/api/v1/question-sets/${id}`),
 
-  create: (data: CreateQuestionSetDTO) =>
+  create: (data: CreateQuestionSetDTO): Promise<{ data: QuestionSet }> =>
     api.post<QuestionSet>('/api/v1/question-sets', data),
 
-  update: (id: string, data: Partial<CreateQuestionSetDTO>) =>
-    api.put<QuestionSet>(`/api/v1/question-sets/${id}`, data),
+  update: (id: string, data: { name?: string; description?: string; status?: string }) =>
+    api.patch<QuestionSet>(`/api/v1/question-sets/${id}`, data),
+
+  delete: (id: string) =>
+    api.delete(`/api/v1/question-sets/${id}`),
 
   addQuestion: (setId: string, q: Omit<ProfilingQuestion, 'id' | 'question_set_id'>) =>
     api.post<ProfilingQuestion>(`/api/v1/question-sets/${setId}/questions`, q),
+
+  updateQuestion: (setId: string, qId: string, q: Partial<Omit<ProfilingQuestion, 'id' | 'question_set_id'>>) =>
+    api.patch<ProfilingQuestion>(`/api/v1/question-sets/${setId}/questions/${qId}`, q),
 
   deleteQuestion: (setId: string, qId: string) =>
     api.delete(`/api/v1/question-sets/${setId}/questions/${qId}`),
 };
 
-// Settings (Admin)
+// ─── Settings / Metrics ────────────────────────────────────────────────────────
+
 export const settingsApi = {
-  getModels: () =>
-    withFallback(
-      () => api.get<AIModelConfig[]>('/api/v1/settings/models'),
-      MOCK_AI_MODELS
-    ),
-
-  setActiveModel: (taskType: string, modelId: string) =>
-    api.put(`/api/v1/settings/models/${taskType}/active`, { model_id: modelId }),
-
-  getPrompts: () =>
-    withFallback(
-      () => api.get<AIPrompt[]>('/api/v1/settings/prompts'),
-      MOCK_AI_PROMPTS
-    ),
-
-  updatePrompt: (id: string, text: string) =>
-    api.put(`/api/v1/settings/prompts/${id}`, { system_prompt_text: text }),
-
-  getGlobalSettings: () =>
-    withFallback(
-      () => api.get<GlobalSettings[]>('/api/v1/settings/global'),
-      []
-    ),
-
-  updateThresholds: (thresholds: { high: number; medium: number; low: number }) =>
-    api.put('/api/v1/settings/global-thresholds', thresholds),
+  getModels: () => Promise.resolve({ data: [] }),
+  setActiveModel: () => Promise.resolve({ data: {} }),
+  getPrompts: () => Promise.resolve({ data: [] }),
+  updatePrompt: () => Promise.resolve({ data: {} }),
+  getGlobalSettings: () => Promise.resolve({ data: [] }),
+  updateThresholds: () => Promise.resolve({ data: {} }),
 };
 
-// Metrics
 export const metricsApi = {
-  getDashboard: (params?: { from?: string; to?: string }) =>
-    withFallback(
-      () => api.get<MetricsDashboard>('/api/v1/metrics/dashboard', { params }),
-      MOCK_METRICS
-    ),
+  getDashboard: () =>
+    Promise.resolve({
+      data: {
+        total_cost_usd: 0,
+        cost_by_process:  [] as import('./types').MetricsDashboard['cost_by_process'],
+        cost_by_user:     [] as import('./types').MetricsDashboard['cost_by_user'],
+        cost_by_operation:[] as import('./types').MetricsDashboard['cost_by_operation'],
+        daily_costs:      [] as import('./types').MetricsDashboard['daily_costs'],
+      },
+    }),
 };
 
 export default api;

@@ -12,9 +12,12 @@ export interface User {
 
 export interface AuthResponse {
   access_token: string;
+  refresh_token?: string;
   role: Role;
 }
 
+// ─── Process statuses ─────────────────────────────────────────────────────────
+// Estos son los statuses que usa el FRONT (mapeados desde el backend en api.ts)
 export type ProcessStatus =
   | 'DRAFT'
   | 'READY_FOR_MATCH'
@@ -23,6 +26,33 @@ export type ProcessStatus =
   | 'PROFILING_CONFIGURED'
   | 'COMPLETED';
 
+// Statuses exactos del BACKEND (usados en los tipos de respuesta de API)
+export type BackendProcessStatus =
+  | 'DRAFT'
+  | 'CVS_UPLOADED'
+  | 'MATCH_PROCESSING'
+  | 'MATCH_DONE'
+  | 'PROFILING_CONFIGURED'
+  | 'PROFILING_ACTIVE'
+  | 'PROFILING_COMPLETED'
+  | 'CLOSED'
+  | 'ARCHIVED';
+
+export type BackendCandidateStatus =
+  | 'LOADED'
+  | 'CV_PROCESSING'
+  | 'CV_ERROR'
+  | 'MATCH_PENDING'
+  | 'MATCH_PROCESSING'
+  | 'MATCHED'
+  | 'SELECTED_FOR_PROFILING'
+  | 'PROFILING_QUEUED'
+  | 'PROFILING_CALLING'
+  | 'PROFILING_COMPLETED'
+  | 'PROFILING_FAILED'
+  | 'DISCARDED';
+
+// ─── HiringProcess (shape usada por el front) ─────────────────────────────────
 export interface HiringProcess {
   id: string;
   name: string;
@@ -35,13 +65,112 @@ export interface HiringProcess {
   question_set_id?: string;
   created_at: string;
   updated_at: string;
+  /** Datos de la JD activa — solo disponible en GET /processes/{id} */
+  job_description_data?: {
+    jd_id: string;
+    version: number;
+    text_preview: string;
+    jd_raw_text: string;
+    jd_file_url: string | null;
+    original_filename: string | null;
+    created_at: string;
+  } | null;
 }
 
+// ─── Backend raw response types ───────────────────────────────────────────────
+
+export interface ProcessesListResponse {
+  total: number;
+  processes: Array<{
+    process_id: string;
+    name: string;
+    job_title: string;
+    area: string;
+    seniority: string;
+    status: string;
+    budget_max_usd: number;
+    created_at: string;
+  }>;
+}
+
+export interface ProcessDetail {
+  process_id: string;
+  name: string;
+  job_title: string;
+  area: string;
+  seniority: string;
+  status: string;
+  budget_max_usd: number;
+  match_weights: Record<string, number> | null;
+  job_description: {
+    jd_id: string;
+    version: number;
+    text_preview: string;
+    jd_raw_text: string;
+    jd_file_url: string | null;
+    original_filename: string | null;
+    created_at: string;
+  } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JobDescriptionSaved {
+  jd_id: string;
+  process_id: string;
+  version: number;
+  created_at: string;
+}
+
+export interface CandidateListItem {
+  rank: number;
+  process_candidate_id: string;
+  candidate_id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  status: string;
+  match_percentage: number;
+  match_category: string | null;
+  whatsapp_consent: string | null;
+  normalized_cv_url: string | null;
+  match_summary?: string;
+  strengths?: string[];
+  gaps?: string[];
+}
+
+export interface CandidateListResponse {
+  process_id: string;
+  total: number;
+  candidates: CandidateListItem[];
+}
+
+export interface MatchTriggerResponse {
+  process_id: string;
+  queued: number;
+  tasks: Array<{ process_candidate_id: string; task_id: string }>;
+}
+
+export interface MatchStatusResponse {
+  process_id: string;
+  process_status: string;
+  total_candidates: number;
+  matched: number;
+  match_pending: number;
+  cv_processing: number;
+  errors: number;
+  progress_pct: number;
+  is_complete: boolean;
+}
+
+// ─── JobDescription (shape front) ─────────────────────────────────────────────
 export interface JobDescription {
   id: string;
   process_id: string;
   version: number;
   jd_raw_text: string;
+  jd_file_url?: string | null;
+  original_filename?: string | null;
   structured_jd: StructuredJD;
   created_at: string;
 }
@@ -52,8 +181,10 @@ export interface StructuredJD {
   deal_breakers: string[];
   weights: Record<string, number>;
   summary?: string;
+  raw_text?: string;
 }
 
+// ─── Candidates (shapes front/kanban) ─────────────────────────────────────────
 export type MatchCategory = 'HIGH' | 'MEDIUM' | 'LOW';
 export type CandidateStatus =
   | 'LOADED'
@@ -76,13 +207,20 @@ export interface Candidate {
   updated_at: string;
 }
 
+export interface MatchExplanation {
+  strengths: string[];
+  gaps: string[];
+  summary: string;
+  risk_flags?: string[];
+}
+
 export interface ProcessCandidate {
   id: string;
   process_id: string;
   candidate_id: string;
-  status: CandidateStatus;
+  status: CandidateStatus | string;
   match_percentage: number;
-  match_category?: MatchCategory;
+  match_category?: MatchCategory | null;
   match_explanation?: MatchExplanation;
   human_notes?: string;
   created_at: string;
@@ -90,11 +228,24 @@ export interface ProcessCandidate {
   candidate: Candidate;
 }
 
-export interface MatchExplanation {
-  strengths: string[];
-  gaps: string[];
-  summary: string;
-  risk_flags?: string[];
+// ─── Dual match (CV + Profiling) ──────────────────────────────────────────────
+export interface DualMatchCandidate extends ProcessCandidate {
+  cv_match_percentage: number;
+  cv_match_category: 'HIGH' | 'MEDIUM' | 'LOW';
+  cv_match_explanation: {
+    strengths: string[];
+    gaps: string[];
+    summary: string;
+    risk_flags?: string[];
+  };
+}
+
+export interface DualKanbanResponse {
+  HIGH: DualMatchCandidate[];
+  MEDIUM: DualMatchCandidate[];
+  LOW: DualMatchCandidate[];
+  LOADED: DualMatchCandidate[];
+  PARSING: DualMatchCandidate[];
 }
 
 export interface KanbanResponse {
@@ -105,25 +256,45 @@ export interface KanbanResponse {
   PARSING: ProcessCandidate[];
 }
 
-export interface QuestionSet {
-  id: string;
-  name: string;
-  description?: string;
-  version: number;
-  status: 'ACTIVE' | 'ARCHIVED';
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  questions?: ProfilingQuestion[];
+// ─── Candidate detail (backend raw) ───────────────────────────────────────────
+export interface CandidateDetail {
+  process_candidate_id: string;
+  process_id: string;
+  candidate: {
+    candidate_id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    cv_url: string | null;
+    normalized_cv_url: string | null;
+    profile: Record<string, unknown> | null;
+  };
+  status: string;
+  whatsapp_consent: string | null;
+  human_notes: string | null;
+  human_override_match: number | null;
+  match: {
+    percentage: number;
+    category: string;
+    summary: string | null;
+    strengths: string[];
+    gaps: string[];
+    breakdown: Record<string, number | string>;
+  } | null;
 }
+
+// ─── Question Sets ─────────────────────────────────────────────────────────────
+export type ProfilingStatus = 'PENDING' | 'CALLING' | 'COMPLETED' | 'FAILED' | 'NO_ANSWER';
 
 export interface ProfilingQuestion {
   id: string;
   question_set_id: string;
   order_index: number;
   text: string;
-  type: 'OPEN' | 'CLOSED' | 'SCALE';
+  type: 'OPEN' | 'CLOSED' | 'MULTIPLE_CHOICE' | 'YES_NO' | 'NUMERIC' | 'SCALE' | string;
+  /** alias frontend — el backend lo llama expected_answer */
   desired_answer?: string;
+  expected_answer?: string;
   positive_keywords: string[];
   risk_keywords: string[];
   weight: number;
@@ -131,12 +302,17 @@ export interface ProfilingQuestion {
   eval_criteria?: string;
 }
 
-export type ProfilingStatus =
-  | 'PENDING'
-  | 'CALLING'
-  | 'COMPLETED'
-  | 'FAILED'
-  | 'NO_ANSWER';
+export interface QuestionSet {
+  id: string;
+  name: string;
+  description?: string;
+  version: number;
+  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  questions?: ProfilingQuestion[];
+}
 
 export interface ProfilingRun {
   id: string;
@@ -153,6 +329,7 @@ export interface ProfilingRun {
   candidate?: Candidate;
 }
 
+// ─── Settings / Metrics ────────────────────────────────────────────────────────
 export interface AIModelConfig {
   id: string;
   task_type: string;
@@ -199,12 +376,10 @@ export interface MetricsDashboard {
     total_cost: number;
     count: number;
   }>;
-  daily_costs: Array<{
-    date: string;
-    cost: number;
-  }>;
+  daily_costs: Array<{ date: string; cost: number }>;
 }
 
+// ─── DTOs ─────────────────────────────────────────────────────────────────────
 export interface CreateHiringProcessDTO {
   name: string;
   job_title: string;
