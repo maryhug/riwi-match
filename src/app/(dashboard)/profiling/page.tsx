@@ -1,49 +1,49 @@
 'use client';
 
 import { PhoneCall, ListTodo, PhoneForwarded, PhoneMissed, Mic } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/Card';
 import Header from '@/components/layout/Header';
 
-function TopCard({ label, value, icon: Icon, color }: {
-  label: string;
-  value: string;
-  icon: React.ElementType;
-  color: { bg: string; text: string };
+function StatCard({ label, value, icon: Icon, accentColor, iconBg }: {
+  label: string; value: string; icon: React.ElementType; accentColor: string; iconBg: string;
 }) {
   return (
-    <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
-      <CardContent className="flex items-center justify-between p-6">
-        <div>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">{label}</p>
-          <p className="text-3xl font-bold" style={{ color: 'var(--color-ink)' }}>{value}</p>
-        </div>
-        <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: color.bg }}>
-          <Icon className="w-5 h-5" style={{ color: color.text }} />
-        </div>
-      </CardContent>
-    </Card>
+    <div
+      className="bg-white rounded-lg p-5 flex items-center justify-between"
+      style={{
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+        borderLeft: `4px solid ${accentColor}`,
+      }}
+    >
+      <div>
+        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">{label}</p>
+        <p className="text-2xl font-bold text-slate-900">{value}</p>
+      </div>
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: iconBg }}>
+        <Icon className="w-4.5 h-4.5" style={{ color: accentColor }} />
+      </div>
+    </div>
   );
 }
 
 export default function ProfilingPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Header title="Ejecución de Profiling" subtitle="Monitor en vivo de las llamadas de profiling automatizado." />
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <TopCard label="LLAMADAS ACTIVAS" value="0 / 4" icon={PhoneCall}      color={{ bg: '#F3E8FF', text: '#9333EA' }} />
-        <TopCard label="EN COLA"          value="0"     icon={ListTodo}        color={{ bg: '#F1F5F9', text: '#64748B' }} />
-        <TopCard label="COMPLETADAS"      value="0"     icon={PhoneForwarded}  color={{ bg: '#ECFDF5', text: '#10B981' }} />
-        <TopCard label="TASA CONTACTO"    value="—"     icon={PhoneMissed}     color={{ bg: '#FFF7ED', text: '#F97316' }} />
+        <StatCard label="Llamadas activas" value="0 / 4" icon={PhoneCall}     accentColor="#7C3AED" iconBg="#EDE9FE" />
+        <StatCard label="En cola"          value="0"     icon={ListTodo}       accentColor="#94A3B8" iconBg="#F1F5F9" />
+        <StatCard label="Completadas"      value="0"     icon={PhoneForwarded} accentColor="#059669" iconBg="#ECFDF5" />
+        <StatCard label="Tasa contacto"    value="—"     icon={PhoneMissed}    accentColor="#D97706" iconBg="#FEF3C7" />
       </div>
 
-      <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-primary-light flex items-center justify-center">
-          <Mic className="w-7 h-7 text-primary-dark" />
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <div className="w-12 h-12 rounded-lg bg-violet-50 flex items-center justify-center">
+          <Mic className="w-6 h-6 text-violet-600" />
         </div>
-        <p className="font-semibold text-slate-700">Profiling de voz no iniciado</p>
-        <p className="text-sm text-slate-400 text-center max-w-sm">
-          Para iniciar llamadas de profiling, ve a un proceso con match completado, selecciona candidatos en el Kanban y presiona "Iniciar profiling".
+        <p className="font-semibold text-slate-700 text-sm">Profiling de voz no iniciado</p>
+        <p className="text-xs text-slate-400 text-center max-w-sm">
+          Para iniciar llamadas de profiling, ve a un proceso con match completado, selecciona candidatos en el Kanban y presiona &quot;Iniciar profiling&quot;.
         </p>
       </div>
     </div>

@@ -10,9 +10,12 @@ interface CardProps {
 export function Card({ children, className, style }: CardProps) {
   return (
     <div
-      className={cn('bg-white rounded-xl', className)}
+      className={cn(
+        'bg-white rounded-lg',
+        className,
+      )}
       style={{
-        border: '1.5px solid #E2E8F0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
         ...style,
       }}
     >
@@ -23,12 +26,20 @@ export function Card({ children, className, style }: CardProps) {
 
 export function CardHeader({ children, className }: CardProps) {
   return (
-    <div className={cn('px-6 py-4 border-b border-slate-100', className)}>
+    <div className={cn('px-5 py-4 border-b border-slate-100', className)}>
       {children}
     </div>
   );
 }
 
 export function CardContent({ children, className }: CardProps) {
-  return <div className={cn('px-6 py-4', className)}>{children}</div>;
+  return <div className={cn('px-5 py-4', className)}>{children}</div>;
+}
+
+export function CardFooter({ children, className }: CardProps) {
+  return (
+    <div className={cn('px-5 py-3 border-t border-slate-100', className)}>
+      {children}
+    </div>
+  );
 }

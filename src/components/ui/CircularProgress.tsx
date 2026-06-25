@@ -12,8 +12,8 @@ export default function CircularProgress({
   value,
   size = 120,
   strokeWidth = 10,
-  color = 'var(--color-primary)',
-  trackColor = 'var(--color-primary-light)',
+  color = '#7C3AED',
+  trackColor = '#EDE9FE',
   label,
   sublabel,
 }: CircularProgressProps) {
@@ -26,7 +26,6 @@ export default function CircularProgress({
     <div className="flex flex-col items-center gap-2">
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-          {/* Track */}
           <circle
             cx={center}
             cy={center}
@@ -35,7 +34,6 @@ export default function CircularProgress({
             stroke={trackColor}
             strokeWidth={strokeWidth}
           />
-          {/* Progress */}
           <circle
             cx={center}
             cy={center}
@@ -49,32 +47,20 @@ export default function CircularProgress({
             style={{ transition: 'stroke-dashoffset 0.6s ease' }}
           />
         </svg>
-        {/* Center label */}
-        <div
-          className="absolute inset-0 flex flex-col items-center justify-center"
-          style={{ transform: 'rotate(0deg)' }}
-        >
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
-            className="font-bold leading-none"
-            style={{
-              fontSize: size * 0.22,
-              color: 'var(--color-ink)',
-              fontFamily: 'var(--font-display)',
-            }}
+            className="font-bold leading-none text-slate-900"
+            style={{ fontSize: size * 0.22 }}
           >
             {Math.round(value)}%
           </span>
         </div>
       </div>
       {label && (
-        <p className="text-sm font-semibold text-center" style={{ color: 'var(--color-ink)' }}>
-          {label}
-        </p>
+        <p className="text-sm font-semibold text-center text-slate-900">{label}</p>
       )}
       {sublabel && (
-        <p className="text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
-          {sublabel}
-        </p>
+        <p className="text-xs text-center text-slate-400">{sublabel}</p>
       )}
     </div>
   );

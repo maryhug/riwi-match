@@ -12,8 +12,8 @@ import { Input } from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 
 const schema = z.object({
-  email:    z.string().email('Email invalido'),
-  password: z.string().min(6, 'Minimo 6 caracteres'),
+  email:    z.string().email('Email inválido'),
+  password: z.string().min(6, 'Mínimo 6 caracteres'),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -55,120 +55,35 @@ export default function LoginPage() {
       return;
     }
     setError('');
-    // Simulate API call
-    setTimeout(() => {
-      setView('sent');
-    }, 800);
+    setTimeout(() => { setView('sent'); }, 800);
   };
 
   return (
-    <div
-      className="min-h-screen flex"
-      style={{ background: '#F5F2FD' }}
-    >
-      {/* Panel izquierdo decorativo */}
-      <div
-        className="hidden lg:flex flex-col justify-between w-[420px] shrink-0 p-12 relative overflow-hidden"
-        style={{ background: 'linear-gradient(145deg, #4F3CC9 0%, var(--color-primary) 70%, #C4B2F9 100%)' }}
-      >
-        {/* Circulos decorativos */}
-        <div
-          className="absolute top-0 right-0 w-72 h-72 rounded-full opacity-20"
-          style={{ background: '#fff', transform: 'translate(40%, -40%)' }}
-        />
-        <div
-          className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-15"
-          style={{ background: 'var(--color-accent)', transform: 'translate(-30%, 30%)' }}
-        />
-
-        {/* Logo */}
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/20">
-              <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
-                <path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z" stroke="white" strokeWidth="1.5" fill="none"/>
-                <path d="M8 5L11 7V11H5V7L8 5Z" fill="white" fillOpacity="0.9"/>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+      <div className="w-full max-w-md">
+        {/* Card */}
+        <div className="bg-white rounded-xl p-8" style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)' }}>
+          {/* Logo */}
+          <div className="flex items-center gap-2.5 mb-7">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-violet-600">
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                <path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z" stroke="white" strokeWidth="1.5" fill="none" />
+                <path d="M8 5L11 7V11H5V7L8 5Z" fill="white" fillOpacity="0.9" />
               </svg>
             </div>
-            <span
-              className="text-xl font-bold text-white"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              Riwi Match
-            </span>
-          </div>
-
-          <h2
-            className="text-4xl font-bold text-white mb-4 leading-tight"
-            style={{ fontFamily: 'var(--font-display)' }}
-          >
-            Reclutamiento impulsado por IA
-          </h2>
-          <p className="text-white/70 text-base leading-relaxed">
-            Analiza CVs, realiza matching inteligente y conduce entrevistas de voz automatizadas.
-          </p>
-        </div>
-
-        {/* Stats decorativas */}
-        <div className="relative z-10 space-y-3">
-          {[
-            { value: '10x', label: 'mas rapido que el proceso tradicional' },
-            { value: '92%', label: 'precision en el ranking de candidatos' },
-            { value: '3h',  label: 'ahorro promedio por vacante' },
-          ].map((s) => (
-            <div
-              key={s.value}
-              className="flex items-center gap-4 px-4 py-3 rounded-xl"
-              style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
-            >
-              <span
-                className="text-2xl font-bold text-white w-14 shrink-0"
-                style={{ fontFamily: 'var(--font-display)' }}
-              >
-                {s.value}
-              </span>
-              <span className="text-sm text-white/75">{s.label}</span>
+            <div>
+              <span className="text-sm font-bold text-violet-700">RIWI MATCH</span>
+              <span className="ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 uppercase tracking-wide">AI</span>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Panel derecho — formulario */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
-          {/* Logo mobile */}
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'var(--color-primary)' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z" stroke="white" strokeWidth="1.5" fill="none"/>
-                <path d="M8 5L11 7V11H5V7L8 5Z" fill="white" fillOpacity="0.9"/>
-              </svg>
-            </div>
-            <span className="font-bold text-lg" style={{ color: 'var(--color-ink)', fontFamily: 'var(--font-display)' }}>
-              Riwi Match
-            </span>
           </div>
 
           {view === 'login' ? (
             <>
-              <h1
-                className="text-2xl font-bold mb-1"
-                style={{ color: 'var(--color-ink)', fontFamily: 'var(--font-display)' }}
-              >
-                Iniciar sesión
-              </h1>
-              <p className="text-sm mb-7" style={{ color: 'var(--color-text-muted)' }}>
-                Ingresa con tu cuenta corporativa
-              </p>
+              <h1 className="text-xl font-bold text-slate-900 mb-1">Iniciar sesión</h1>
+              <p className="text-sm text-slate-400 mb-6">Ingresa con tu cuenta corporativa</p>
 
               {error && (
-                <div
-                  className="flex items-center gap-2.5 p-3.5 rounded-xl mb-5 text-sm font-medium"
-                  style={{ background: '#FFF4F2', border: '1.5px solid var(--color-coral)', color: '#FF596D' }}
-                >
+                <div className="flex items-center gap-2.5 p-3 rounded-lg mb-5 text-sm bg-red-50 border border-red-200 text-red-700">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   {error}
                 </div>
@@ -182,13 +97,10 @@ export default function LoginPage() {
                     placeholder="nombre@empresa.com"
                     error={errors.email?.message}
                     required
-                    style={{ paddingLeft: '2.75rem' }}
+                    style={{ paddingLeft: '2.5rem' }}
                     {...register('email')}
                   />
-                  <Mail
-                    className="absolute left-3.5 w-4 h-4 pointer-events-none"
-                    style={{ top: '2.45rem', color: '#C4B2F9' }}
-                  />
+                  <Mail className="absolute left-3 w-4 h-4 pointer-events-none text-slate-400" style={{ top: '2.35rem' }} />
                 </div>
 
                 <div className="relative">
@@ -198,51 +110,39 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     error={errors.password?.message}
                     required
-                    style={{ paddingLeft: '2.75rem' }}
+                    style={{ paddingLeft: '2.5rem' }}
                     {...register('password')}
                   />
-                  <Lock
-                    className="absolute left-3.5 w-4 h-4 pointer-events-none"
-                    style={{ top: '2.45rem', color: '#C4B2F9' }}
-                  />
+                  <Lock className="absolute left-3 w-4 h-4 pointer-events-none text-slate-400" style={{ top: '2.35rem' }} />
                 </div>
-                
-                <div className="flex justify-end pt-1">
+
+                <div className="flex justify-end">
                   <button
                     type="button"
                     onClick={() => { setView('forgot'); setError(''); setRecoverEmail(''); }}
-                    className="text-xs font-semibold hover:underline"
-                    style={{ color: 'var(--color-primary)' }}
+                    className="text-xs font-semibold text-violet-600 hover:text-violet-800 transition-colors"
                   >
                     ¿Olvidaste tu contraseña?
                   </button>
                 </div>
 
-                <Button type="submit" loading={isSubmitting} size="lg" className="w-full mt-2">
+                <Button type="submit" loading={isSubmitting} size="lg" className="w-full">
                   Ingresar
                 </Button>
               </form>
 
-              {/* Acceso rápido */}
-              <div
-                className="mt-7 rounded-2xl p-4"
-                style={{ background: 'var(--color-primary-light)', border: '1.5px solid #D0C8FC' }}
-              >
-                <p className="text-xs font-bold mb-3" style={{ color: 'var(--color-primary-dark)' }}>
-                  Acceso rapido
-                </p>
+              {/* Quick access */}
+              <div className="mt-6 rounded-lg p-4 bg-violet-50 border border-violet-100">
+                <p className="text-xs font-bold mb-2 text-violet-800">Acceso rápido</p>
                 <button
                   type="button"
                   onClick={() => { setValue('email', 'recruiter@riwi.io'); setValue('password', 'riwi2026'); }}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.6)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.6)'; }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-md text-left bg-white hover:bg-violet-50 transition-colors border border-violet-100"
                 >
-                  <span className="text-xs font-semibold" style={{ color: 'var(--color-ink)' }}>Recruiter</span>
-                  <span className="text-xs" style={{ color: 'var(--color-primary)' }}>recruiter@riwi.io</span>
+                  <span className="text-xs font-semibold text-slate-900">Recruiter</span>
+                  <span className="text-xs text-violet-600">recruiter@riwi.io</span>
                 </button>
-                <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>
+                <p className="text-xs mt-2 text-slate-400">
                   Haz clic para autocompletar, luego presiona Ingresar.
                 </p>
               </div>
@@ -257,21 +157,13 @@ export default function LoginPage() {
                 Volver al login
               </button>
 
-              <h1
-                className="text-2xl font-bold mb-1"
-                style={{ color: 'var(--color-ink)', fontFamily: 'var(--font-display)' }}
-              >
-                Recuperar contraseña
-              </h1>
-              <p className="text-sm mb-7" style={{ color: 'var(--color-text-muted)' }}>
+              <h1 className="text-xl font-bold text-slate-900 mb-1">Recuperar contraseña</h1>
+              <p className="text-sm text-slate-400 mb-6">
                 Ingresa tu correo corporativo y te enviaremos un enlace temporal para restablecerla.
               </p>
 
               {error && (
-                <div
-                  className="flex items-center gap-2.5 p-3.5 rounded-xl mb-5 text-sm font-medium"
-                  style={{ background: '#FFF4F2', border: '1.5px solid var(--color-coral)', color: '#FF596D' }}
-                >
+                <div className="flex items-center gap-2.5 p-3 rounded-lg mb-5 text-sm bg-red-50 border border-red-200 text-red-700">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   {error}
                 </div>
@@ -286,39 +178,30 @@ export default function LoginPage() {
                     value={recoverEmail}
                     onChange={(e) => setRecoverEmail(e.target.value)}
                     required
-                    style={{ paddingLeft: '2.75rem' }}
+                    style={{ paddingLeft: '2.5rem' }}
                   />
-                  <Mail
-                    className="absolute left-3.5 w-4 h-4 pointer-events-none"
-                    style={{ top: '2.45rem', color: '#C4B2F9' }}
-                  />
+                  <Mail className="absolute left-3 w-4 h-4 pointer-events-none text-slate-400" style={{ top: '2.35rem' }} />
                 </div>
 
-                <Button type="submit" size="lg" className="w-full mt-4">
+                <Button type="submit" size="lg" className="w-full">
                   Enviar enlace de recuperación
                 </Button>
               </form>
             </>
           ) : (
-            <>
-              <div className="flex flex-col items-center justify-center text-center space-y-4 py-8">
-                <div className="w-16 h-16 bg-mint-light rounded-full flex items-center justify-center mb-2">
-                  <CheckCircle2 className="w-8 h-8 text-mint" />
-                </div>
-                <h1
-                  className="text-2xl font-bold mb-1"
-                  style={{ color: 'var(--color-ink)', fontFamily: 'var(--font-display)' }}
-                >
-                  Revisa tu correo
-                </h1>
-                <p className="text-sm text-slate-500 max-w-[280px]">
-                  Hemos enviado un enlace de recuperación a <span className="font-semibold text-slate-700">{recoverEmail}</span>. Haz clic en él para restablecer tu contraseña.
-                </p>
-                <Button variant="outline" className="w-full mt-6" onClick={() => setView('login')}>
-                  Volver al inicio de sesión
-                </Button>
+            <div className="flex flex-col items-center justify-center text-center space-y-4 py-6">
+              <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-7 h-7 text-emerald-600" />
               </div>
-            </>
+              <h1 className="text-xl font-bold text-slate-900">Revisa tu correo</h1>
+              <p className="text-sm text-slate-500 max-w-[280px]">
+                Hemos enviado un enlace de recuperación a{' '}
+                <span className="font-semibold text-slate-700">{recoverEmail}</span>.
+              </p>
+              <Button variant="outline" className="w-full mt-4" onClick={() => setView('login')}>
+                Volver al inicio de sesión
+              </Button>
+            </div>
           )}
         </div>
       </div>

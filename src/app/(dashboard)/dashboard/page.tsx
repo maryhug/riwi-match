@@ -15,7 +15,7 @@ import { processStatusConfig, formatDate } from '@/lib/utils';
 import { StatusBadge } from '@/components/ui/Badge';
 import type { HiringProcess } from '@/lib/types';
 
-// ─── Stat card estilo imagen 2 ────────────────────────────────────────────────
+// ─── Stat card ────────────────────────────────────────────────────────────────
 
 interface StatCardProps {
   label: string;
@@ -24,33 +24,31 @@ interface StatCardProps {
   icon: React.ElementType;
   iconBg: string;
   iconColor: string;
-  barColor: string;
-  barPct: number;
+  accentColor: string;
   loading: boolean;
 }
 
-function StatCard({ label, value, detail, icon: Icon, iconBg, iconColor, barColor, barPct, loading }: StatCardProps) {
+function StatCard({ label, value, detail, icon: Icon, iconBg, iconColor, accentColor, loading }: StatCardProps) {
   return (
-    <div className="bg-white rounded-xl p-5 flex flex-col justify-between min-h-[130px]"
-      style={{ border: '1.5px solid #E2E8F0' }}>
+    <div
+      className="bg-white rounded-lg p-5 flex flex-col justify-between min-h-[120px]"
+      style={{
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+        borderLeft: `4px solid ${accentColor}`,
+      }}
+    >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">{label}</p>
           {loading ? (
-            <div className="h-9 w-14 bg-slate-100 rounded animate-pulse" />
+            <div className="h-8 w-12 bg-slate-100 rounded animate-pulse" />
           ) : (
-            <p className="text-4xl font-bold text-slate-900 leading-none">{value}</p>
+            <p className="text-3xl font-bold text-slate-900 leading-none">{value}</p>
           )}
-          <p className="text-[11px] text-slate-400 mt-2">{detail}</p>
+          <p className="text-[11px] text-slate-400 mt-1.5">{detail}</p>
         </div>
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: iconBg }}>
-          <Icon className="w-5 h-5" style={{ color: iconColor }} strokeWidth={2} />
-        </div>
-      </div>
-      <div className="mt-4">
-        <div className="h-1 rounded-full bg-slate-100 overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-700"
-            style={{ width: `${barPct}%`, background: barColor }} />
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: iconBg }}>
+          <Icon className="w-4.5 h-4.5" style={{ color: iconColor }} strokeWidth={2} />
         </div>
       </div>
     </div>
@@ -61,10 +59,10 @@ function StatCard({ label, value, detail, icon: Icon, iconBg, iconColor, barColo
 
 function RecentRow({ p }: { p: HiringProcess }) {
   return (
-    <tr className="hover:bg-slate-50/60 transition-colors group">
+    <tr className="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
       <td className="px-5 py-3.5">
         <p className="text-sm font-semibold text-slate-900">{p.name}</p>
-        <p className="text-xs text-slate-400">{p.job_title}</p>
+        <p className="text-xs text-slate-400 mt-0.5">{p.job_title}</p>
       </td>
       <td className="px-4 py-3.5 text-xs text-slate-500">{p.area}</td>
       <td className="px-4 py-3.5"><StatusBadge status={p.status} /></td>
@@ -112,32 +110,32 @@ export default function DashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Activos" value={activos} detail={`${pct(activos)}% del total`}
-          icon={Briefcase} iconBg="#EDE9FE" iconColor="#7C3AED" barColor="#7C3AED" barPct={pct(activos)} loading={isLoading} />
+          icon={Briefcase} iconBg="#EDE9FE" iconColor="#7C3AED" accentColor="#7C3AED" loading={isLoading} />
         <StatCard label="En matching IA" value={enMatch} detail="Procesando CVs"
-          icon={Zap} iconBg="#FEF3C7" iconColor="#D97706" barColor="#F59E0B" barPct={pct(enMatch)} loading={isLoading} />
+          icon={Zap} iconBg="#FEF3C7" iconColor="#D97706" accentColor="#D97706" loading={isLoading} />
         <StatCard label="Completados" value={completados} detail="Match + profiling"
-          icon={Trophy} iconBg="#D1FAE5" iconColor="#059669" barColor="#10B981" barPct={pct(completados)} loading={isLoading} />
+          icon={Trophy} iconBg="#D1FAE5" iconColor="#059669" accentColor="#059669" loading={isLoading} />
         <StatCard label="Total" value={total} detail="Todos los periodos"
-          icon={LayoutGrid} iconBg="#DBEAFE" iconColor="#2563EB" barColor="#3B82F6" barPct={100} loading={isLoading} />
+          icon={LayoutGrid} iconBg="#DBEAFE" iconColor="#2563EB" accentColor="#2563EB" loading={isLoading} />
       </div>
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
         {/* Barras por área */}
-        <div className="lg:col-span-3 bg-white rounded-xl p-5" style={{ border: '1.5px solid #E2E8F0' }}>
+        <div className="lg:col-span-3 bg-white rounded-lg p-5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="font-semibold text-slate-900">Procesos por área</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Procesos por área</h3>
               <p className="text-xs text-slate-400 mt-0.5">Distribución de carga por departamento</p>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
-              <LayoutGrid className="w-4 h-4 text-violet-600" />
+            <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
+              <LayoutGrid className="w-3.5 h-3.5 text-violet-600" />
             </div>
           </div>
           {isLoading ? (
             <div className="h-[200px] flex items-center justify-center">
-              <div className="w-6 h-6 border-2 animate-spin rounded-full" style={{ borderColor: '#7C3AED', borderTopColor: 'transparent' }} />
+              <div className="w-5 h-5 border-2 animate-spin rounded-full border-violet-600 border-t-transparent" />
             </div>
           ) : areaData.length === 0 ? (
             <div className="h-[200px] flex flex-col items-center justify-center gap-2">
@@ -153,32 +151,32 @@ export default function DashboardPage() {
                 <YAxis axisLine={false} tickLine={false}
                   tick={{ fontSize: 10, fill: '#94A3B8' }} allowDecimals={false} />
                 <RechartsTooltip
-                  contentStyle={{ border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 12 }}
+                  contentStyle={{ border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 12 }}
                   cursor={{ fill: '#F5F3FF' }}
                 />
-                <Bar dataKey="value" fill="#7C3AED" radius={[6, 6, 0, 0]} barSize={36} name="Procesos" />
+                <Bar dataKey="value" fill="#7C3AED" radius={[4, 4, 0, 0]} barSize={32} name="Procesos" />
               </BarChart>
             </ResponsiveContainer>
           )}
         </div>
 
         {/* Por estado */}
-        <div className="lg:col-span-2 bg-white rounded-xl p-5" style={{ border: '1.5px solid #E2E8F0' }}>
+        <div className="lg:col-span-2 bg-white rounded-lg p-5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="font-semibold text-slate-900">Por estado</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Por estado</h3>
               <p className="text-xs text-slate-400 mt-0.5">Distribución actual</p>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-              <CheckCircle className="w-4 h-4 text-emerald-600" />
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
             </div>
           </div>
           {isLoading ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {[...Array(5)].map((_, i) => <div key={i} className="h-7 bg-slate-100 rounded animate-pulse" />)}
             </div>
           ) : (
-            <div className="space-y-3.5">
+            <div className="space-y-3">
               {Object.entries(processStatusConfig).map(([status, cfg]) => {
                 const count = processes.filter((p) => p.status === status).length;
                 const p     = total > 0 ? Math.round((count / total) * 100) : 0;
@@ -192,8 +190,8 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="h-1.5 rounded-full overflow-hidden bg-slate-100">
-                      <div className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${p}%`, background: '#7C3AED' }} />
+                      <div className="h-full rounded-full transition-all duration-700 bg-violet-600"
+                        style={{ width: `${p}%` }} />
                     </div>
                   </div>
                 );
@@ -204,14 +202,14 @@ export default function DashboardPage() {
       </div>
 
       {/* Tabla recientes */}
-      <div className="bg-white rounded-xl overflow-hidden" style={{ border: '1.5px solid #E2E8F0' }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+      <div className="bg-white rounded-lg overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
-              <Clock className="w-4 h-4 text-violet-600" />
+            <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
+              <Clock className="w-3.5 h-3.5 text-violet-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 text-sm">Procesos recientes</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Procesos recientes</h3>
               <p className="text-xs text-slate-400">Últimos {recientes.length} registrados</p>
             </div>
           </div>
@@ -221,25 +219,24 @@ export default function DashboardPage() {
           </Link>
         </div>
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-6 h-6 border-2 animate-spin rounded-full"
-              style={{ borderColor: '#7C3AED', borderTopColor: 'transparent' }} />
+          <div className="flex justify-center py-10">
+            <div className="w-5 h-5 border-2 animate-spin rounded-full border-violet-600 border-t-transparent" />
           </div>
         ) : recientes.length === 0 ? (
-          <div className="py-14 text-center">
-            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-              <Briefcase className="w-6 h-6 text-slate-300" />
+          <div className="py-12 text-center">
+            <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center mx-auto mb-3">
+              <Briefcase className="w-5 h-5 text-slate-300" />
             </div>
             <p className="text-slate-500 text-sm font-medium">Sin procesos aún</p>
             <Link href="/hiring-processes/new"
-              className="mt-3 inline-block text-sm font-semibold text-violet-600 hover:underline">
+              className="mt-2 inline-block text-sm font-semibold text-violet-600 hover:underline">
               Crear el primero →
             </Link>
           </div>
         ) : (
           <table className="w-full text-sm text-left">
             <thead>
-              <tr className="bg-slate-50/50">
+              <tr className="border-b border-slate-100">
                 <th className="px-5 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Proceso</th>
                 <th className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Área</th>
                 <th className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Estado</th>
@@ -247,7 +244,7 @@ export default function DashboardPage() {
                 <th className="px-4 py-3 w-16" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody>
               {recientes.map((p: HiringProcess) => <RecentRow key={p.id} p={p} />)}
             </tbody>
           </table>
@@ -256,9 +253,8 @@ export default function DashboardPage() {
 
       {/* Banners */}
       {!isLoading && enMatch > 0 && (
-        <div className="flex items-start gap-4 p-5 rounded-xl"
-          style={{ background: '#F5F3FF', border: '1.5px solid #DDD6FE' }}>
-          <div className="w-9 h-9 rounded-lg bg-violet-200 flex items-center justify-center shrink-0">
+        <div className="flex items-start gap-4 p-4 rounded-lg bg-violet-50 border border-violet-100">
+          <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
             <Sparkles className="w-4 h-4 text-violet-700" />
           </div>
           <div>
@@ -271,9 +267,8 @@ export default function DashboardPage() {
       )}
 
       {!isLoading && total === 0 && (
-        <div className="flex items-start gap-4 p-5 rounded-xl"
-          style={{ background: '#EFF6FF', border: '1.5px solid #BFDBFE' }}>
-          <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+        <div className="flex items-start gap-4 p-4 rounded-lg bg-blue-50 border border-blue-100">
+          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
             <AlertCircle className="w-4 h-4 text-blue-600" />
           </div>
           <div>

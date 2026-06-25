@@ -9,10 +9,10 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, hint, className, style, ...props }, ref) => (
+  ({ label, error, hint, className, ...props }, ref) => (
     <div className="space-y-1.5">
       {label && (
-        <label className="block text-sm font-semibold text-slate-700">
+        <label className="block text-sm font-medium text-slate-700">
           {label}
           {props.required && <span className="ml-1 text-red-500">*</span>}
         </label>
@@ -20,30 +20,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       <input
         ref={ref}
         className={cn(
-          'block w-full rounded-lg px-4 py-2.5 text-sm transition-all duration-150 outline-none',
+          'block w-full rounded-md px-3.5 py-2 text-sm bg-white transition-colors duration-150 outline-none',
+          'placeholder:text-slate-400 text-slate-900',
+          error
+            ? 'border border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200'
+            : 'border border-slate-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-200',
           className,
         )}
-        style={{
-          border: error ? '1.5px solid #EF4444' : '1.5px solid var(--color-border)',
-          background: error ? '#FEF2F2' : '#FFFFFF',
-          color: 'var(--color-text)',
-          ...style,
-        }}
-        onFocus={(e) => {
-          e.currentTarget.style.border = '1.5px solid var(--color-primary)';
-          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124,58,237,0.12)';
-          props.onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.border = error
-            ? '1.5px solid #EF4444'
-            : '1.5px solid var(--color-border)';
-          e.currentTarget.style.boxShadow = 'none';
-          props.onBlur?.(e);
-        }}
         {...props}
       />
-      {error && <p className="text-xs font-medium text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
       {hint && !error && <p className="text-xs text-slate-400">{hint}</p>}
     </div>
   ),
@@ -60,7 +46,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, error, hint, className, ...props }, ref) => (
     <div className="space-y-1.5">
       {label && (
-        <label className="block text-sm font-semibold text-slate-700">
+        <label className="block text-sm font-medium text-slate-700">
           {label}
           {props.required && <span className="ml-1 text-red-500">*</span>}
         </label>
@@ -68,29 +54,16 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       <textarea
         ref={ref}
         className={cn(
-          'block w-full rounded-lg px-4 py-2.5 text-sm resize-y outline-none transition-all duration-150',
+          'block w-full rounded-md px-3.5 py-2 text-sm bg-white resize-y outline-none transition-colors duration-150',
+          'placeholder:text-slate-400 text-slate-900',
+          error
+            ? 'border border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200'
+            : 'border border-slate-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-200',
           className,
         )}
-        style={{
-          border: error ? '1.5px solid #EF4444' : '1.5px solid var(--color-border)',
-          background: error ? '#FEF2F2' : '#FFFFFF',
-          color: 'var(--color-text)',
-        }}
-        onFocus={(e) => {
-          e.currentTarget.style.border = '1.5px solid var(--color-primary)';
-          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124,58,237,0.12)';
-          props.onFocus?.(e as React.FocusEvent<HTMLTextAreaElement>);
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.border = error
-            ? '1.5px solid #EF4444'
-            : '1.5px solid var(--color-border)';
-          e.currentTarget.style.boxShadow = 'none';
-          props.onBlur?.(e as React.FocusEvent<HTMLTextAreaElement>);
-        }}
         {...props}
       />
-      {error && <p className="text-xs font-medium text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
       {hint && !error && <p className="text-xs text-slate-400">{hint}</p>}
     </div>
   ),
@@ -107,7 +80,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ label, error, options, className, ...props }, ref) => (
     <div className="space-y-1.5">
       {label && (
-        <label className="block text-sm font-semibold text-slate-700">
+        <label className="block text-sm font-medium text-slate-700">
           {label}
           {props.required && <span className="ml-1 text-red-500">*</span>}
         </label>
@@ -115,13 +88,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       <select
         ref={ref}
         className={cn(
-          'block w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all duration-150 bg-white',
+          'block w-full rounded-md px-3.5 py-2 text-sm bg-white outline-none transition-colors duration-150',
+          'text-slate-900',
+          error
+            ? 'border border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200'
+            : 'border border-slate-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-200',
           className,
         )}
-        style={{
-          border: error ? '1.5px solid #EF4444' : '1.5px solid var(--color-border)',
-          color: 'var(--color-text)',
-        }}
         {...props}
       >
         {options.map((o) => (
@@ -130,7 +103,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           </option>
         ))}
       </select>
-      {error && <p className="text-xs font-medium text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   ),
 );
