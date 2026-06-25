@@ -5,17 +5,13 @@
   --font-display: var(--font-display);
   --font-body: var(--font-body);
 
-  /* ── Primary violet (más vibrante) ── */
+  /* ── Primary violet ── */
   --color-primary:        #7C3AED;
   --color-primary-dark:   #5B21B6;
   --color-primary-light:  #EDE9FE;
   --color-primary-xlight: #F5F3FF;
 
-  /* ── Teal / éxito ── */
-  --color-teal:           #0891B2;
-  --color-teal-light:     #E0F2FE;
-
-  /* ── Emerald / positivo ── */
+  /* ── Emerald ── */
   --color-mint:           #059669;
   --color-mint-light:     #D1FAE5;
 
@@ -24,28 +20,25 @@
   --color-accent-dark:    #B45309;
   --color-accent-light:   #FEF3C7;
 
-  /* ── Coral / rojo ── */
+  /* ── Red ── */
   --color-coral:          #DC2626;
   --color-coral-dark:     #B91C1C;
   --color-coral-light:    #FEE2E2;
-
-  /* ── Orange ── */
-  --color-orange:         #EA580C;
-  --color-orange-light:   #FFEDD5;
 
   /* ── Blue ── */
   --color-blue:           #2563EB;
   --color-blue-light:     #DBEAFE;
 
-  /* ── Neutrals (limpios, sin tinte morado) ── */
+  /* ── Neutrals limpios ── */
   --color-ink:            #0F172A;
   --color-text:           #334155;
   --color-text-muted:     #94A3B8;
   --color-border:         #E2E8F0;
+  --color-border-strong:  #CBD5E1;
   --color-bg:             #F8FAFC;
   --color-surface:        #FFFFFF;
 
-  /* ── Sidebar (se mantiene) ── */
+  /* ── Sidebar ── */
   --color-rail:           #0F172A;
   --color-rail-muted:     #64748B;
   --color-rail-active:    #DC2626;
@@ -53,23 +46,20 @@
   --color-canvas:         #F8FAFC;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
-  background-color: #F8FAFC;
+  background-color: #F1F5F9;
   color: var(--color-text);
   font-family: var(--font-body), 'Plus Jakarta Sans', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-display), 'Montserrat Alternates', system-ui, sans-serif;
   color: var(--color-ink);
 }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #C4B5FD; border-radius: 6px; }
+::-webkit-scrollbar-thumb { background: #C4B5FD; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }

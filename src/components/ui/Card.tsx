@@ -12,8 +12,7 @@ export function Card({ children, className, style }: CardProps) {
     <div
       className={cn('bg-white rounded-xl', className)}
       style={{
-        boxShadow: '0 1px 3px 0 rgba(0,0,0,0.07), 0 1px 2px -1px rgba(0,0,0,0.07)',
-        border: '1px solid var(--color-border)',
+        border: '1.5px solid #E2E8F0',
         ...style,
       }}
     >

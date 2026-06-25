@@ -3,15 +3,84 @@
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip,
 } from 'recharts';
-import { Sparkles, FileText, Users, TrendingUp, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  Briefcase, Zap, Trophy, LayoutGrid,
+  ArrowUpRight, Clock, CheckCircle, AlertCircle, Sparkles,
+} from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Header from '@/components/layout/Header';
 import { processesApi } from '@/lib/api';
-import { processStatusConfig } from '@/lib/utils';
+import { processStatusConfig, formatDate } from '@/lib/utils';
 import { StatusBadge } from '@/components/ui/Badge';
 import type { HiringProcess } from '@/lib/types';
+
+// ─── Stat card estilo imagen 2 ────────────────────────────────────────────────
+
+interface StatCardProps {
+  label: string;
+  value: number;
+  detail: string;
+  icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
+  barColor: string;
+  barPct: number;
+  loading: boolean;
+}
+
+function StatCard({ label, value, detail, icon: Icon, iconBg, iconColor, barColor, barPct, loading }: StatCardProps) {
+  return (
+    <div className="bg-white rounded-xl p-5 flex flex-col justify-between min-h-[130px]"
+      style={{ border: '1.5px solid #E2E8F0' }}>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">{label}</p>
+          {loading ? (
+            <div className="h-9 w-14 bg-slate-100 rounded animate-pulse" />
+          ) : (
+            <p className="text-4xl font-bold text-slate-900 leading-none">{value}</p>
+          )}
+          <p className="text-[11px] text-slate-400 mt-2">{detail}</p>
+        </div>
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: iconBg }}>
+          <Icon className="w-5 h-5" style={{ color: iconColor }} strokeWidth={2} />
+        </div>
+      </div>
+      <div className="mt-4">
+        <div className="h-1 rounded-full bg-slate-100 overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-700"
+            style={{ width: `${barPct}%`, background: barColor }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Fila reciente ────────────────────────────────────────────────────────────
+
+function RecentRow({ p }: { p: HiringProcess }) {
+  return (
+    <tr className="hover:bg-slate-50/60 transition-colors group">
+      <td className="px-5 py-3.5">
+        <p className="text-sm font-semibold text-slate-900">{p.name}</p>
+        <p className="text-xs text-slate-400">{p.job_title}</p>
+      </td>
+      <td className="px-4 py-3.5 text-xs text-slate-500">{p.area}</td>
+      <td className="px-4 py-3.5"><StatusBadge status={p.status} /></td>
+      <td className="px-4 py-3.5 text-xs text-slate-400">{formatDate(p.created_at)}</td>
+      <td className="px-4 py-3.5 text-right">
+        <Link href={`/hiring-processes/${p.id}`}>
+          <span className="text-xs text-violet-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+            Ver →
+          </span>
+        </Link>
+      </td>
+    </tr>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { data: processes = [], isLoading } = useQuery({
@@ -19,236 +88,206 @@ export default function DashboardPage() {
     queryFn: () => processesApi.list().then((r) => r.data),
   });
 
-  // Stats derivadas de datos reales
+  const total       = processes.length;
   const activos     = processes.filter((p) => ['DRAFT', 'READY_FOR_MATCH', 'CVS_UPLOADED'].includes(p.status)).length;
   const enMatch     = processes.filter((p) => p.status === 'MATCHING').length;
   const completados = processes.filter((p) => ['PROFILING_CONFIGURED', 'COMPLETED'].includes(p.status)).length;
 
-  // Agrupar por área para el gráfico
   const areaMap: Record<string, number> = {};
-  processes.forEach((p) => {
-    areaMap[p.area] = (areaMap[p.area] ?? 0) + 1;
-  });
+  processes.forEach((p) => { areaMap[p.area] = (areaMap[p.area] ?? 0) + 1; });
   const areaData = Object.entries(areaMap)
     .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 6);
+    .sort((a, b) => b.value - a.value).slice(0, 6);
 
   const recientes = [...processes]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
 
+  const pct = (n: number) => total > 0 ? Math.round((n / total) * 100) : 0;
+
   return (
     <div className="space-y-6">
-      <Header
-        title="Dashboard"
-        subtitle="Vista consolidada de todos los procesos de selección"
-      />
+      <Header title="Dashboard" subtitle="Vista consolidada de todos los procesos de selección" />
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard label="PROCESOS ACTIVOS"   value={activos}             icon={FileText}     color={{ bg: '#F5F3FF', text: '#7C3AED' }} loading={isLoading} />
-        <StatCard label="EN MATCH"           value={enMatch}             icon={TrendingUp}   color={{ bg: '#FFF7ED', text: '#EA580C' }} loading={isLoading} />
-        <StatCard label="COMPLETADOS"        value={completados}         icon={CheckCircle2} color={{ bg: '#F0FDF4', text: '#16A34A' }} loading={isLoading} />
-        <StatCard label="TOTAL DE PROCESOS"  value={processes.length}    icon={Users}        color={{ bg: '#F0F9FF', text: '#0284C7' }} loading={isLoading} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Activos" value={activos} detail={`${pct(activos)}% del total`}
+          icon={Briefcase} iconBg="#EDE9FE" iconColor="#7C3AED" barColor="#7C3AED" barPct={pct(activos)} loading={isLoading} />
+        <StatCard label="En matching IA" value={enMatch} detail="Procesando CVs"
+          icon={Zap} iconBg="#FEF3C7" iconColor="#D97706" barColor="#F59E0B" barPct={pct(enMatch)} loading={isLoading} />
+        <StatCard label="Completados" value={completados} detail="Match + profiling"
+          icon={Trophy} iconBg="#D1FAE5" iconColor="#059669" barColor="#10B981" barPct={pct(completados)} loading={isLoading} />
+        <StatCard label="Total" value={total} detail="Todos los periodos"
+          icon={LayoutGrid} iconBg="#DBEAFE" iconColor="#2563EB" barColor="#3B82F6" barPct={100} loading={isLoading} />
       </div>
 
-      {/* Gráfico + tabla recientes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Procesos por área */}
-        <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
-          <CardHeader className="px-8 py-6 pb-2">
-            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-ink)' }}>
-              Procesos por área
-            </h3>
-          </CardHeader>
-          <CardContent className="px-8 pb-8 pt-0">
-            {isLoading ? (
-              <div className="h-[200px] flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-primary-dark border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : areaData.length === 0 ? (
-              <div className="h-[200px] flex flex-col items-center justify-center gap-2 text-slate-300">
-                <FileText className="w-8 h-8 opacity-50" />
-                <p className="text-sm">Sin datos aún</p>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={areaData} margin={{ top: 20, right: 0, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} allowDecimals={false} />
-                  <RechartsTooltip cursor={{ fill: '#f8fafc' }} />
-                  <Bar dataKey="value" fill="#7C3AED" radius={[4, 4, 0, 0]} barSize={50} name="Procesos" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
-        {/* Distribución por estado */}
-        <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
-          <CardHeader className="px-8 py-6 pb-2">
-            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-ink)' }}>
-              Estado de procesos
-            </h3>
-          </CardHeader>
-          <CardContent className="px-8 pb-8 pt-4 space-y-3">
-            {isLoading ? (
-              <div className="space-y-3">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-8 bg-slate-100 rounded animate-pulse" />
-                ))}
-              </div>
-            ) : (
-              Object.entries(processStatusConfig).map(([status, cfg]) => {
+        {/* Barras por área */}
+        <div className="lg:col-span-3 bg-white rounded-xl p-5" style={{ border: '1.5px solid #E2E8F0' }}>
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="font-semibold text-slate-900">Procesos por área</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Distribución de carga por departamento</p>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+              <LayoutGrid className="w-4 h-4 text-violet-600" />
+            </div>
+          </div>
+          {isLoading ? (
+            <div className="h-[200px] flex items-center justify-center">
+              <div className="w-6 h-6 border-2 animate-spin rounded-full" style={{ borderColor: '#7C3AED', borderTopColor: 'transparent' }} />
+            </div>
+          ) : areaData.length === 0 ? (
+            <div className="h-[200px] flex flex-col items-center justify-center gap-2">
+              <Briefcase className="w-8 h-8 text-slate-200" />
+              <p className="text-sm text-slate-400">Sin datos aún</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={areaData} margin={{ top: 8, right: 0, left: -28, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false}
+                  tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }} dy={8} />
+                <YAxis axisLine={false} tickLine={false}
+                  tick={{ fontSize: 10, fill: '#94A3B8' }} allowDecimals={false} />
+                <RechartsTooltip
+                  contentStyle={{ border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 12 }}
+                  cursor={{ fill: '#F5F3FF' }}
+                />
+                <Bar dataKey="value" fill="#7C3AED" radius={[6, 6, 0, 0]} barSize={36} name="Procesos" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Por estado */}
+        <div className="lg:col-span-2 bg-white rounded-xl p-5" style={{ border: '1.5px solid #E2E8F0' }}>
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="font-semibold text-slate-900">Por estado</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Distribución actual</p>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+              <CheckCircle className="w-4 h-4 text-emerald-600" />
+            </div>
+          </div>
+          {isLoading ? (
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => <div key={i} className="h-7 bg-slate-100 rounded animate-pulse" />)}
+            </div>
+          ) : (
+            <div className="space-y-3.5">
+              {Object.entries(processStatusConfig).map(([status, cfg]) => {
                 const count = processes.filter((p) => p.status === status).length;
-                const pct   = processes.length > 0 ? Math.round((count / processes.length) * 100) : 0;
+                const p     = total > 0 ? Math.round((count / total) * 100) : 0;
                 return (
                   <div key={status}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="font-medium text-slate-600">{cfg.label}</span>
-                      <span className="font-bold text-slate-800">{count}</span>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-medium text-slate-600">{cfg.label}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900">{count}</span>
+                        <span className="text-[10px] text-slate-400 w-7 text-right">{p}%</span>
+                      </div>
                     </div>
                     <div className="h-1.5 rounded-full overflow-hidden bg-slate-100">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${pct}%`, background: '#7C3AED' }}
-                      />
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${p}%`, background: '#7C3AED' }} />
                     </div>
                   </div>
                 );
-              })
-            )}
-          </CardContent>
-        </Card>
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Tabla de procesos recientes */}
-      <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
-        <CardHeader className="px-8 py-6 border-b border-slate-100 flex flex-row items-center justify-between">
-          <h3 className="font-semibold text-sm" style={{ color: 'var(--color-ink)' }}>
-            Procesos recientes
-          </h3>
-          <Link href="/hiring-processes" className="text-xs font-semibold text-primary-dark hover:underline">
-            Ver todos →
+      {/* Tabla recientes */}
+      <div className="bg-white rounded-xl overflow-hidden" style={{ border: '1.5px solid #E2E8F0' }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+              <Clock className="w-4 h-4 text-violet-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 text-sm">Procesos recientes</h3>
+              <p className="text-xs text-slate-400">Últimos {recientes.length} registrados</p>
+            </div>
+          </div>
+          <Link href="/hiring-processes"
+            className="flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-800 transition-colors">
+            Ver todos <ArrowUpRight className="w-3.5 h-3.5" />
           </Link>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex justify-center py-10">
-              <div className="w-6 h-6 border-2 border-primary-dark border-t-transparent rounded-full animate-spin" />
+        </div>
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="w-6 h-6 border-2 animate-spin rounded-full"
+              style={{ borderColor: '#7C3AED', borderTopColor: 'transparent' }} />
+          </div>
+        ) : recientes.length === 0 ? (
+          <div className="py-14 text-center">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+              <Briefcase className="w-6 h-6 text-slate-300" />
             </div>
-          ) : recientes.length === 0 ? (
-            <div className="py-12 text-center">
-              <FileText className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-              <p className="text-slate-400 text-sm">No hay procesos aún</p>
-              <Link href="/hiring-processes/new" className="mt-3 inline-block text-sm font-semibold text-primary-dark hover:underline">
-                Crear el primero →
-              </Link>
-            </div>
-          ) : (
-            <table className="w-full text-sm text-left">
-              <thead>
-                <tr className="border-b border-slate-100 bg-white">
-                  <th className="px-8 py-4 font-semibold text-slate-500 uppercase tracking-wide text-[10px]">PROCESO</th>
-                  <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wide text-[10px]">ÁREA</th>
-                  <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wide text-[10px]">SENIORITY</th>
-                  <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wide text-[10px]">ESTADO</th>
-                  <th className="px-6 py-4"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {recientes.map((p: HiringProcess) => (
-                  <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-8 py-4">
-                      <p className="font-semibold text-slate-900 text-xs">{p.name}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{p.job_title}</p>
-                    </td>
-                    <td className="px-6 py-4 text-slate-500 text-xs">{p.area}</td>
-                    <td className="px-6 py-4">
-                      <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                        {p.seniority}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={p.status} />
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Link href={`/hiring-processes/${p.id}`}>
-                        <span className="text-xs font-medium text-primary-dark opacity-0 group-hover:opacity-100 transition-opacity">
-                          Ver →
-                        </span>
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
+            <p className="text-slate-500 text-sm font-medium">Sin procesos aún</p>
+            <Link href="/hiring-processes/new"
+              className="mt-3 inline-block text-sm font-semibold text-violet-600 hover:underline">
+              Crear el primero →
+            </Link>
+          </div>
+        ) : (
+          <table className="w-full text-sm text-left">
+            <thead>
+              <tr className="bg-slate-50/50">
+                <th className="px-5 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Proceso</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Área</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Estado</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Fecha</th>
+                <th className="px-4 py-3 w-16" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {recientes.map((p: HiringProcess) => <RecentRow key={p.id} p={p} />)}
+            </tbody>
+          </table>
+        )}
+      </div>
 
-      {/* Insight */}
-      {!isLoading && processes.length > 0 && enMatch > 0 && (
-        <div className="bg-[#FAF5FF] border border-[#F3E8FF] rounded-2xl p-6 flex gap-4 items-start">
-          <div className="w-8 h-8 rounded-full bg-primary-light flex items-center justify-center shrink-0">
-            <Sparkles className="w-4 h-4 text-primary-dark" />
+      {/* Banners */}
+      {!isLoading && enMatch > 0 && (
+        <div className="flex items-start gap-4 p-5 rounded-xl"
+          style={{ background: '#F5F3FF', border: '1.5px solid #DDD6FE' }}>
+          <div className="w-9 h-9 rounded-lg bg-violet-200 flex items-center justify-center shrink-0">
+            <Sparkles className="w-4 h-4 text-violet-700" />
           </div>
           <div>
-            <h4 className="font-semibold text-slate-900 text-sm mb-1">Procesos activos</h4>
-            <p className="text-xs text-slate-600">
-              Tienes <span className="font-bold text-primary-dark">{enMatch} proceso{enMatch > 1 ? 's' : ''} en match</span> ejecutándose ahora mismo. Los resultados estarán disponibles en el ranking de cada proceso.
+            <h4 className="font-semibold text-slate-900 text-sm">IA procesando ahora</h4>
+            <p className="text-xs text-slate-600 mt-0.5">
+              Tienes <span className="font-bold text-violet-700">{enMatch} proceso{enMatch > 1 ? 's' : ''} en match</span> ejecutándose. Los rankings estarán listos pronto.
             </p>
           </div>
         </div>
       )}
 
-      {!isLoading && processes.length === 0 && (
-        <div className="bg-[#F0F9FF] border border-[#BAE6FD] rounded-2xl p-6 flex gap-4 items-start">
-          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+      {!isLoading && total === 0 && (
+        <div className="flex items-start gap-4 p-5 rounded-xl"
+          style={{ background: '#EFF6FF', border: '1.5px solid #BFDBFE' }}>
+          <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
             <AlertCircle className="w-4 h-4 text-blue-600" />
           </div>
           <div>
-            <h4 className="font-semibold text-slate-900 text-sm mb-1">Empieza creando un proceso</h4>
-            <p className="text-xs text-slate-600">
-              Aún no hay procesos registrados. Ve a{' '}
+            <h4 className="font-semibold text-slate-900 text-sm">Empieza creando un proceso</h4>
+            <p className="text-xs text-slate-600 mt-0.5">
+              Ve a{' '}
               <Link href="/hiring-processes/new" className="font-semibold text-blue-600 hover:underline">
                 Crear proceso
               </Link>{' '}
-              para comenzar.
+              para comenzar a usar RIWI Match.
             </p>
           </div>
         </div>
       )}
     </div>
-  );
-}
-
-function StatCard({
-  label, value, icon: Icon, color, loading,
-}: {
-  label: string;
-  value: number;
-  icon: React.ElementType;
-  color: { bg: string; text: string };
-  loading: boolean;
-}) {
-  return (
-    <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
-      <CardContent className="flex items-center justify-between p-6">
-        <div>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">{label}</p>
-          {loading ? (
-            <div className="h-8 w-12 bg-slate-100 rounded animate-pulse" />
-          ) : (
-            <p className="text-3xl font-bold" style={{ color: 'var(--color-ink)' }}>{value}</p>
-          )}
-        </div>
-        <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: color.bg }}>
-          <Icon className="w-5 h-5" style={{ color: color.text }} />
-        </div>
-      </CardContent>
-    </Card>
   );
 }
