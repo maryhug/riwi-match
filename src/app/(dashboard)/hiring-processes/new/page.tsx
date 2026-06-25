@@ -10,8 +10,8 @@ import Button from '@/components/ui/Button';
 import { processesApi } from '@/lib/api';
 
 const SENIORITY_OPTIONS = [
-  { value: 'Jr', label: 'Jr' }, { value: 'Ssr', label: 'Ssr' },
-  { value: 'Sr', label: 'Sr' }, { value: 'Lead', label: 'Lead' }, { value: 'Manager', label: 'Manager' },
+  { value: 'Jr', label: 'Junior' }, { value: 'Ssr', label: 'Semi Senior' },
+  { value: 'Sr', label: 'Senior' }, { value: 'Lead', label: 'Lead' }, { value: 'Manager', label: 'Manager' },
 ];
 const AREA_OPTIONS = [
   { value: 'Tecnología', label: 'Tecnología' }, { value: 'Producto', label: 'Producto' },
