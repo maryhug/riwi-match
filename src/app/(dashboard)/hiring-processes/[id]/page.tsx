@@ -68,9 +68,9 @@ function Stepper({ currentStep }: { currentStep: number }) {
 // ─── File attachment banner ───────────────────────────────────────────────────
 function JDFileBanner({ filename, fileUrl }: { filename: string; fileUrl: string; onRemove?: () => void }) {
   return (
-    <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded-lg px-4 py-3">
+    <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded px-4 py-3">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 bg-violet-100 rounded-lg flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 bg-violet-100 rounded flex items-center justify-center shrink-0">
           <Paperclip className="w-4.5 h-4.5 text-violet-600" />
         </div>
         <div>
@@ -181,7 +181,7 @@ function JDStep({ processId }: { processId: string }) {
               {!jdFile ? (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-slate-200 rounded-lg p-7 flex flex-col items-center gap-3 hover:border-violet-300 hover:bg-violet-50 transition-colors"
+                  className="w-full border-2 border-dashed border-slate-200 rounded p-7 flex flex-col items-center gap-3 hover:border-violet-300 hover:bg-violet-50 transition-colors"
                 >
                   <Paperclip className="w-8 h-8 text-slate-300" />
                   <div className="text-center">
@@ -190,7 +190,7 @@ function JDStep({ processId }: { processId: string }) {
                   </div>
                 </button>
               ) : (
-                <div className="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-3 border border-slate-200">
+                <div className="flex items-center justify-between bg-slate-50 rounded px-4 py-3 border border-slate-200">
                   <div className="flex items-center gap-3">
                     <Paperclip className="w-4 h-4 text-violet-600" />
                     <div>
@@ -337,7 +337,7 @@ function UploadCVsStep({ processId }: { processId: string }) {
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            className={`border-2 border-dashed rounded p-8 text-center transition-colors ${
               dragging ? 'border-violet-400 bg-violet-50' : 'border-slate-200 hover:border-violet-300 hover:bg-slate-50'
             }`}
           >
@@ -386,7 +386,7 @@ function UploadCVsStep({ processId }: { processId: string }) {
           <p className="text-xs text-slate-500 mt-0.5">Evalúa todos los CVs cargados contra el Job Description con IA</p>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-3 p-3.5 bg-amber-50 border border-amber-200 rounded-lg mb-4">
+          <div className="flex items-center gap-3 p-3.5 bg-amber-50 border border-amber-200 rounded mb-4">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             <p className="text-xs text-amber-800">Asegúrate de haber subido todos los CVs antes de ejecutar el match. Este proceso puede tomar varios minutos.</p>
           </div>
@@ -423,14 +423,14 @@ function MatchStep({ processId }: { processId: string }) {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <Link href={`/hiring-processes/${processId}/ranking`} className="group">
-          <div className="p-5 text-center bg-white rounded-lg border border-slate-200 hover:border-violet-200 hover:shadow-md transition-all cursor-pointer">
+          <div className="p-5 text-center bg-white rounded border border-slate-200 hover:border-violet-200 hover:shadow-md transition-all cursor-pointer">
             <BarChart2 className="w-9 h-9 text-violet-600 mx-auto mb-3 opacity-80" />
             <p className="font-semibold text-slate-800 text-sm">Ranking de candidatos</p>
             <p className="text-xs text-slate-400 mt-1">Tabla ordenada por match % con filtros</p>
           </div>
         </Link>
         <Link href={`/hiring-processes/${processId}/candidates`} className="group">
-          <div className="p-5 text-center bg-white rounded-lg border border-slate-200 hover:border-violet-200 hover:shadow-md transition-all cursor-pointer">
+          <div className="p-5 text-center bg-white rounded border border-slate-200 hover:border-violet-200 hover:shadow-md transition-all cursor-pointer">
             <Users className="w-9 h-9 text-slate-400 mx-auto mb-3" />
             <p className="font-semibold text-slate-800 text-sm">Vista Kanban</p>
             <p className="text-xs text-slate-400 mt-1">Columnas por categoría: Alto / Medio / Bajo</p>
@@ -546,7 +546,7 @@ export default function ProcessDetailPage({ params }: { params: Promise<{ id: st
       </Header>
 
       {/* Process info bar */}
-      <div className="flex items-center gap-5 mb-6 p-4 bg-white rounded-lg border border-slate-200">
+      <div className="flex items-center gap-5 mb-6 p-4 bg-white rounded border border-slate-200">
         <StatusBadge status={process.status} />
 
         <div className="flex-1 max-w-xs px-5 py-1 border-x border-slate-100 flex items-center">

@@ -258,13 +258,13 @@ export default function NewQuestionSetPage() {
         </div>
 
         <button type="button" onClick={addQuestion}
-          className="w-full py-3.5 rounded-lg border-2 border-dashed border-slate-200 text-slate-400 hover:text-violet-600 hover:border-violet-200 hover:bg-violet-50 transition-all flex items-center justify-center gap-2 font-medium text-xs">
+          className="w-full py-3.5 rounded border-2 border-dashed border-slate-200 text-slate-400 hover:text-violet-600 hover:border-violet-200 hover:bg-violet-50 transition-all flex items-center justify-center gap-2 font-medium text-xs">
           <Plus className="w-4 h-4" />
           Agregar otra pregunta
         </button>
 
         {submitError && (
-          <p className="text-xs text-red-600 bg-red-50 px-4 py-3 rounded-lg">{submitError}</p>
+          <p className="text-xs text-red-600 bg-red-50 px-4 py-3 rounded">{submitError}</p>
         )}
 
         <div className="flex items-center justify-between pt-2">

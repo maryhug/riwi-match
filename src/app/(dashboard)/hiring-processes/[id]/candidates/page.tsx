@@ -88,7 +88,7 @@ function CandidateCard({ pc, selected, onToggle, viewMode }: {
 
   return (
     <div
-      className="rounded-lg border transition-all duration-150"
+      className="rounded border transition-all duration-150"
       style={{
         background: 'white',
         borderColor: selected ? '#7C3AED' : '#E2E8F0',
@@ -289,7 +289,7 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
       </Header>
 
       {/* Control bar */}
-      <div className="flex items-center justify-between mb-5 px-4 py-3 rounded-lg bg-white border border-slate-200">
+      <div className="flex items-center justify-between mb-5 px-4 py-3 rounded bg-white border border-slate-200">
         <div className="flex items-center gap-4">
           <p className="text-sm text-slate-500">
             <strong className="text-slate-900">{totalCandidates}</strong> candidatos evaluados

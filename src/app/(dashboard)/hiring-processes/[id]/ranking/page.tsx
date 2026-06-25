@@ -250,7 +250,7 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
         </div>
       ) : allCandidates.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-          <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center">
+          <div className="w-14 h-14 rounded bg-slate-100 flex items-center justify-center">
             <Users className="w-7 h-7 text-slate-300" />
           </div>
           <div>
@@ -262,7 +262,7 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-lg overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
+        <div className="bg-white rounded overflow-hidden" style={{ border: '1px solid #E2E8F0' }}>
           <table className="w-full text-sm text-left">
             <thead>
               <tr className="border-b border-slate-100">

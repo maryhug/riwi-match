@@ -37,8 +37,8 @@ export default function MetricsPage() {
       {/* KPI cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {KPI_CARDS.map(({ label, value, icon: Icon, accentColor, iconBg }) => (
-          <div key={label} className="bg-white rounded-lg p-5 flex items-center justify-between"
-            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)', borderLeft: `4px solid ${accentColor}` }}>
+          <div key={label} className="bg-white rounded p-5 flex items-center justify-between"
+            style={{ border: '1px solid #E2E8F0', borderLeft: `4px solid ${accentColor}` }}>
             <div>
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">{label}</p>
               {isLoading
@@ -46,7 +46,7 @@ export default function MetricsPage() {
                 : <p className="text-xl font-bold text-slate-900">{value}</p>
               }
             </div>
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: iconBg }}>
+            <div className="w-9 h-9 rounded flex items-center justify-center shrink-0" style={{ background: iconBg }}>
               <Icon className="w-4.5 h-4.5" style={{ color: accentColor }} />
             </div>
           </div>
@@ -147,7 +147,7 @@ export default function MetricsPage() {
       </div>
 
       {empty && (
-        <div className="bg-blue-50 border border-blue-100 rounded-lg p-5 text-center">
+        <div className="bg-blue-50 border border-blue-100 rounded p-5 text-center">
           <p className="text-xs text-slate-500">
             El módulo de métricas se activará cuando el backend registre operaciones de IA.
           </p>

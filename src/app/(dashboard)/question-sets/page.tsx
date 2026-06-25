@@ -31,7 +31,7 @@ export default function QuestionSetsPage() {
         </div>
       ) : sets.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <div className="w-12 h-12 rounded-lg bg-violet-50 flex items-center justify-center">
+          <div className="w-12 h-12 rounded bg-violet-50 flex items-center justify-center">
             <Mic className="w-6 h-6 text-violet-600" />
           </div>
           <p className="font-semibold text-slate-700 text-sm">Sin sets de preguntas</p>
@@ -50,11 +50,11 @@ export default function QuestionSetsPage() {
           {sets.map((set: QuestionSet) => (
             <Link key={set.id} href={`/question-sets/${set.id}`}>
               <div
-                className="bg-white rounded-lg p-5 flex flex-col h-full cursor-pointer hover:shadow-md transition-shadow"
-                style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}
+                className="bg-white rounded p-5 flex flex-col h-full cursor-pointer hover:shadow-md transition-shadow"
+                style={{ border: '1px solid #E2E8F0' }}
               >
                 <div className="flex justify-between items-start mb-4">
-                  <div className="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center">
+                  <div className="w-9 h-9 rounded bg-violet-50 flex items-center justify-center">
                     <FileText className="w-4.5 h-4.5 text-violet-600" />
                   </div>
                   <div className="flex gap-1.5">

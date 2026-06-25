@@ -216,7 +216,7 @@ function Step2({ processId, onNext, onSkip }: { processId: string; onNext: () =>
             {!jdFile ? (
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full border-2 border-dashed border-slate-200 rounded-lg p-8 flex flex-col items-center gap-3 hover:border-violet-300 hover:bg-violet-50 transition-colors text-slate-400"
+                className="w-full border-2 border-dashed border-slate-200 rounded p-8 flex flex-col items-center gap-3 hover:border-violet-300 hover:bg-violet-50 transition-colors text-slate-400"
               >
                 <Paperclip className="w-9 h-9" />
                 <div className="text-center">
@@ -225,9 +225,9 @@ function Step2({ processId, onNext, onSkip }: { processId: string; onNext: () =>
                 </div>
               </button>
             ) : (
-              <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded-lg px-4 py-3">
+              <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-violet-100 rounded-lg flex items-center justify-center">
+                  <div className="w-9 h-9 bg-violet-100 rounded flex items-center justify-center">
                     <Paperclip className="w-4.5 h-4.5 text-violet-600" />
                   </div>
                   <div>
@@ -249,7 +249,7 @@ function Step2({ processId, onNext, onSkip }: { processId: string; onNext: () =>
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
             placeholder="Pega aquí el texto completo del Job Description..."
-            className="w-full border border-slate-200 rounded-lg p-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 resize-none transition-colors"
+            className="w-full border border-slate-200 rounded p-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 resize-none transition-colors"
           />
         )}
 
@@ -307,7 +307,7 @@ function Step3({ processId, onDone }: { processId: string; onDone: () => void })
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+          className={`border-2 border-dashed rounded p-8 text-center transition-colors ${
             dragging ? 'border-violet-400 bg-violet-50' : 'border-slate-200 hover:border-violet-300 hover:bg-slate-50'
           }`}
         >

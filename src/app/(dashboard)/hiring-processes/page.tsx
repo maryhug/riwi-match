@@ -13,71 +13,62 @@ import { processesApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import type { HiringProcess } from '@/lib/types';
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
-
 function StatCard({
-  label, value, sub, icon: Icon, iconBg, iconColor, accentColor,
+  label, value, sub, icon: Icon, accentColor,
 }: {
   label: string; value: number; sub: string;
-  icon: React.ElementType; iconBg: string; iconColor: string; accentColor: string;
+  icon: React.ElementType; accentColor: string;
 }) {
   return (
-    <div
-      className="bg-white rounded-lg p-5 flex flex-col justify-between min-h-[110px]"
-      style={{
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
-        borderLeft: `4px solid ${accentColor}`,
-      }}
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1.5 leading-none">{value}</p>
-          <p className="text-[11px] text-slate-400 mt-1">{sub}</p>
-        </div>
-        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: iconBg }}>
-          <Icon className="w-4.5 h-4.5" style={{ color: iconColor }} strokeWidth={2} />
+    <div className="bg-white border border-slate-200 rounded p-4 flex flex-col gap-2.5">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
+        <Icon className="w-4 h-4" style={{ color: accentColor }} strokeWidth={2} />
+      </div>
+      <p className="text-2xl font-bold text-slate-900 leading-none">{value}</p>
+      <div>
+        <p className="text-[11px] text-slate-400 mb-1.5">{sub}</p>
+        <div className="h-0.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: '100%', background: accentColor, opacity: 0.35 }} />
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Fila proceso ─────────────────────────────────────────────────────────────
-
 function ProcessRow({ proc }: { proc: HiringProcess }) {
   return (
     <tr className="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
-      <td className="px-5 py-3.5">
+      <td className="px-4 py-3">
         <p className="font-semibold text-slate-900 text-sm leading-tight">{proc.name}</p>
         <p className="text-[11px] text-slate-400 mt-0.5 font-mono">{proc.id.slice(0, 8)}</p>
       </td>
-      <td className="px-4 py-3.5">
+      <td className="px-4 py-3">
         <p className="text-sm text-slate-700">{proc.job_title}</p>
         <p className="text-xs text-slate-400 mt-0.5">{proc.area}</p>
       </td>
-      <td className="px-4 py-3.5">
-        <span className="inline-block px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-600">
+      <td className="px-4 py-3">
+        <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600">
           {proc.seniority}
         </span>
       </td>
-      <td className="px-4 py-3.5">
+      <td className="px-4 py-3">
         <StatusBadge status={proc.status} />
       </td>
-      <td className="px-4 py-3.5">
+      <td className="px-4 py-3">
         <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
           <Calendar className="w-3.5 h-3.5" />
           {formatDate(proc.created_at)}
         </span>
       </td>
-      <td className="px-4 py-3.5 text-right">
+      <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Link href={`/hiring-processes/${proc.id}`}>
-            <button className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 transition-colors">
+            <button className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 transition-colors">
               Ver <ArrowRight className="w-3 h-3" />
             </button>
           </Link>
-          <button className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+          <button className="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
             <MoreHorizontal className="w-4 h-4" />
           </button>
         </div>
@@ -85,8 +76,6 @@ function ProcessRow({ proc }: { proc: HiringProcess }) {
     </tr>
   );
 }
-
-// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function HiringProcessesPage() {
   const { data: processes = [], isLoading } = useQuery({
@@ -116,7 +105,7 @@ export default function HiringProcessesPage() {
       >
         <Link
           href="/hiring-processes/new"
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white rounded-md bg-violet-600 hover:bg-violet-700 transition-colors"
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white rounded bg-violet-600 hover:bg-violet-700 transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
           Nuevo proceso
@@ -124,21 +113,16 @@ export default function HiringProcessesPage() {
       </Header>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Activos" value={activos} sub={`de ${processes.length} total`}
-          icon={Briefcase} iconBg="#EDE9FE" iconColor="#7C3AED" accentColor="#7C3AED" />
-        <StatCard label="En matching" value={enMatch} sub="Procesando con IA"
-          icon={Zap} iconBg="#FEF3C7" iconColor="#D97706" accentColor="#D97706" />
-        <StatCard label="Completados" value={completados} sub="Match + profiling"
-          icon={Trophy} iconBg="#D1FAE5" iconColor="#059669" accentColor="#059669" />
-        <StatCard label="Total" value={processes.length} sub="Todos los procesos"
-          icon={FileText} iconBg="#DBEAFE" iconColor="#2563EB" accentColor="#2563EB" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard label="Activos"     value={activos}           sub={`de ${processes.length} total`} icon={Briefcase} accentColor="#7C3AED" />
+        <StatCard label="En matching" value={enMatch}           sub="Procesando con IA"              icon={Zap}       accentColor="#D97706" />
+        <StatCard label="Completados" value={completados}       sub="Match + profiling"              icon={Trophy}    accentColor="#059669" />
+        <StatCard label="Total"       value={processes.length}  sub="Todos los procesos"             icon={FileText}  accentColor="#2563EB" />
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
-        {/* Filter bar */}
-        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100">
+      {/* Filters + table */}
+      <div className="bg-white border border-slate-200 rounded overflow-hidden">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" strokeWidth={1.8} />
             <input
@@ -146,13 +130,13 @@ export default function HiringProcessesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar proceso..."
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-white rounded-md border border-slate-200 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-colors placeholder:text-slate-400"
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-white rounded border border-slate-200 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-colors placeholder:text-slate-400"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs border border-slate-200 rounded-md px-3 py-1.5 bg-white text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-colors"
+            className="text-xs border border-slate-200 rounded px-3 py-1.5 bg-white text-slate-700 outline-none focus:border-violet-400 transition-colors"
           >
             <option value="ALL">Todos los estados</option>
             <option value="DRAFT">Borrador</option>
@@ -171,13 +155,11 @@ export default function HiringProcessesPage() {
           </div>
         ) : processes.length === 0 ? (
           <div className="py-16 text-center">
-            <div className="w-12 h-12 rounded-lg bg-violet-50 flex items-center justify-center mx-auto mb-3">
-              <Briefcase className="w-6 h-6 text-violet-400" />
-            </div>
+            <Briefcase className="w-8 h-8 text-slate-300 mx-auto mb-3" />
             <p className="font-semibold text-slate-700 text-sm">Sin procesos aún</p>
             <p className="text-xs text-slate-400 mt-1">Crea tu primer proceso para comenzar</p>
             <Link href="/hiring-processes/new" className="mt-4 inline-block">
-              <span className="px-4 py-2 text-white rounded-md text-xs font-semibold bg-violet-600 hover:bg-violet-700 transition-colors">
+              <span className="px-4 py-2 text-white rounded text-xs font-semibold bg-violet-600 hover:bg-violet-700 transition-colors">
                 Crear proceso
               </span>
             </Link>
@@ -189,9 +171,9 @@ export default function HiringProcessesPage() {
         ) : (
           <table className="w-full text-sm text-left">
             <thead>
-              <tr className="border-b border-slate-100">
+              <tr className="border-b border-slate-100 bg-slate-50">
                 {['Proceso', 'Cargo · Área', 'Seniority', 'Estado', 'Fecha', ''].map((th) => (
-                  <th key={th} className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider first:px-5">
+                  <th key={th} className="px-4 py-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                     {th}
                   </th>
                 ))}

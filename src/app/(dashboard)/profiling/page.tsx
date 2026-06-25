@@ -8,9 +8,9 @@ function StatCard({ label, value, icon: Icon, accentColor, iconBg }: {
 }) {
   return (
     <div
-      className="bg-white rounded-lg p-5 flex items-center justify-between"
+      className="bg-white rounded p-5 flex items-center justify-between"
       style={{
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+        border: '1px solid #E2E8F0',
         borderLeft: `4px solid ${accentColor}`,
       }}
     >
@@ -18,7 +18,7 @@ function StatCard({ label, value, icon: Icon, accentColor, iconBg }: {
         <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">{label}</p>
         <p className="text-2xl font-bold text-slate-900">{value}</p>
       </div>
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: iconBg }}>
+      <div className="w-9 h-9 rounded flex items-center justify-center shrink-0" style={{ background: iconBg }}>
         <Icon className="w-4.5 h-4.5" style={{ color: accentColor }} />
       </div>
     </div>
@@ -38,7 +38,7 @@ export default function ProfilingPage() {
       </div>
 
       <div className="flex flex-col items-center justify-center py-16 gap-4">
-        <div className="w-12 h-12 rounded-lg bg-violet-50 flex items-center justify-center">
+        <div className="w-12 h-12 rounded bg-violet-50 flex items-center justify-center">
           <Mic className="w-6 h-6 text-violet-600" />
         </div>
         <p className="font-semibold text-slate-700 text-sm">Profiling de voz no iniciado</p>

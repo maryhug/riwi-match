@@ -91,7 +91,7 @@ function QuestionModal({ setId, editing, onClose }: { setId: string; editing: Pr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-xl my-auto">
+      <div className="bg-white rounded shadow-xl w-full max-w-xl my-auto">
         <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
           <h2 className="text-sm font-semibold text-slate-900">{editing ? 'Editar pregunta' : 'Nueva pregunta'}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X className="w-4 h-4" /></button>
@@ -311,7 +311,7 @@ export default function QuestionSetDetailPage({ params }: { params: Promise<{ id
 
       <button
         onClick={() => setModal({ open: true, editing: null })}
-        className="w-full py-3.5 rounded-lg border-2 border-dashed border-slate-200 text-slate-400 hover:text-violet-600 hover:border-violet-200 hover:bg-violet-50 transition-all flex items-center justify-center gap-2 font-medium text-xs"
+        className="w-full py-3.5 rounded border-2 border-dashed border-slate-200 text-slate-400 hover:text-violet-600 hover:border-violet-200 hover:bg-violet-50 transition-all flex items-center justify-center gap-2 font-medium text-xs"
       >
         <Plus className="w-4 h-4" />
         Nueva pregunta

@@ -109,7 +109,7 @@ export default function SettingsPage() {
             <Card key={integration.title}>
               <CardContent className="p-5">
                 <div className="flex justify-between items-start mb-4">
-                  <div className="w-9 h-9 rounded-lg bg-violet-600 flex items-center justify-center">
+                  <div className="w-9 h-9 rounded bg-violet-600 flex items-center justify-center">
                     <Settings className="w-4.5 h-4.5 text-white" />
                   </div>
                   <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
