@@ -70,7 +70,7 @@ function NavItem({ id, icon: Icon, label, color, iconColor, active, isHorizontal
           strokeWidth={active ? 2.4 : 1.8}
           style={{ color: active ? iconColor : '#94A3B8', flexShrink: 0 }}
         />
-        {active && (
+        {active && isHorizontal && (
           <span
             className="text-[11px] font-semibold whitespace-nowrap leading-none"
             style={{ color: iconColor }}
