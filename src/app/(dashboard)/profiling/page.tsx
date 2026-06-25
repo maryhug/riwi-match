@@ -4,25 +4,7 @@ import { PhoneCall, ListTodo, PhoneForwarded, PhoneMissed, X, FileText, AlertCir
 import { Card, CardContent } from '@/components/ui/Card';
 import Header from '@/components/layout/Header';
 
-function AudioWave() {
-  return (
-    <div className="flex items-center gap-1 h-6 my-4">
-      {/* Static representation of the wave pattern from the image */}
-      <div className="w-2 h-2 rounded-full bg-violet-400 opacity-60" />
-      <div className="w-1.5 h-1.5 rounded-full bg-violet-400 opacity-40" />
-      <div className="w-2 h-2 rounded-full bg-violet-400 opacity-60" />
-      <div className="w-3 h-6 rounded-full bg-violet-400 opacity-80" />
-      <div className="w-3 h-8 rounded-full bg-violet-400" />
-      <div className="w-3 h-5 rounded-full bg-violet-400 opacity-70" />
-      <div className="w-3 h-5 rounded-full bg-violet-400 opacity-70" />
-      <div className="w-2 h-2 rounded-full bg-violet-400 opacity-60" />
-      <div className="w-1.5 h-1.5 rounded-full bg-violet-400 opacity-40" />
-      <div className="w-2 h-2 rounded-full bg-violet-400 opacity-60" />
-      <div className="w-4 h-2 rounded-full bg-violet-400 opacity-60" />
-      <div className="w-2 h-2 rounded-full bg-violet-400 opacity-60" />
-    </div>
-  );
-}
+
 
 function TopCard({ label, value, icon: Icon, color }: any) {
   return (
@@ -95,12 +77,18 @@ export default function ProfilingPage() {
                     <p className="text-[10px] text-slate-400">{c.role}</p>
                   </div>
                 </div>
-                <AudioWave />
-                <div className="flex justify-between items-center mt-3">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                    <span>⏱</span> {c.time}
+                <div className="my-4 py-3 bg-violet-50 rounded-lg flex flex-col items-center justify-center border border-violet-100">
+                  <span className="text-[10px] text-violet-500 font-semibold mb-1 uppercase tracking-wider">Duración de la llamada</span>
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-violet-500"></span>
+                    </span>
+                    <span className="text-2xl font-mono text-violet-700 font-bold">{c.time}</span>
                   </div>
-                  <span className="text-[10px] font-bold text-violet-600 px-2 py-0.5 bg-violet-50 rounded">En vivo</span>
+                </div>
+                <div className="flex justify-end items-center mt-1">
+                  <span className="text-[10px] font-bold text-violet-600 px-2 py-0.5 bg-violet-100 rounded">En vivo</span>
                 </div>
               </CardContent>
             </Card>
