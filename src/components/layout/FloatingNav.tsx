@@ -76,21 +76,22 @@ function NavItem({ id, icon: Icon, label, color, iconColor, lit, isHorizontal, o
             transition: 'color 400ms ease',
           }}
         />
-        {/* Label con fade + max-width para transición suave */}
-        <span
-          className="text-[11px] font-semibold whitespace-nowrap leading-none overflow-hidden"
-          style={{
-            color: iconColor,
-            marginLeft: lit ? (isHorizontal ? 6 : 0) : 0,
-            marginTop: lit && !isHorizontal ? 3 : 0,
-            maxWidth: lit ? 80 : 0,
-            maxHeight: lit ? 20 : 0,
-            opacity: lit ? 1 : 0,
-            transition: 'max-width 450ms cubic-bezier(0.4,0,0.2,1), max-height 450ms cubic-bezier(0.4,0,0.2,1), opacity 350ms ease, margin 450ms cubic-bezier(0.4,0,0.2,1)',
-          }}
-        >
-          {label}
-        </span>
+        {/* Label solo en horizontal (top/bottom) */}
+        {isHorizontal && (
+          <span
+            className="text-[11px] font-semibold whitespace-nowrap leading-none overflow-hidden"
+            style={{
+              color: iconColor,
+              marginLeft: lit ? 6 : 0,
+              maxWidth: lit ? 80 : 0,
+              maxHeight: 20,
+              opacity: lit ? 1 : 0,
+              transition: 'max-width 450ms cubic-bezier(0.4,0,0.2,1), opacity 350ms ease, margin 450ms cubic-bezier(0.4,0,0.2,1)',
+            }}
+          >
+            {label}
+          </span>
+        )}
       </div>
     </Link>
   );
