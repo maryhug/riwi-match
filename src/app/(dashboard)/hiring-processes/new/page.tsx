@@ -235,7 +235,7 @@ export default function NewProcessPage() {
   const [processId, setProcessId] = useState<string | null>(null);
 
   return (
-    <div className="pb-10">
+    <div className="max-w-2xl mx-auto pb-10">
       {/* Header */}
       <div className="mb-5">
         <Link href="/hiring-processes" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors mb-3 font-medium">

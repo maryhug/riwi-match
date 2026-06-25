@@ -196,7 +196,7 @@ export default function NewQuestionSetPage() {
   const totalWeight = questions.reduce((s, q) => s + (q.weight || 0), 0);
 
   return (
-    <div>
+    <div className="max-w-2xl mx-auto">
       <Header title="Nuevo cuestionario" subtitle="Banco de preguntas para profiling de voz con IA">
         <Link href="/question-sets">
           <Button variant="outline" size="sm">
