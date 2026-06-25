@@ -1,26 +1,71 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* ── Fuentes ── */
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+
+  /* ── Primary purple ── */
+  --color-primary:        #967DF5;
+  --color-primary-dark:   #7A6CE0;
+  --color-primary-light:  #EEE9FF;
+  --color-primary-xlight: #F5F2FD;
+
+  /* ── Accent amber ── */
+  --color-accent:         #FFB863;
+  --color-accent-dark:    #E8900A;
+  --color-accent-light:   #FEECD8;
+
+  /* ── Coral ── */
+  --color-coral:          #FF596D;
+  --color-coral-dark:     #E8455A;
+  --color-coral-light:    #FFF4F2;
+
+  /* ── Mint ── */
+  --color-mint:           #8ED9C4;
+  --color-mint-light:     #DAFBF2;
+
+  /* ── Orange-red ── */
+  --color-orange:         #FF8059;
+  --color-orange-light:   #FFF4F2;
+
+  /* ── Blue ── */
+  --color-blue:           #3786EF;
+  --color-blue-light:     #E0EDFE;
+
+  /* ── Neutrals ── */
+  --color-ink:            #1E1B4B;
+  --color-text:           #374151;
+  --color-text-muted:     #9CA3AF;
+  --color-border:         #E6E1F9;
+  --color-bg:             #F5F2FD;
+  --color-surface:        #FFFFFF;
+
+  /* ── Curved Rail ── */
+  --color-rail: oklch(0.23 0.03 277);
+  --color-rail-muted: oklch(0.68 0.02 277);
+  --color-rail-active: oklch(0.86 0.07 9);
+  --color-rail-active-foreground: oklch(0.32 0.05 9);
+  --color-canvas: oklch(0.985 0.004 95);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #F5F2FD;
+  color: #374151;
+  font-family: var(--font-body), 'Plus Jakarta Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display), 'Montserrat Alternates', system-ui, sans-serif;
+  color: #1E1B4B;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D0C8FC; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #967DF5; }

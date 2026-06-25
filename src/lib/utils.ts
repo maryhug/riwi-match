@@ -1,0 +1,52 @@
+import { clsx, type ClassValue } from 'clsx';
+import type { MatchCategory, ProcessStatus } from './types';
+
+export function cn(...inputs: ClassValue[]) {
+  return clsx(inputs);
+}
+
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+}
+
+export function formatDate(dateStr: string): string {
+  return new Intl.DateTimeFormat('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(dateStr));
+}
+
+export function formatPercent(value: number): string {
+  return `${Math.round(value)}%`;
+}
+
+export const matchCategoryConfig: Record<MatchCategory, { label: string; color: string; bg: string; border: string }> = {
+  HIGH: { label: 'Alto', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+  MEDIUM: { label: 'Medio', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
+  LOW: { label: 'Bajo', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
+};
+
+export const processStatusConfig: Record<ProcessStatus, { label: string; color: string; bg: string }> = {
+  DRAFT: { label: 'Borrador', color: 'text-slate-600', bg: 'bg-slate-100' },
+  READY_FOR_MATCH: { label: 'Listo para Match', color: 'text-blue-700', bg: 'bg-blue-50' },
+  CVS_UPLOADED: { label: 'CVs Cargados', color: 'text-violet-700', bg: 'bg-violet-50' },
+  MATCHING: { label: 'Procesando...', color: 'text-orange-700', bg: 'bg-orange-50' },
+  PROFILING_CONFIGURED: { label: 'Profiling Activo', color: 'text-teal-700', bg: 'bg-teal-50' },
+  COMPLETED: { label: 'Completado', color: 'text-emerald-700', bg: 'bg-emerald-50' },
+};
+
+export const processSteps = [
+  { key: 'jd', label: 'Job Description', statuses: ['DRAFT', 'READY_FOR_MATCH'] as ProcessStatus[] },
+  { key: 'cvs', label: 'Subir CVs', statuses: ['CVS_UPLOADED', 'MATCHING'] as ProcessStatus[] },
+  { key: 'match', label: 'Match & Ranking', statuses: ['PROFILING_CONFIGURED'] as ProcessStatus[] },
+  { key: 'profiling', label: 'Profiling', statuses: ['COMPLETED'] as ProcessStatus[] },
+];
+
+export function getProcessStep(status: ProcessStatus): number {
+  if (status === 'DRAFT' || status === 'READY_FOR_MATCH') return 0;
+  if (status === 'CVS_UPLOADED' || status === 'MATCHING') return 1;
+  if (status === 'PROFILING_CONFIGURED') return 2;
+  if (status === 'COMPLETED') return 3;
+  return 0;
+}

@@ -1,0 +1,58 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Sidebar from '@/components/layout/Sidebar';
+import { useAuth } from '@/contexts/AuthContext';
+import { NavbarPositionProvider, useNavbarPosition } from '@/contexts/NavbarPositionContext';
+
+function DashboardContent({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+  const { position } = useNavbarPosition();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) router.push('/login');
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F2FD' }}>
+        <div className="flex flex-col items-center gap-3">
+          <div
+            className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+            style={{ borderColor: '#967DF5', borderTopColor: 'transparent' }}
+          />
+          <p className="text-sm" style={{ color: '#9CA3AF' }}>Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) return null;
+
+  const mainStyle: React.CSSProperties = {
+    flex: 1,
+    minHeight: '100vh',
+    padding: '32px',
+    background: '#F5F2FD',
+    marginLeft: '88px',
+  };
+
+  return (
+    <div style={{ background: '#F5F2FD', minHeight: '100vh' }}>
+      <Sidebar />
+      <main style={mainStyle}>
+        {children}
+      </main>
+    </div>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <NavbarPositionProvider>
+      <DashboardContent>{children}</DashboardContent>
+    </NavbarPositionProvider>
+  );
+}
