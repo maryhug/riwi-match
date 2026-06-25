@@ -2,11 +2,13 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/layout/Sidebar';
+import FloatingNav from '@/components/layout/FloatingNav';
 import { useAuth } from '@/contexts/AuthContext';
+import { NavbarPositionProvider, useNavbarPosition } from '@/contexts/NavbarPositionContext';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const { position } = useNavbarPosition();
   const router = useRouter();
 
   useEffect(() => {
@@ -26,10 +28,18 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) return null;
 
+  // Dynamic padding based on nav position
+  const pad = {
+    paddingLeft:   position === 'left'   ? 100 : 32,
+    paddingRight:  position === 'right'  ? 100 : 32,
+    paddingTop:    position === 'top'    ? 84  : 28,
+    paddingBottom: position === 'bottom' ? 84  : 28,
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Sidebar />
-      <main className="min-h-screen bg-slate-50 px-8 py-7" style={{ marginLeft: 104 }}>
+      <FloatingNav />
+      <main className="min-h-screen bg-slate-50 transition-all duration-300" style={pad}>
         {children}
       </main>
     </div>
@@ -37,5 +47,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return <DashboardContent>{children}</DashboardContent>;
+  return (
+    <NavbarPositionProvider>
+      <DashboardContent>{children}</DashboardContent>
+    </NavbarPositionProvider>
+  );
 }
