@@ -15,9 +15,9 @@ import type { CandidateListItem } from '@/lib/types';
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const CATEGORY_CFG = {
-  HIGH:   { label: 'Alto',  color: '#166534', bg: '#F0FDF4', ring: '#22C55E' },
-  MEDIUM: { label: 'Medio', color: '#854D0E', bg: '#FEFCE8', ring: '#EAB308' },
-  LOW:    { label: 'Bajo',  color: '#9F1239', bg: '#FFF1F2', ring: '#F43F5E' },
+  HIGH:   { label: 'Alto',  color: '#065F46', bg: '#D1FAE5', ring: '#10B981' },
+  MEDIUM: { label: 'Medio', color: '#92400E', bg: '#FEF3C7', ring: '#F59E0B' },
+  LOW:    { label: 'Bajo',  color: '#991B1B', bg: '#FEE2E2', ring: '#EF4444' },
 } as const;
 
 const PROFILING_MAP: Record<string, { label: string; variant: 'active' | 'done' | 'idle' | 'queued' | 'failed' }> = {
@@ -53,7 +53,7 @@ function CandidateAvatar({ name }: { name: string }) {
   const color = AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
   return (
     <div
-      className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 select-none"
+      className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 select-none"
       style={{ background: color }}
     >
       {initials}
@@ -101,7 +101,7 @@ function CategoryChip({ category }: { category: string | null }) {
   if (!cfg) return null;
   return (
     <span
-      className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold"
+      className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold"
       style={{ background: cfg.bg, color: cfg.color }}
     >
       {cfg.label}
@@ -118,7 +118,7 @@ function SkillChips({ skills }: { skills: string[] }) {
         return (
           <span
             key={i}
-            className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600 whitespace-nowrap"
+            className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 whitespace-nowrap"
           >
             {short}
           </span>
@@ -163,7 +163,7 @@ function AdvanceChip({ status, category }: { status: string; category: string | 
   if (!cfg) return <span className="text-slate-300 text-sm">—</span>;
   return (
     <span
-      className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold"
+      className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold"
       style={{ background: cfg.bg, color: cfg.color }}
     >
       {cfg.label}
@@ -267,7 +267,7 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar candidato..."
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-full border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-200"
           />
         </div>
 
@@ -277,7 +277,7 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
             <button
               key={key}
               onClick={() => setActiveFilter(activeFilter === key ? 'ALL' : key)}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                 activeFilter === key
                   ? 'bg-primary-dark text-white border-primary-dark shadow-sm'
                   : 'bg-white border-slate-200 text-slate-600 hover:border-primary-light'
@@ -290,7 +290,7 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
 
         {/* Activar profiling */}
         <button
-          className={`ml-auto flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white shadow-sm transition-opacity ${
+          className={`ml-auto flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow-sm transition-opacity ${
             selected.size === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
           }`}
           style={{ background: '#957DF3' }}
@@ -300,7 +300,7 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
           <Phone className="w-4 h-4" />
           <span className="flex items-center gap-1.5">
             Activar profiling
-            <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[11px] font-bold">
+            <span className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center text-[11px] font-bold">
               {selected.size}
             </span>
           </span>
@@ -393,7 +393,7 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
                           <p className="font-semibold text-slate-900 leading-tight truncate">{c.name}</p>
                           <p className="text-xs text-slate-400 mt-0.5 truncate">{c.email}</p>
                           {criticalGap && (
-                            <div className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 text-[10px] font-medium max-w-[260px]">
+                            <div className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 text-[10px] font-medium max-w-[260px]">
                               <AlertTriangle className="w-3 h-3 shrink-0" />
                               <span className="truncate">{criticalGap}</span>
                             </div>

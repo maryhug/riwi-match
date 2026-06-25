@@ -35,12 +35,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     flex: 1,
     minHeight: '100vh',
     padding: '32px',
-    background: '#F5F2FD',
+    background: '#F8FAFC',
     marginLeft: '88px',
   };
 
   return (
-    <div style={{ background: '#F5F2FD', minHeight: '100vh' }}>
+    <div style={{ background: '#F8FAFC', minHeight: '100vh' }}>
       <Sidebar />
       <main style={mainStyle}>
         {children}

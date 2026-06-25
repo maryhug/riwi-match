@@ -19,7 +19,7 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const base =
-    'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-150 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed';
+    'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed';
 
   const sizes = {
     sm:  'px-3.5 py-1.5 text-sm gap-1.5',
@@ -28,19 +28,28 @@ export default function Button({
   };
 
   const variants: Record<string, React.CSSProperties> = {
-    primary:   { background: 'var(--color-primary)', color: '#fff' },
-    accent:    { background: 'var(--color-accent)', color: '#fff' },
-    secondary: { background: 'var(--color-primary-light)', color: 'var(--color-primary)' },
-    ghost:     { background: 'transparent', color: '#6B7280' },
-    danger:    { background: 'var(--color-coral)', color: '#fff' },
-    outline:   { background: 'transparent', color: 'var(--color-primary)', border: '1.5px solid var(--color-primary)' },
+    primary:   { background: 'var(--color-primary)', color: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.08)' },
+    accent:    { background: 'var(--color-accent)', color: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.08)' },
+    secondary: { background: 'var(--color-primary-light)', color: 'var(--color-primary-dark)' },
+    ghost:     { background: 'transparent', color: 'var(--color-text-muted)' },
+    danger:    { background: 'var(--color-coral)', color: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.08)' },
+    outline:   { background: '#fff', color: 'var(--color-text)', border: '1.5px solid var(--color-border)' },
+  };
+
+  const focusRing: Record<string, string> = {
+    primary:   'focus:ring-violet-300',
+    accent:    'focus:ring-amber-300',
+    secondary: 'focus:ring-violet-200',
+    ghost:     'focus:ring-slate-200',
+    danger:    'focus:ring-red-300',
+    outline:   'focus:ring-slate-200',
   };
 
   return (
     <button
       {...props}
       disabled={disabled || loading}
-      className={cn(base, sizes[size], className)}
+      className={cn(base, sizes[size], focusRing[variant], className)}
       style={{ ...variants[variant], ...style }}
     >
       {loading && (

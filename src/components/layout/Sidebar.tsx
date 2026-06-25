@@ -166,7 +166,7 @@ export default function Sidebar() {
           transition={spring}
           style={{ top: activeY - COVE_H / 2 }}
         >
-          <path d={covePath()} fill="#F5F2FD" />
+          <path d={covePath()} fill="#F8FAFC" />
         </motion.svg>
 
         {/* Active pink circle (rides the cove) */}
