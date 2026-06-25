@@ -48,43 +48,49 @@ interface ItemProps {
   label: string;
   color: string;
   iconColor: string;
-  active: boolean;
+  lit: boolean;        // true = show expanded (colored bg + label)
   isHorizontal: boolean;
+  onEnter: () => void;
+  onLeave: () => void;
 }
 
-function NavItem({ id, icon: Icon, label, color, iconColor, active, isHorizontal }: ItemProps) {
-  const [hovered, setHovered] = useState(false);
-  const lit = active || hovered;
-
+function NavItem({ id, icon: Icon, label, color, iconColor, lit, isHorizontal, onEnter, onLeave }: ItemProps) {
   return (
-    <Link
-      href={id}
-      title={label}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
+    <Link href={id} title={label} onMouseEnter={onEnter} onMouseLeave={onLeave}>
       <div
-        className="flex items-center gap-2 transition-all duration-200 cursor-pointer select-none"
+        className="flex items-center cursor-pointer select-none overflow-hidden"
         style={{
-          padding: lit ? (isHorizontal ? '6px 12px 6px 8px' : '7px 10px') : '8px',
-          borderRadius: 999,
-          background: lit ? color : 'transparent',
           flexDirection: isHorizontal ? 'row' : 'column',
+          borderRadius: 999,
+          padding: '7px 8px',
+          background: lit ? color : 'transparent',
+          transition: 'background 500ms cubic-bezier(0.4,0,0.2,1)',
         }}
       >
         <Icon
           size={17}
-          strokeWidth={lit ? 2.4 : 1.8}
-          style={{ color: lit ? iconColor : '#94A3B8', flexShrink: 0 }}
+          strokeWidth={2}
+          style={{
+            color: lit ? iconColor : '#B0BCCC',
+            flexShrink: 0,
+            transition: 'color 400ms ease',
+          }}
         />
-        {lit && (
-          <span
-            className="text-[11px] font-semibold whitespace-nowrap leading-none"
-            style={{ color: iconColor }}
-          >
-            {label}
-          </span>
-        )}
+        {/* Label con fade + max-width para transición suave */}
+        <span
+          className="text-[11px] font-semibold whitespace-nowrap leading-none overflow-hidden"
+          style={{
+            color: iconColor,
+            marginLeft: lit ? (isHorizontal ? 6 : 0) : 0,
+            marginTop: lit && !isHorizontal ? 3 : 0,
+            maxWidth: lit ? 80 : 0,
+            maxHeight: lit && !isHorizontal ? 20 : 0,
+            opacity: lit ? 1 : 0,
+            transition: 'max-width 450ms cubic-bezier(0.4,0,0.2,1), max-height 450ms cubic-bezier(0.4,0,0.2,1), opacity 350ms ease, margin 450ms cubic-bezier(0.4,0,0.2,1)',
+          }}
+        >
+          {label}
+        </span>
       </div>
     </Link>
   );
@@ -98,9 +104,13 @@ export default function FloatingNav() {
   const { role, logout }             = useAuth();
   const { position, setPosition }    = useNavbarPosition();
   const [showMover, setShowMover]    = useState(false);
+  const [hoveredId, setHoveredId]    = useState<string | null>(null);
 
-  const active       = getActiveId(pathname);
+  const activeId     = getActiveId(pathname);
   const isHorizontal = position === 'top' || position === 'bottom';
+
+  // Si hay hover en otro item, el activo se apaga; si no hay hover, el activo brilla
+  const getLit = (id: string) => hoveredId ? hoveredId === id : activeId === id;
 
   const handleLogout = () => { logout(); router.push('/login'); };
 
@@ -135,8 +145,10 @@ export default function FloatingNav() {
           <NavItem
             key={item.id}
             {...item}
-            active={active === item.id || (item.id === '/hiring-processes' && active.startsWith('/hiring-processes') && active !== '/hiring-processes/new')}
+            lit={getLit(item.id)}
             isHorizontal={isHorizontal}
+            onEnter={() => setHoveredId(item.id)}
+            onLeave={() => setHoveredId(null)}
           />
         ))}
 
