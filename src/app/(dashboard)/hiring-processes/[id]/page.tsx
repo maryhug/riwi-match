@@ -2,16 +2,23 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { use } from 'react';
+
+function withToken(url: string): string {
+  const token = localStorage.getItem('access_token');
+  return token ? `${url}?token=${token}` : url;
+}
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
   ArrowLeft, FileText, Upload, BarChart2, Phone,
   CheckCircle2, ChevronRight, Sparkles,
-  AlertTriangle, RefreshCw, Users, Paperclip, ExternalLink, X,
+  AlertTriangle, RefreshCw, Users, Paperclip, ExternalLink, X, Eye,
 } from 'lucide-react';
 import { processesApi } from '@/lib/api';
 import type { JobDescription } from '@/lib/types';
 import { StatusBadge } from '@/components/ui/Badge';
+import UploadCvsModal from '@/components/ui/UploadCvsModal';
+import PdfPreviewModal from '@/components/ui/PdfPreviewModal';
 import Button from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Input';
 import Header from '@/components/layout/Header';
@@ -25,37 +32,55 @@ const STEPS = [
   { label: 'Profiling de Voz' },
 ];
 
-// ─── Stepper — tab style, sin círculos ────────────────────────────────────────
-function Stepper({ currentStep }: { currentStep: number }) {
+// ─── Stepper — tab style, sin círculos (Clickable tabs) ──────────────────────
+function Stepper({
+  activeStep,
+  maxStep,
+  onChangeStep,
+}: {
+  activeStep: number;
+  maxStep: number;
+  onChangeStep: (step: number) => void;
+}) {
   return (
     <div className="flex border-b border-slate-200 mb-6">
       {STEPS.map((step, i) => {
-        const done   = i < currentStep;
-        const active = i === currentStep;
+        const done   = i < activeStep;
+        const active = i === activeStep;
+        const isSelectable = i <= maxStep;
+
         return (
-          <div
+          <button
             key={i}
-            className="flex items-center gap-2 px-5 py-3 relative"
-            style={{ borderBottom: active ? '2px solid #7C3AED' : '2px solid transparent', marginBottom: -1 }}
+            onClick={() => isSelectable && onChangeStep(i)}
+            disabled={!isSelectable}
+            type="button"
+            className={`flex items-center gap-2 px-5 py-3 relative transition-all outline-none ${
+              isSelectable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+            }`}
+            style={{
+              borderBottom: active ? '2px solid #7C3AED' : '2px solid transparent',
+              marginBottom: -1,
+            }}
           >
             <span
-              className={`flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded ${
+              className={`flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded transition-colors ${
                 done   ? 'bg-violet-600 text-white' :
                 active ? 'bg-violet-100 text-violet-700' :
                          'bg-slate-100 text-slate-400'
               }`}
             >
-              {done ? <CheckCircle2 className="w-3 h-3" /> : i + 1}
+              {i < maxStep ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
             </span>
-            <span className={`text-xs font-medium whitespace-nowrap ${
-              active ? 'text-violet-700' : done ? 'text-slate-600' : 'text-slate-400'
+            <span className={`text-xs font-semibold whitespace-nowrap transition-colors ${
+              active ? 'text-violet-700' : isSelectable ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400'
             }`}>
               {step.label}
             </span>
             {i < STEPS.length - 1 && (
               <ChevronRight className="w-3.5 h-3.5 text-slate-300 ml-2" />
             )}
-          </div>
+          </button>
         );
       })}
     </div>
@@ -76,9 +101,17 @@ function SectionTitle({ icon: Icon, title, action }: { icon?: React.ElementType;
 }
 
 // ─── File attachment banner ───────────────────────────────────────────────────
-function JDFileBanner({ filename, fileUrl }: { filename: string; fileUrl: string }) {
+function JDFileBanner({
+  filename,
+  fileUrl,
+  onPreview,
+}: {
+  filename: string;
+  fileUrl: string;
+  onPreview?: () => void;
+}) {
   return (
-    <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded px-4 py-3 mb-4">
+    <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded px-4 py-3 mb-4 animate-in fade-in duration-200">
       <div className="flex items-center gap-3">
         <Paperclip className="w-4 h-4 text-violet-600 shrink-0" />
         <div>
@@ -86,11 +119,23 @@ function JDFileBanner({ filename, fileUrl }: { filename: string; fileUrl: string
           <p className="text-xs text-slate-500">Archivo adjunto al JD</p>
         </div>
       </div>
-      <a href={fileUrl} target="_blank" rel="noopener noreferrer"
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-colors">
-        <ExternalLink className="w-3.5 h-3.5" />
-        Ver / descargar
-      </a>
+      <div className="flex items-center gap-2 shrink-0">
+        {onPreview && (
+          <button
+            type="button"
+            onClick={onPreview}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-white border border-violet-200 text-violet-700 text-xs font-semibold hover:bg-violet-50 transition-colors"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            Previsualizar
+          </button>
+        )}
+        <a href={fileUrl} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-colors">
+          <ExternalLink className="w-3.5 h-3.5" />
+          Ver / descargar
+        </a>
+      </div>
     </div>
   );
 }
@@ -103,6 +148,7 @@ function JDStep({ processId }: { processId: string }) {
   const [editMode, setEditMode] = useState(false);
   const [jdFile, setJdFile] = useState<File | null>(null);
   const [uploadMode, setUploadMode] = useState<'file' | 'text'>('text');
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: existingJD } = useQuery({
@@ -135,7 +181,22 @@ function JDStep({ processId }: { processId: string }) {
 
   return (
     <div className="space-y-5">
-      {existingJD?.jd_file_url && <JDFileBanner filename={existingJD.original_filename ?? 'job_description.pdf'} fileUrl={fileDownloadUrl} />}
+      {existingJD?.jd_file_url && (
+        <JDFileBanner
+          filename={existingJD.original_filename ?? 'job_description.pdf'}
+          fileUrl={fileDownloadUrl}
+          onPreview={() => setIsPreviewOpen(true)}
+        />
+      )}
+
+      {existingJD?.jd_file_url && (
+        <PdfPreviewModal
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          title={existingJD.original_filename ?? 'job_description.pdf'}
+          fileUrl={withToken(fileDownloadUrl)}
+        />
+      )}
 
       <div className="bg-white border border-slate-200 rounded p-5">
         <SectionTitle icon={Sparkles} title="Job Description" action={modeToggle} />
@@ -239,35 +300,61 @@ function UploadCVsStep({ processId }: { processId: string }) {
   const qc = useQueryClient();
   const [files, setFiles] = useState<File[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [successCount, setSuccessCount] = useState<number | null>(null);
 
   const uploadMutation = useMutation({
     mutationFn: () => processesApi.uploadCandidates(processId, files),
-    onSuccess: (res) => { alert(`${res.data.queued} CVs encolados para procesamiento.`); setFiles([]); qc.invalidateQueries({ queryKey: ['process', processId] }); },
+    onSuccess: (res) => {
+      setSuccessCount(res.data.queued);
+      setFiles([]);
+      qc.invalidateQueries({ queryKey: ['process', processId] });
+      qc.invalidateQueries({ queryKey: ['candidates', processId] });
+      qc.invalidateQueries({ queryKey: ['kanban', processId] });
+    },
   });
   const matchMutation = useMutation({
     mutationFn: () => processesApi.startMatch(processId),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['process', processId] }); },
   });
 
+  const CV_EXTS = ['.pdf', '.docx', '.doc', '.jpg', '.jpeg', '.png', '.webp', '.tiff', '.bmp'];
+  const isCvAllowed = (f: File) => CV_EXTS.some((ext) => f.name.toLowerCase().endsWith(ext));
+
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setDragging(false);
-    const dropped = Array.from(e.dataTransfer.files).filter((f) => f.type === 'application/pdf');
+    const dropped = Array.from(e.dataTransfer.files).filter(isCvAllowed);
     setFiles((prev) => [...prev, ...dropped]);
   }, []);
 
   return (
     <div className="space-y-4">
+      {successCount !== null && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start justify-between">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-950">¡Candidatos cargados con éxito!</p>
+              <p className="text-xs text-emerald-700 mt-0.5">
+                Se han encolado <strong>{successCount} CV(s)</strong> para procesamiento. La IA los normalizará y evaluará su porcentaje de match de forma automática en pocos segundos.
+              </p>
+            </div>
+          </div>
+          <button onClick={() => setSuccessCount(null)} className="text-emerald-500 hover:text-emerald-700 p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       <div className="bg-white border border-slate-200 rounded p-5">
         <SectionTitle icon={Upload} title="Carga masiva de CVs" />
-        <p className="text-xs text-slate-500 mb-4">Sube los CVs en PDF. Se procesarán de forma asíncrona con IA.</p>
+        <p className="text-xs text-slate-500 mb-4">Sube los CVs — PDF, DOCX, JPG, PNG o WEBP. Se procesarán con IA automáticamente.</p>
         <div onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}
           className={`border-2 border-dashed rounded p-8 text-center transition-colors ${dragging ? 'border-violet-400 bg-violet-50' : 'border-slate-200 hover:border-violet-300 hover:bg-slate-50'}`}>
           <Upload className="w-9 h-9 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-700 mb-1">Arrastra y suelta los PDFs aquí</p>
-          <p className="text-xs text-slate-500 mb-4">o haz clic para seleccionar archivos</p>
+          <p className="text-sm font-medium text-slate-700 mb-1">Arrastra los CVs aquí</p>
+          <p className="text-xs text-slate-500 mb-4">PDF · DOCX · JPG · PNG · WEBP · máx. 10 MB</p>
           <label className="cursor-pointer">
             <span className="px-4 py-1.5 bg-violet-600 text-white rounded text-xs font-semibold hover:bg-violet-700 transition-colors">Seleccionar CVs</span>
-            <input type="file" accept=".pdf" multiple className="hidden" onChange={(e) => { if (e.target.files) setFiles((prev) => [...prev, ...Array.from(e.target.files!)]); }} />
+            <input type="file" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.webp,.tiff,.bmp" multiple className="hidden" onChange={(e) => { if (e.target.files) setFiles((prev) => [...prev, ...Array.from(e.target.files!).filter(isCvAllowed)]); }} />
           </label>
         </div>
 
@@ -395,16 +482,27 @@ function ProfilingStep({ processId }: { processId: string }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ProcessDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [activeStep, setActiveStep] = useState<number | null>(null);
   const { data: process, isLoading } = useQuery({
     queryKey: ['process', id],
     queryFn: () => processesApi.get(id).then((r) => r.data),
     refetchInterval: 15_000,
   });
 
+  const currentStep = getProcessStep(process?.status ?? 'DRAFT');
+
+  useEffect(() => {
+    if (process?.status) {
+      const step = getProcessStep(process.status);
+      if (activeStep === null || activeStep > step) {
+        setActiveStep(step);
+      }
+    }
+  }, [process?.status]);
+
   if (isLoading) return <div className="flex justify-center py-16"><div className="w-7 h-7 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" /></div>;
   if (!process) return <div className="text-slate-500 text-sm">Proceso no encontrado</div>;
-
-  const currentStep = getProcessStep(process.status);
 
   return (
     <div>
@@ -435,12 +533,48 @@ export default function ProcessDetailPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      <Stepper currentStep={currentStep} />
+      <Stepper
+        activeStep={activeStep ?? currentStep}
+        maxStep={currentStep}
+        onChangeStep={(s) => setActiveStep(s)}
+      />
 
-      {currentStep === 0 && <JDStep processId={id} />}
-      {currentStep === 1 && <UploadCVsStep processId={id} />}
-      {currentStep === 2 && <MatchStep processId={id} />}
-      {currentStep === 3 && <ProfilingStep processId={id} />}
+      {(activeStep ?? currentStep) === 0 && <JDStep processId={id} />}
+      {(activeStep ?? currentStep) === 1 && <UploadCVsStep processId={id} />}
+      {(activeStep ?? currentStep) === 2 && (
+        <div className="space-y-5">
+          <MatchStep processId={id} />
+          <div className="bg-white border border-slate-200 rounded-lg p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-800 mb-1">Cargar más candidatos (CVs)</h3>
+              <p className="text-xs text-slate-400">Sube CVs (PDF, DOCX, JPG, PNG) de nuevos candidatos. Se normalizarán y evaluarán automáticamente con IA.</p>
+            </div>
+            <Button onClick={() => setIsUploadOpen(true)} className="shrink-0">
+              <Upload className="w-3.5 h-3.5" /> Subir más CVs
+            </Button>
+          </div>
+        </div>
+      )}
+      {(activeStep ?? currentStep) === 3 && (
+        <div className="space-y-5">
+          <ProfilingStep processId={id} />
+          <div className="bg-white border border-slate-200 rounded-lg p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-800 mb-1">Cargar más candidatos (CVs)</h3>
+              <p className="text-xs text-slate-400">Sube CVs (PDF, DOCX, JPG, PNG) de nuevos candidatos. Se normalizarán y evaluarán automáticamente con IA.</p>
+            </div>
+            <Button onClick={() => setIsUploadOpen(true)} className="shrink-0">
+              <Upload className="w-3.5 h-3.5" /> Subir más CVs
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <UploadCvsModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        processId={id}
+      />
     </div>
   );
 }

@@ -283,6 +283,12 @@ export const processesApi = {
   getCandidateDetail: (processId: string, pcId: string) =>
     api.get(`/api/v1/processes/${processId}/candidates/${pcId}`),
 
+  getCvFileUrl: (processId: string, pcId: string) =>
+    `${BASE_URL}/api/v1/processes/${processId}/candidates/${pcId}/cv/file`,
+
+  getNormalizedCvFileUrl: (processId: string, pcId: string) =>
+    `${BASE_URL}/api/v1/processes/${processId}/candidates/${pcId}/cv-normalized/file`,
+
   /** Profiling aún no disponible en el back */
   startProfiling: (_id: string, _candidateIds: string[]) =>
     Promise.resolve({ data: { status: 'not_available' } }),

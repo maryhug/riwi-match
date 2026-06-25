@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, FileText, Upload, ChevronRight, Sparkles, X, Paperclip } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, FileText, Upload, ChevronRight, ChevronDown, ChevronUp, Sparkles, X, Paperclip } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { Input, Select } from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
@@ -63,10 +63,35 @@ function Step1({ onCreated }: { onCreated: (id: string) => void }) {
   const [budget, setBudget]       = useState('');
   const [error, setError]         = useState('');
 
+  const [showWeights, setShowWeights] = useState(false);
+  const [weights, setWeights] = useState({
+    technical_skills: 45,
+    relevant_experience: 25,
+    seniority: 15,
+    industry_domain: 7,
+    languages: 5,
+    education_certifications: 3,
+  });
+
+  const totalWeights = Object.values(weights).reduce((a, b) => a + b, 0);
+  const hasNegativeWeight = Object.values(weights).some((w) => w < 0);
+  const isValidWeights = !showWeights || (totalWeights === 100 && !hasNegativeWeight);
+
   const { mutate, isPending } = useMutation({
-    mutationFn: () => processesApi.create({ name: name.trim(), job_title: jobTitle.trim(), area, seniority, budget_max_usd: budget ? parseFloat(budget) : 0 }),
+    mutationFn: () =>
+      processesApi.create({
+        name: name.trim(),
+        job_title: jobTitle.trim(),
+        area,
+        seniority,
+        budget_max_usd: budget ? parseFloat(budget) : 0,
+        match_weights_override: showWeights ? weights : undefined,
+      }),
     onSuccess: (res) => onCreated(res.data.process_id),
-    onError: (err: unknown) => { const e = err as { response?: { data?: { detail?: string } } }; setError(e?.response?.data?.detail ?? 'Error al crear el proceso.'); },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { detail?: string } } };
+      setError(e?.response?.data?.detail ?? 'Error al crear el proceso.');
+    },
   });
 
   return (
@@ -83,10 +108,129 @@ function Step1({ onCreated }: { onCreated: (id: string) => void }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <Input label="Presupuesto máximo USD (opcional)" type="number" placeholder="Ej. 500" value={budget} onChange={(e) => setBudget(e.target.value)} />
       </div>
+
+      {/* Configuración avanzada de pesos de match */}
+      <div className="border border-slate-200 rounded-lg overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowWeights(!showWeights)}
+          className="w-full px-4 py-3 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors text-xs font-semibold text-slate-700"
+        >
+          <span className="flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-violet-600 animate-pulse" />
+            Configuración avanzada de pesos de match (Opcional)
+          </span>
+          {showWeights ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+
+        {showWeights && (
+          <div className="p-4 bg-white border-t border-slate-200 space-y-4">
+            <p className="text-xs text-slate-400 leading-normal">
+              Ajusta los porcentajes para dar más peso a dimensiones específicas durante el análisis y ranking automatizado por IA. La suma total debe ser exactamente 100%.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <Input
+                label="Habilidades técnicas (%)"
+                type="number"
+                min={0}
+                max={100}
+                value={weights.technical_skills}
+                onChange={(e) => setWeights({ ...weights, technical_skills: parseInt(e.target.value) || 0 })}
+              />
+              <Input
+                label="Experiencia relevante (%)"
+                type="number"
+                min={0}
+                max={100}
+                value={weights.relevant_experience}
+                onChange={(e) => setWeights({ ...weights, relevant_experience: parseInt(e.target.value) || 0 })}
+              />
+              <Input
+                label="Seniority (%)"
+                type="number"
+                min={0}
+                max={100}
+                value={weights.seniority}
+                onChange={(e) => setWeights({ ...weights, seniority: parseInt(e.target.value) || 0 })}
+              />
+              <Input
+                label="Dominio de industria (%)"
+                type="number"
+                min={0}
+                max={100}
+                value={weights.industry_domain}
+                onChange={(e) => setWeights({ ...weights, industry_domain: parseInt(e.target.value) || 0 })}
+              />
+              <Input
+                label="Idiomas (%)"
+                type="number"
+                min={0}
+                max={100}
+                value={weights.languages}
+                onChange={(e) => setWeights({ ...weights, languages: parseInt(e.target.value) || 0 })}
+              />
+              <Input
+                label="Educación y cert. (%)"
+                type="number"
+                min={0}
+                max={100}
+                value={weights.education_certifications}
+                onChange={(e) => setWeights({ ...weights, education_certifications: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-100 gap-2">
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-semibold px-2 py-1 rounded-md ${
+                  totalWeights === 100 && !hasNegativeWeight ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'
+                }`}>
+                  Suma total: {totalWeights}%
+                </span>
+                {totalWeights !== 100 && (
+                  <span className="text-[11px] text-red-500 font-medium">
+                    ⚠️ Debe ser exactamente 100%
+                  </span>
+                )}
+                {hasNegativeWeight && (
+                  <span className="text-[11px] text-red-500 font-medium">
+                    ⚠️ No se permiten valores negativos
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setWeights({
+                  technical_skills: 45,
+                  relevant_experience: 25,
+                  seniority: 15,
+                  industry_domain: 7,
+                  languages: 5,
+                  education_certifications: 3,
+                })}
+                className="text-xs text-violet-600 hover:text-violet-800 hover:underline font-semibold"
+              >
+                Restablecer valores por defecto
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded">{error}</p>}
       <div className="flex justify-between pt-2 border-t border-slate-100">
         <Link href="/hiring-processes"><Button variant="ghost" className="text-slate-500">Cancelar</Button></Link>
-        <Button onClick={() => { setError(''); if (!name.trim() || !jobTitle.trim()) { setError('Nombre y cargo son obligatorios.'); return; } mutate(); }} loading={isPending}>
+        <Button
+          onClick={() => {
+            setError('');
+            if (!name.trim() || !jobTitle.trim()) {
+              setError('Nombre y cargo son obligatorios.');
+              return;
+            }
+            mutate();
+          }}
+          loading={isPending}
+          disabled={!isValidWeights}
+        >
           Siguiente <ChevronRight className="w-4 h-4" />
         </Button>
       </div>

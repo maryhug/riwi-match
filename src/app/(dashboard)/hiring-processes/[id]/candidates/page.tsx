@@ -6,11 +6,12 @@ import Link from 'next/link';
 import {
   ArrowLeft, Phone, RefreshCw, ChevronDown, ChevronUp,
   CheckSquare, Square, Loader2, Users, FileText, Mic, Minus,
-  TrendingUp, TrendingDown,
+  TrendingUp, TrendingDown, Upload,
 } from 'lucide-react';
 import { processesApi } from '@/lib/api';
 import Button from '@/components/ui/Button';
 import Header from '@/components/layout/Header';
+import UploadCvsModal from '@/components/ui/UploadCvsModal';
 import { formatPercent } from '@/lib/utils';
 import type { MatchCategory } from '@/lib/types';
 import type { DualMatchCandidate, DualKanbanResponse } from '@/lib/types';
@@ -19,14 +20,15 @@ import type { DualMatchCandidate, DualKanbanResponse } from '@/lib/types';
 type ViewMode = 'both' | 'cv' | 'profiling';
 
 // ─── Category config ──────────────────────────────────────────────────────────
-const CATEGORY_STYLES: Record<MatchCategory, { bg: string; color: string; label: string; headerBg: string; headerBorder: string }> = {
-  HIGH:   { bg: '#ECFDF5', color: '#059669', label: 'Alto',  headerBg: '#F0FDF4', headerBorder: '#BBF7D0' },
-  MEDIUM: { bg: '#FFFBEB', color: '#D97706', label: 'Medio', headerBg: '#FEFCE8', headerBorder: '#FDE68A' },
-  LOW:    { bg: '#FEF2F2', color: '#DC2626', label: 'Bajo',  headerBg: '#FFF1F2', headerBorder: '#FECDD3' },
+const CATEGORY_STYLES: Record<string, { bg: string; color: string; label: string; headerBg: string; headerBorder: string }> = {
+  HIGH:            { bg: '#ECFDF5', color: '#059669', label: 'Alto',           headerBg: '#F0FDF4', headerBorder: '#BBF7D0' },
+  MEDIUM:          { bg: '#FFFBEB', color: '#D97706', label: 'Medio',          headerBg: '#FEFCE8', headerBorder: '#FDE68A' },
+  LOW:             { bg: '#FEF2F2', color: '#DC2626', label: 'Bajo',           headerBg: '#FFF1F2', headerBorder: '#FECDD3' },
+  NOT_RECOMMENDED: { bg: '#F8FAFC', color: '#94A3B8', label: 'No recomendado', headerBg: '#F1F5F9', headerBorder: '#CBD5E1' },
 };
 
-function CategoryPill({ category }: { category: MatchCategory }) {
-  const s = CATEGORY_STYLES[category];
+function CategoryPill({ category }: { category: string | null | undefined }) {
+  const s = CATEGORY_STYLES[category ?? 'LOW'] ?? CATEGORY_STYLES.LOW;
   return (
     <span
       className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
@@ -244,6 +246,7 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
   const qc = useQueryClient();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>('both');
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
 
   const { data: kanban, isLoading, refetch } = useQuery({
     queryKey: ['kanban', id],
@@ -280,12 +283,18 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
   return (
     <div>
       <Header title="Match & Ranking" subtitle="Candidatos evaluados por IA — visualización dual">
-        <Link href={`/hiring-processes/${id}`}>
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Proceso
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setIsUploadOpen(true)}>
+            <Upload className="w-3.5 h-3.5" />
+            Subir más CVs
           </Button>
-        </Link>
+          <Link href={`/hiring-processes/${id}`}>
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Proceso
+            </Button>
+          </Link>
+        </div>
       </Header>
 
       {/* Control bar */}
@@ -356,6 +365,12 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
           ))}
         </div>
       )}
+
+      <UploadCvsModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        processId={id}
+      />
     </div>
   );
 }

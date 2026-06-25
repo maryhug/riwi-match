@@ -122,6 +122,21 @@ export interface JobDescriptionSaved {
   created_at: string;
 }
 
+export interface BreakdownItem {
+  raw_score?: number;
+  weighted_score?: number;
+  weight: number;
+}
+
+export interface MatchBreakdown {
+  technical_skills?: BreakdownItem;
+  relevant_experience?: BreakdownItem;
+  seniority?: BreakdownItem;
+  industry_domain?: BreakdownItem;
+  languages?: BreakdownItem;
+  education_certifications?: BreakdownItem;
+}
+
 export interface CandidateListItem {
   rank: number;
   process_candidate_id: string;
@@ -134,9 +149,11 @@ export interface CandidateListItem {
   match_category: string | null;
   whatsapp_consent: string | null;
   normalized_cv_url: string | null;
+  city?: string | null;
   match_summary?: string;
   strengths?: string[];
   gaps?: string[];
+  breakdown?: MatchBreakdown;
 }
 
 export interface CandidateListResponse {
@@ -279,7 +296,7 @@ export interface CandidateDetail {
     summary: string | null;
     strengths: string[];
     gaps: string[];
-    breakdown: Record<string, number | string>;
+    breakdown: MatchBreakdown;
   } | null;
 }
 
@@ -386,6 +403,7 @@ export interface CreateHiringProcessDTO {
   area: string;
   seniority: string;
   budget_max_usd: number;
+  match_weights_override?: Record<string, number>;
 }
 
 export interface CreateQuestionSetDTO {
