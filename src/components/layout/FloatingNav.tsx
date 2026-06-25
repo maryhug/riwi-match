@@ -53,24 +53,31 @@ interface ItemProps {
 }
 
 function NavItem({ id, icon: Icon, label, color, iconColor, active, isHorizontal }: ItemProps) {
+  const [hovered, setHovered] = useState(false);
+  const lit = active || hovered;
+
   return (
-    <Link href={id} title={label}>
+    <Link
+      href={id}
+      title={label}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <div
         className="flex items-center gap-2 transition-all duration-200 cursor-pointer select-none"
         style={{
-          padding: active ? (isHorizontal ? '6px 12px 6px 8px' : '7px 10px') : '8px',
+          padding: lit ? (isHorizontal ? '6px 12px 6px 8px' : '7px 10px') : '8px',
           borderRadius: 999,
-          background: active ? color : 'transparent',
+          background: lit ? color : 'transparent',
           flexDirection: isHorizontal ? 'row' : 'column',
-          minWidth: active && isHorizontal ? 'auto' : undefined,
         }}
       >
         <Icon
           size={17}
-          strokeWidth={active ? 2.4 : 1.8}
-          style={{ color: active ? iconColor : '#94A3B8', flexShrink: 0 }}
+          strokeWidth={lit ? 2.4 : 1.8}
+          style={{ color: lit ? iconColor : '#94A3B8', flexShrink: 0 }}
         />
-        {active && isHorizontal && (
+        {lit && (
           <span
             className="text-[11px] font-semibold whitespace-nowrap leading-none"
             style={{ color: iconColor }}
