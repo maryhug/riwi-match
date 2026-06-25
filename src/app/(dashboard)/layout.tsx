@@ -29,7 +29,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <Sidebar />
-      <main className="min-h-screen bg-slate-50 px-8 py-7" style={{ marginLeft: 240 }}>
+      <main className="min-h-screen bg-slate-50 px-8 py-7" style={{ marginLeft: 104 }}>
         {children}
       </main>
     </div>

@@ -49,18 +49,18 @@ export default function Header({ title, subtitle, children, rightBelow }: Header
             <input
               type="text"
               placeholder="Buscar..."
-              className="pl-8 pr-3 py-1.5 text-xs bg-white rounded-md border border-slate-200 outline-none w-48 placeholder:text-slate-400 text-slate-700 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-colors"
+              className="pl-8 pr-3 py-1.5 text-xs bg-white rounded border border-slate-200 outline-none w-48 placeholder:text-slate-400 text-slate-700 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-colors"
             />
           </div>
 
           {/* Bell */}
-          <button className="relative w-8 h-8 rounded-md flex items-center justify-center transition-colors bg-white border border-slate-200 hover:bg-slate-50">
+          <button className="relative w-8 h-8 rounded flex items-center justify-center transition-colors bg-white border border-slate-200 hover:bg-slate-50">
             <Bell className="w-3.5 h-3.5 text-slate-500" strokeWidth={1.8} />
             <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500" />
           </button>
 
           {/* User chip */}
-          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white border border-slate-200">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-white border border-slate-200">
             <div
               className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-white text-[10px] font-bold"
               style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #DC2626 100%)' }}

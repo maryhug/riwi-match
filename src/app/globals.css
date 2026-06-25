@@ -39,9 +39,9 @@
   --color-surface:        #FFFFFF;
 
   /* ── Sidebar ── */
-  --color-rail:           #FFFFFF;
-  --color-rail-muted:     #94A3B8;
-  --color-rail-active:    #7C3AED;
+  --color-rail:           #0F172A;
+  --color-rail-muted:     #64748B;
+  --color-rail-active:    #DC2626;
   --color-rail-active-foreground: #FFFFFF;
   --color-canvas:         #F8FAFC;
 
