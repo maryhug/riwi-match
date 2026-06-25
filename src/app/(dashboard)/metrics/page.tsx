@@ -28,7 +28,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
       <CardContent className="flex items-center justify-between p-6">
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{label}</p>
-          <p className="text-2xl font-bold" style={{ color: '#1E1B4B' }}>{value}</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--color-ink)' }}>{value}</p>
         </div>
         <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: '#F97316' }}>
           <DollarSign className="w-4 h-4 text-white" />
@@ -56,14 +56,14 @@ export default function MetricsPage() {
       {/* Chart */}
       <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between px-8 py-6">
-          <h3 className="font-semibold" style={{ color: '#1E1B4B' }}>Consumo del período</h3>
+          <h3 className="font-semibold" style={{ color: 'var(--color-ink)' }}>Consumo del período</h3>
           <div className="flex bg-slate-100 rounded-lg p-1">
             {['Diario', 'Semanal', 'Mensual'].map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p as any)}
                 className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                  period === p ? 'bg-violet-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  period === p ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 {p}
@@ -84,10 +84,10 @@ export default function MetricsPage() {
               <Line 
                 type="monotone" 
                 dataKey="cost" 
-                stroke="#967DF5" 
+                stroke="var(--color-primary)" 
                 strokeWidth={3} 
-                dot={{ r: 4, fill: '#967DF5', strokeWidth: 0 }} 
-                activeDot={{ r: 6, fill: '#967DF5', stroke: 'white', strokeWidth: 2 }}
+                dot={{ r: 4, fill: 'var(--color-primary)', strokeWidth: 0 }} 
+                activeDot={{ r: 6, fill: 'var(--color-primary)', stroke: 'white', strokeWidth: 2 }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -100,7 +100,7 @@ export default function MetricsPage() {
         {/* Por modelo */}
         <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
           <CardHeader className="px-8 py-6">
-            <h3 className="font-semibold" style={{ color: '#1E1B4B' }}>Por modelo</h3>
+            <h3 className="font-semibold" style={{ color: 'var(--color-ink)' }}>Por modelo</h3>
           </CardHeader>
           <CardContent className="px-8 pb-8 pt-0 space-y-6">
             <div className="flex justify-between items-center text-sm">
@@ -137,7 +137,7 @@ export default function MetricsPage() {
         {/* Límites y alertas */}
         <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
           <CardHeader className="px-8 py-6">
-            <h3 className="font-semibold" style={{ color: '#1E1B4B' }}>Límites y alertas</h3>
+            <h3 className="font-semibold" style={{ color: 'var(--color-ink)' }}>Límites y alertas</h3>
           </CardHeader>
           <CardContent className="px-8 pb-8 pt-0 space-y-5">
             
@@ -172,10 +172,10 @@ export default function MetricsPage() {
                 <span className="text-xs font-bold text-orange-700 relative z-10">92%</span>
               </div>
               
-              <div className="bg-red-50 rounded-lg px-4 py-2 relative overflow-hidden flex justify-between items-center">
-                <div className="absolute top-0 left-0 h-full bg-red-100/50" style={{ width: '100%' }}></div>
-                <span className="text-xs font-semibold text-red-800 relative z-10 flex items-center gap-2"><span className="text-red-500">⚠️</span> Account Manager - 100%</span>
-                <span className="text-xs font-bold text-red-700 relative z-10">100%</span>
+              <div className="bg-coral-light rounded-lg px-4 py-2 relative overflow-hidden flex justify-between items-center">
+                <div className="absolute top-0 left-0 h-full bg-coral-light/50" style={{ width: '100%' }}></div>
+                <span className="text-xs font-semibold text-red-800 relative z-10 flex items-center gap-2"><span className="text-coral">⚠️</span> Account Manager - 100%</span>
+                <span className="text-xs font-bold text-coral-dark relative z-10">100%</span>
               </div>
             </div>
 

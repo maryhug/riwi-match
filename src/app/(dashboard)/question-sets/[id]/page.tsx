@@ -74,7 +74,7 @@ function KeywordInput({
             key={kw} 
             className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${
               colorScheme === 'emerald' 
-                ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                ? 'bg-mint-light text-mint border-mint-light' 
                 : 'bg-orange-50 text-orange-600 border-orange-100'
             }`}
           >
@@ -96,7 +96,7 @@ function KeywordInput({
           onFocus={() => setShowSuggestions(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           placeholder="Escribe y presiona Enter o , (coma)"
-          className="w-full text-sm border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500"
+          className="w-full text-sm border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-primary"
         />
         {showSuggestions && inputValue && suggestions.length > 0 && (
           <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-40 overflow-y-auto">
@@ -104,7 +104,7 @@ function KeywordInput({
               <div 
                 key={s} 
                 onClick={() => handleAdd(s)}
-                className="px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-violet-600 cursor-pointer transition-colors"
+                className="px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary-dark cursor-pointer transition-colors"
               >
                 {s}
               </div>
@@ -196,7 +196,7 @@ export default function QuestionSetDetailPage() {
           <ArrowLeft className="w-4 h-4" />
           Volver a sets
         </Link>
-        <h1 className="text-2xl font-bold mb-1" style={{ color: '#1E1B4B' }}>Profiling Backend Sr v2</h1>
+        <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-ink)' }}>Profiling Backend Sr v2</h1>
         <p className="text-sm text-slate-500">Editor de preguntas - arrastra para reordenar.</p>
       </div>
 
@@ -218,7 +218,7 @@ export default function QuestionSetDetailPage() {
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                       PREGUNTA {index + 1}
                     </span>
-                    <span className="text-[10px] font-bold text-violet-600 px-2 py-0.5 bg-violet-50 rounded">
+                    <span className="text-[10px] font-bold text-primary-dark px-2 py-0.5 bg-primary-xlight rounded">
                       {q.type}
                     </span>
                     {q.critical && (
@@ -235,13 +235,13 @@ export default function QuestionSetDetailPage() {
                     </span>
                     <button 
                       onClick={() => handleOpenEdit(q)}
-                      className="text-slate-300 hover:text-violet-600 transition-colors"
+                      className="text-slate-300 hover:text-primary-dark transition-colors"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => handleDelete(q.id)}
-                      className="text-slate-300 hover:text-red-500 transition-colors"
+                      className="text-slate-300 hover:text-coral transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -257,7 +257,7 @@ export default function QuestionSetDetailPage() {
                       <span className="text-slate-400">Keywords positivas:</span>
                       <div className="flex gap-2">
                         {q.positiveKeywords.map(kw => (
-                          <span key={kw} className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
+                          <span key={kw} className="px-2 py-0.5 rounded-full bg-mint-light text-mint border border-mint-light">
                             {kw}
                           </span>
                         ))}
@@ -298,7 +298,7 @@ export default function QuestionSetDetailPage() {
       <div className="pt-4">
         <button 
           onClick={handleOpenNew}
-          className="w-full py-4 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 hover:text-violet-600 hover:border-violet-300 hover:bg-violet-50/50 transition-all flex items-center justify-center gap-2 font-medium"
+          className="w-full py-4 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 hover:text-primary-dark hover:border-primary-light hover:bg-primary-xlight/50 transition-all flex items-center justify-center gap-2 font-medium"
         >
           <Plus className="w-5 h-5" />
           Nueva pregunta
@@ -328,7 +328,7 @@ export default function QuestionSetDetailPage() {
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   placeholder="Ej. ¿Cuántos años de experiencia tienes?"
-                  className="w-full text-sm border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500 min-h-[80px]"
+                  className="w-full text-sm border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-primary min-h-[80px]"
                 />
               </div>
 
@@ -338,7 +338,7 @@ export default function QuestionSetDetailPage() {
                   <select 
                     value={type}
                     onChange={(e) => setType(e.target.value)}
-                    className="w-full text-sm border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    className="w-full text-sm border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="Abierta">Abierta</option>
                     <option value="Numérica">Numérica</option>
@@ -350,7 +350,7 @@ export default function QuestionSetDetailPage() {
                     type="number"
                     value={weight}
                     onChange={(e) => setWeight(Number(e.target.value))}
-                    className="w-full text-sm border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    className="w-full text-sm border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
               </div>
@@ -380,7 +380,7 @@ export default function QuestionSetDetailPage() {
                     type="checkbox" 
                     checked={critical}
                     onChange={(e) => setCritical(e.target.checked)}
-                    className="w-4 h-4 text-violet-600 rounded border-slate-300 focus:ring-violet-500"
+                    className="w-4 h-4 text-primary-dark rounded border-slate-300 focus:ring-primary"
                   />
                   <div>
                     <span className="block text-sm font-semibold text-slate-900">Pregunta crítica (Dealbreaker)</span>
@@ -399,7 +399,7 @@ export default function QuestionSetDetailPage() {
               </button>
               <button 
                 onClick={handleSave}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 transition-colors shadow-sm"
+                className="px-5 py-2.5 rounded-xl text-sm font-medium text-white bg-primary-dark hover:bg-primary-dark transition-colors shadow-sm"
               >
                 Guardar pregunta
               </button>

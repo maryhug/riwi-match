@@ -8,9 +8,9 @@ import Header from '@/components/layout/Header';
 const MOCK_PROCESSES = [
   { id: 1, name: 'Desarrollador Backend Node Sr', role: 'Backend - Sr', area: 'Tecnología', recruiter: 'Camila Restrepo', status: 'Profiling en ejecución', statusColor: 'bg-purple-100 text-purple-700', cand: 24, match: '72%', cost: '$184.50', date: '2024-06-02' },
   { id: 2, name: 'Data Engineer Medellín', role: 'Data Engineer - Sr', area: 'Datos', recruiter: 'Julián Marín', status: 'Match procesado', statusColor: 'bg-indigo-100 text-indigo-700', cand: 18, match: '68%', cost: '$92.30', date: '2024-05-08' },
-  { id: 3, name: 'QA Automation Jr', role: 'QA Automation - Jr', area: 'Tecnología', recruiter: 'Camila Restrepo', status: 'CVs cargados', statusColor: 'bg-violet-100 text-violet-700', cand: 31, match: '—', cost: '$12.40', date: '2024-05-15' },
-  { id: 4, name: 'Product Designer Sr', role: 'Product Designer - Sr', area: 'Diseño', recruiter: 'Andrés López', status: 'Profiling completado', statusColor: 'bg-emerald-100 text-emerald-700', cand: 14, match: '81%', cost: '$145.00', date: '2024-05-13' },
-  { id: 5, name: 'DevOps Engineer', role: 'DevOps - Ssr', area: 'Tecnología', recruiter: 'Julián Marín', status: 'Profiling configurado', statusColor: 'bg-violet-100 text-violet-700', cand: 9, match: '74%', cost: '$56.20', date: '2024-06-01' },
+  { id: 3, name: 'QA Automation Jr', role: 'QA Automation - Jr', area: 'Tecnología', recruiter: 'Camila Restrepo', status: 'CVs cargados', statusColor: 'bg-primary-light text-primary-dark', cand: 31, match: '—', cost: '$12.40', date: '2024-05-15' },
+  { id: 4, name: 'Product Designer Sr', role: 'Product Designer - Sr', area: 'Diseño', recruiter: 'Andrés López', status: 'Profiling completado', statusColor: 'bg-mint-light text-mint', cand: 14, match: '81%', cost: '$145.00', date: '2024-05-13' },
+  { id: 5, name: 'DevOps Engineer', role: 'DevOps - Ssr', area: 'Tecnología', recruiter: 'Julián Marín', status: 'Profiling configurado', statusColor: 'bg-primary-light text-primary-dark', cand: 9, match: '74%', cost: '$56.20', date: '2024-06-01' },
   { id: 6, name: 'Account Manager Bogotá', role: 'Account Manager - Sr', area: 'Comercial', recruiter: 'Laura Vélez', status: 'Cerrado', statusColor: 'bg-slate-100 text-slate-600', cand: 22, match: '70%', cost: '$198.70', date: '2024-04-30' },
   { id: 7, name: 'Frontend React Mid', role: 'Frontend - Ssr', area: 'Tecnología', recruiter: 'Camila Restrepo', status: 'Borrador', statusColor: 'bg-slate-100 text-slate-600', cand: 0, match: '—', cost: '$0.00', date: '2024-06-09' },
   { id: 8, name: 'People Partner LATAM', role: 'People Partner - Sr', area: 'Personas', recruiter: 'Andrés López', status: 'Archivado', statusColor: 'bg-slate-100 text-slate-600', cand: 11, match: '65%', cost: '$18.10', date: '2024-03-20' },
@@ -23,7 +23,7 @@ function StatCard({ label, value, subtext, icon: Icon, color }: any) {
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{label}</p>
           <div className="flex items-baseline gap-2">
-            <p className="text-2xl font-bold" style={{ color: '#1E1B4B' }}>{value}</p>
+            <p className="text-2xl font-bold" style={{ color: 'var(--color-ink)' }}>{value}</p>
           </div>
           <p className="text-xs mt-1" style={{ color: subtext.includes('+') ? '#059669' : '#94A3B8' }}>{subtext}</p>
         </div>
@@ -84,7 +84,7 @@ export default function HiringProcessesPage() {
       {/* Table */}
       <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between px-8 py-6 border-b border-slate-100">
-          <h3 className="font-semibold" style={{ color: '#1E1B4B' }}>Listado de procesos</h3>
+          <h3 className="font-semibold" style={{ color: 'var(--color-ink)' }}>Listado de procesos</h3>
           <div className="flex gap-4">
             <button className="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-700">
               <Filter className="w-3.5 h-3.5" /> Estado
@@ -122,7 +122,7 @@ export default function HiringProcessesPage() {
                   <td className="px-6 py-4 text-slate-500 text-xs">{proc.area}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-[10px] font-bold">
+                      <div className="w-6 h-6 rounded-full bg-primary-light text-primary-dark flex items-center justify-center text-[10px] font-bold">
                         {proc.recruiter.split(' ').map(n => n[0]).join('')}
                       </div>
                       <span className="text-slate-700 text-xs font-medium">{proc.recruiter}</span>

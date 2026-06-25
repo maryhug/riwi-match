@@ -62,8 +62,8 @@ function ChipInput({
   return (
     <div className="space-y-2">
       <div>
-        <label className="block text-sm font-semibold mb-0.5" style={{ color: '#1E1B4B' }}>{label}</label>
-        <p className="text-xs" style={{ color: '#9CA3AF' }}>{sublabel}</p>
+        <label className="block text-sm font-semibold mb-0.5" style={{ color: 'var(--color-ink)' }}>{label}</label>
+        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{sublabel}</p>
       </div>
       <div className="flex gap-2">
         <input
@@ -74,12 +74,12 @@ function ChipInput({
           placeholder={placeholder}
           className="flex-1 text-sm px-3 py-2 rounded-xl outline-none transition-all"
           style={{
-            border: `1.5px solid #EEE9FF`,
-            color: '#1E1B4B',
+            border: `1.5px solid var(--color-primary-light)`,
+            color: 'var(--color-ink)',
             background: 'white',
           }}
           onFocus={(e) => { e.target.style.borderColor = accentColor; e.target.style.boxShadow = `0 0 0 3px ${accentBg}`; }}
-          onBlur={(e)  => { e.target.style.borderColor = '#EEE9FF'; e.target.style.boxShadow = 'none'; }}
+          onBlur={(e)  => { e.target.style.borderColor = 'var(--color-primary-light)'; e.target.style.boxShadow = 'none'; }}
         />
         <button
           type="button"
@@ -142,7 +142,7 @@ function QuestionCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <GripVertical className="w-4 h-4" style={{ color: '#C4B2F9' }} />
-            <span className="text-sm font-semibold" style={{ color: '#1E1B4B' }}>
+            <span className="text-sm font-semibold" style={{ color: 'var(--color-ink)' }}>
               Pregunta {i + 1}
             </span>
             {q.is_critical && (
@@ -160,7 +160,7 @@ function QuestionCard({
             disabled={total === 1}
             className="transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             style={{ color: '#D1D5DB' }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = '#FF596D'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-coral)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = '#D1D5DB'; }}
           >
             <Trash2 className="w-4 h-4" />
@@ -206,11 +206,11 @@ function QuestionCard({
                 checked={q.is_critical}
                 onChange={(e) => onUpdate('is_critical', e.target.checked)}
                 className="w-4 h-4 rounded"
-                style={{ accentColor: '#967DF5' }}
+                style={{ accentColor: 'var(--color-primary)' }}
               />
-              <span className="text-sm font-semibold" style={{ color: '#1E1B4B' }}>Critica</span>
+              <span className="text-sm font-semibold" style={{ color: 'var(--color-ink)' }}>Critica</span>
             </label>
-            <p className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>Bloquea avance si falla</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Bloquea avance si falla</p>
           </div>
         </div>
 
@@ -237,7 +237,7 @@ function QuestionCard({
             placeholder="ej: escalabilidad, microservicios..."
             values={posKeywords}
             onChange={onPosChange}
-            accentColor="#8ED9C4"
+            accentColor="var(--color-mint)"
             accentBg="#DAFBF2"
           />
 
@@ -248,7 +248,7 @@ function QuestionCard({
             placeholder="ej: nunca lo use, no se..."
             values={riskKeywords}
             onChange={onRiskChange}
-            accentColor="#FF596D"
+            accentColor="var(--color-coral)"
             accentBg="#FFF4F2"
           />
         </div>
@@ -329,7 +329,7 @@ export default function NewQuestionSetPage() {
         {/* Datos generales */}
         <Card>
           <CardHeader>
-            <h2 className="font-semibold" style={{ color: '#1E1B4B' }}>Datos del cuestionario</h2>
+            <h2 className="font-semibold" style={{ color: 'var(--color-ink)' }}>Datos del cuestionario</h2>
           </CardHeader>
           <CardContent className="space-y-4">
             <Input
@@ -352,10 +352,10 @@ export default function NewQuestionSetPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-semibold" style={{ color: '#1E1B4B' }}>
-                Preguntas <span style={{ color: '#9CA3AF', fontWeight: 400 }}>({questions.length})</span>
+              <h2 className="font-semibold" style={{ color: 'var(--color-ink)' }}>
+                Preguntas <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>({questions.length})</span>
               </h2>
-              <p className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                 Define el texto, la respuesta deseada y las palabras clave para la evaluacion de IA.
               </p>
             </div>

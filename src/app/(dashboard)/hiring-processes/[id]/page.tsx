@@ -36,24 +36,24 @@ function Stepper({ currentStep }: { currentStep: number }) {
           <div key={i} className="flex items-center flex-1">
             <div className={`flex flex-col items-center gap-1 ${i < STEPS.length - 1 ? 'flex-1' : ''}`}>
               <div className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-colors ${
-                done ? 'bg-violet-600 border-violet-600' :
-                active ? 'border-violet-600 bg-white' :
+                done ? 'bg-primary-dark border-primary-dark' :
+                active ? 'border-primary-dark bg-white' :
                 'border-slate-300 bg-white'
               }`}>
                 {done ? (
                   <CheckCircle2 className="w-5 h-5 text-white" />
                 ) : (
-                  <Icon className={`w-4 h-4 ${active ? 'text-violet-600' : 'text-slate-400'}`} />
+                  <Icon className={`w-4 h-4 ${active ? 'text-primary-dark' : 'text-slate-400'}`} />
                 )}
               </div>
               <span className={`text-xs font-medium hidden sm:block whitespace-nowrap ${
-                active ? 'text-violet-600' : done ? 'text-slate-600' : 'text-slate-400'
+                active ? 'text-primary-dark' : done ? 'text-slate-600' : 'text-slate-400'
               }`}>
                 {step.label}
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`h-0.5 flex-1 mx-2 mb-4 ${done ? 'bg-violet-600' : 'bg-slate-200'}`} />
+              <div className={`h-0.5 flex-1 mx-2 mb-4 ${done ? 'bg-primary-dark' : 'bg-slate-200'}`} />
             )}
           </div>
         );
@@ -94,7 +94,7 @@ function JDStep({ processId }: { processId: string }) {
       <Card>
         <CardHeader>
           <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-violet-500" />
+            <Sparkles className="w-4 h-4 text-primary" />
             Parsear Job Description con IA
           </h3>
           <p className="text-sm text-slate-500 mt-0.5">
@@ -133,8 +133,8 @@ function JDStep({ processId }: { processId: string }) {
           <CardContent className="space-y-5">
             <JDSection
               title="Must-Have"
-              color="text-emerald-700"
-              bg="bg-emerald-50"
+              color="text-mint"
+              bg="bg-mint-light"
               items={jd.must_have}
               editMode={editMode}
               onChange={(items) => setStructuredJD((prev) => ({ ...prev!, must_have: items }))}
@@ -149,8 +149,8 @@ function JDStep({ processId }: { processId: string }) {
             />
             <JDSection
               title="Deal-Breakers"
-              color="text-red-700"
-              bg="bg-red-50"
+              color="text-coral-dark"
+              bg="bg-coral-light"
               items={jd.deal_breakers}
               editMode={editMode}
               onChange={(items) => setStructuredJD((prev) => ({ ...prev!, deal_breakers: items }))}
@@ -258,7 +258,7 @@ function UploadCVsStep({ processId }: { processId: string }) {
       <Card>
         <CardHeader>
           <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-            <Upload className="w-4 h-4 text-violet-500" />
+            <Upload className="w-4 h-4 text-primary" />
             Carga masiva de CVs
           </h3>
           <p className="text-sm text-slate-500 mt-0.5">
@@ -271,7 +271,7 @@ function UploadCVsStep({ processId }: { processId: string }) {
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
             className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors ${
-              dragging ? 'border-violet-400 bg-violet-50' : 'border-slate-300 hover:border-violet-300 hover:bg-slate-50'
+              dragging ? 'border-primary bg-primary-xlight' : 'border-slate-300 hover:border-primary-light hover:bg-slate-50'
             }`}
           >
             <Upload className="w-10 h-10 text-slate-400 mx-auto mb-3" />
@@ -280,7 +280,7 @@ function UploadCVsStep({ processId }: { processId: string }) {
             </p>
             <p className="text-sm text-slate-500 mb-4">o haz clic para seleccionar archivos</p>
             <label className="cursor-pointer">
-              <span className="px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors">
+              <span className="px-4 py-2 bg-primary-dark text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors">
                 Seleccionar CVs
               </span>
               <input
@@ -305,7 +305,7 @@ function UploadCVsStep({ processId }: { processId: string }) {
                     </div>
                     <button
                       onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
-                      className="text-slate-400 hover:text-red-500 text-xs"
+                      className="text-slate-400 hover:text-coral text-xs"
                     >
                       ✕
                     </button>
@@ -328,7 +328,7 @@ function UploadCVsStep({ processId }: { processId: string }) {
       <Card>
         <CardHeader>
           <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-            <BarChart2 className="w-4 h-4 text-violet-500" />
+            <BarChart2 className="w-4 h-4 text-primary" />
             Ejecutar Match
           </h3>
           <p className="text-sm text-slate-500 mt-0.5">
@@ -336,8 +336,8 @@ function UploadCVsStep({ processId }: { processId: string }) {
           </p>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg mb-4">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+          <div className="flex items-center gap-3 p-4 bg-accent-light border border-amber-200 rounded-lg mb-4">
+            <AlertTriangle className="w-5 h-5 text-accent shrink-0" />
             <p className="text-sm text-amber-800">
               Asegúrate de haber subido todos los CVs antes de ejecutar el match. Este proceso puede tomar varios minutos.
             </p>
@@ -391,9 +391,9 @@ function ProfilingStep({ processId }: { processId: string }) {
   const statusColor: Record<string, string> = {
     PENDING: 'text-slate-500 bg-slate-100',
     CALLING: 'text-blue-700 bg-blue-100',
-    COMPLETED: 'text-emerald-700 bg-emerald-100',
-    FAILED: 'text-red-700 bg-red-100',
-    NO_ANSWER: 'text-amber-700 bg-amber-100',
+    COMPLETED: 'text-mint bg-mint-light',
+    FAILED: 'text-coral-dark bg-coral-light',
+    NO_ANSWER: 'text-accent bg-accent-light',
   };
 
   return (
@@ -402,7 +402,7 @@ function ProfilingStep({ processId }: { processId: string }) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-              <Phone className="w-4 h-4 text-violet-500" />
+              <Phone className="w-4 h-4 text-primary" />
               Estado de llamadas de profiling
             </h3>
             <Button
@@ -418,7 +418,7 @@ function ProfilingStep({ processId }: { processId: string }) {
         <div className="divide-y divide-slate-100">
           {isLoading ? (
             <div className="py-8 flex justify-center">
-              <div className="w-6 h-6 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-primary-dark border-t-transparent rounded-full animate-spin" />
             </div>
           ) : runs.length === 0 ? (
             <div className="py-10 text-center">
@@ -441,7 +441,7 @@ function ProfilingStep({ processId }: { processId: string }) {
                 </div>
                 <div className="flex items-center gap-3">
                   {run.advancement_prob && (
-                    <span className="text-xs font-semibold text-violet-700">
+                    <span className="text-xs font-semibold text-primary-dark">
                       Prob: {run.advancement_prob}
                     </span>
                   )}
@@ -471,7 +471,7 @@ export default function ProcessDetailPage({ params }: { params: Promise<{ id: st
   if (isLoading) {
     return (
       <div className="flex justify-center py-16">
-        <div className="w-8 h-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-primary-dark border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -492,11 +492,22 @@ export default function ProcessDetailPage({ params }: { params: Promise<{ id: st
       </Header>
 
       {/* Process info bar */}
-      <div className="flex items-center gap-4 mb-6 p-4 bg-white rounded-xl border border-slate-200">
+      <div className="flex items-center gap-6 mb-6 p-4 bg-white rounded-xl border border-slate-200">
         <StatusBadge status={process.status} />
-        <span className="text-sm text-slate-500">
-          Presupuesto máx: <strong className="text-slate-800">{formatCurrency(process.budget_max_usd)}</strong>
-        </span>
+        
+        {/* Cost visualizer */}
+        <div className="flex-1 max-w-sm px-6 py-1 border-x border-slate-100 flex items-center">
+          <div className="w-full">
+            <div className="flex justify-between text-xs font-medium mb-1.5">
+              <span className="text-primary-dark">Consumo IA: {formatCurrency(process.budget_max_usd * 0.45)}</span>
+              <span className="text-slate-500">Máx {formatCurrency(process.budget_max_usd)}</span>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+              <div className="bg-primary h-full rounded-full transition-all" style={{ width: '45%' }} />
+            </div>
+          </div>
+        </div>
+
         <div className="ml-auto">
           <Link href={`/hiring-processes/${id}/candidates`}>
             <Button variant="outline" size="sm">

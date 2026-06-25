@@ -21,9 +21,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col items-center gap-3">
           <div
             className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-            style={{ borderColor: '#967DF5', borderTopColor: 'transparent' }}
+            style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }}
           />
-          <p className="text-sm" style={{ color: '#9CA3AF' }}>Cargando...</p>
+          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Cargando...</p>
         </div>
       </div>
     );

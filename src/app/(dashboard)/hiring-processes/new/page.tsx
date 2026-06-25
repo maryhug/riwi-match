@@ -40,10 +40,14 @@ export default function NewProcessPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [jdTab, setJdTab] = useState<'write' | 'upload'>('write');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const handleNext = () => {
     if (step < 3) setStep(step + 1);
-    else router.push('/dashboard'); // Temporary route after creation
+    else {
+      // Simulate API call to create process
+      setShowSuccessModal(true);
+    }
   };
 
   const handleBack = () => {
@@ -62,7 +66,7 @@ export default function NewProcessPage() {
             </Link>
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold" style={{ color: '#1E1B4B' }}>Crear proceso</h1>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--color-ink)' }}>Crear proceso</h1>
             <p className="text-sm text-slate-500">Asistente en 3 pasos para configurar tu proceso de selección.</p>
           </div>
         </div>
@@ -72,25 +76,25 @@ export default function NewProcessPage() {
       <div className="flex items-center justify-center w-full max-w-2xl mx-auto mb-8">
         {/* Step 1 */}
         <div className="flex items-center">
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${step >= 1 ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${step >= 1 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'}`}>
             {step > 1 ? <CheckCircle2 className="w-4 h-4" /> : '1'}
           </div>
           <span className={`ml-2 text-xs font-medium ${step >= 1 ? 'text-slate-900' : 'text-slate-400'}`}>Datos básicos</span>
         </div>
-        <div className={`flex-1 h-[1px] mx-4 ${step >= 2 ? 'bg-violet-500' : 'bg-slate-200'}`} />
+        <div className={`flex-1 h-[1px] mx-4 ${step >= 2 ? 'bg-primary' : 'bg-slate-200'}`} />
         
         {/* Step 2 */}
         <div className="flex items-center">
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${step >= 2 ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${step >= 2 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'}`}>
             {step > 2 ? <CheckCircle2 className="w-4 h-4" /> : '2'}
           </div>
           <span className={`ml-2 text-xs font-medium ${step >= 2 ? 'text-slate-900' : 'text-slate-400'}`}>Job Description</span>
         </div>
-        <div className={`flex-1 h-[1px] mx-4 ${step >= 3 ? 'bg-violet-500' : 'bg-slate-200'}`} />
+        <div className={`flex-1 h-[1px] mx-4 ${step >= 3 ? 'bg-primary' : 'bg-slate-200'}`} />
 
         {/* Step 3 */}
         <div className="flex items-center">
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${step >= 3 ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${step >= 3 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'}`}>
             3
           </div>
           <span className={`ml-2 text-xs font-medium ${step >= 3 ? 'text-slate-900' : 'text-slate-400'}`}>CVs y profiling</span>
@@ -136,13 +140,13 @@ export default function NewProcessPage() {
             <div className="space-y-6">
               <div className="flex border-b border-slate-200 mb-4">
                 <button
-                  className={`pb-3 px-4 text-sm font-medium transition-colors border-b-2 ${jdTab === 'write' ? 'border-violet-600 text-violet-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                  className={`pb-3 px-4 text-sm font-medium transition-colors border-b-2 ${jdTab === 'write' ? 'border-primary-dark text-primary-dark' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                   onClick={() => setJdTab('write')}
                 >
                   Escribir JD
                 </button>
                 <button
-                  className={`pb-3 px-4 text-sm font-medium transition-colors border-b-2 ${jdTab === 'upload' ? 'border-violet-600 text-violet-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                  className={`pb-3 px-4 text-sm font-medium transition-colors border-b-2 ${jdTab === 'upload' ? 'border-primary-dark text-primary-dark' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                   onClick={() => setJdTab('upload')}
                 >
                   Cargar archivo
@@ -156,15 +160,15 @@ export default function NewProcessPage() {
                     rows={6}
                     className="resize-none"
                   />
-                  <div className="p-4 rounded-xl flex items-center justify-between" style={{ background: '#F9F7FF', border: '1px solid #EEE9FF' }}>
+                  <div className="p-4 rounded-xl flex items-center justify-between" style={{ background: '#F9F7FF', border: '1px solid var(--color-primary-light)' }}>
                     <div className="flex items-start gap-3">
-                      <Wand2 className="w-5 h-5 text-violet-600 mt-0.5" />
+                      <Wand2 className="w-5 h-5 text-primary-dark mt-0.5" />
                       <div>
                         <p className="text-sm font-semibold text-slate-900">Estructuración por IA</p>
                         <p className="text-xs text-slate-500">Extrae automáticamente criterios, skills y pesos sugeridos.</p>
                       </div>
                     </div>
-                    <Button variant="primary" style={{ background: '#967DF5' }}>
+                    <Button variant="primary" style={{ background: 'var(--color-primary)' }}>
                       Analizar JD con IA
                     </Button>
                   </div>
@@ -185,12 +189,12 @@ export default function NewProcessPage() {
           {step === 3 && (
             <div className="space-y-6">
               <div className="border-2 border-dashed border-slate-200 rounded-xl p-10 flex flex-col items-center justify-center text-center">
-                <div className="w-12 h-12 bg-violet-100 rounded-full flex items-center justify-center mb-4">
-                  <Upload className="w-6 h-6 text-violet-500" />
+                <div className="w-12 h-12 bg-primary-light rounded-full flex items-center justify-center mb-4">
+                  <Upload className="w-6 h-6 text-primary" />
                 </div>
                 <h3 className="font-semibold text-slate-900 mb-1">Arrastra los CVs aquí</h3>
                 <p className="text-sm text-slate-500 mb-4">PDF, DOCX, JPG, PNG - máx. 50 por lote - 10 MB c/u</p>
-                <Button variant="primary" style={{ background: '#967DF5' }}>Seleccionar archivos</Button>
+                <Button variant="primary" style={{ background: 'var(--color-primary)' }}>Seleccionar archivos</Button>
               </div>
 
               <div>
@@ -218,6 +222,33 @@ export default function NewProcessPage() {
           {step === 3 ? 'Crear proceso' : 'Siguiente →'}
         </Button>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center animate-in fade-in zoom-in duration-300">
+            <div className="w-16 h-16 bg-mint-light rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-8 h-8 text-mint" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Proceso creado</h2>
+            <p className="text-sm text-slate-500 mb-8">
+              El proceso de selección ha sido inicializado correctamente con los CVs y el Job Description seleccionados.
+            </p>
+            <div className="flex flex-col gap-3">
+              <Link href="/hiring-processes/1" className="w-full">
+                <Button className="w-full" style={{ background: 'var(--color-primary)' }}>
+                  Ir a gestionar proceso
+                </Button>
+              </Link>
+              <Link href="/hiring-processes" className="w-full">
+                <Button variant="outline" className="w-full">
+                  Volver al listado
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -101,7 +101,7 @@ export default function Sidebar() {
         width: 36,
         height: 36,
         borderRadius: '50%',
-        background: 'linear-gradient(135deg, #FF596D 0%, #967DF5 100%)',
+        background: 'linear-gradient(135deg, var(--color-coral) 0%, var(--color-primary) 100%)',
         border: '2px solid rgba(255,255,255,0.18)',
         display: 'flex',
         alignItems: 'center',
@@ -139,8 +139,8 @@ export default function Sidebar() {
         style={{ width: RAIL_W, height: RAIL_W }}
       >
         <svg width="24" height="24" viewBox="0 0 22 22" fill="none">
-          <rect x="9" y="2"  width="4" height="18" rx="2" fill="#FF596D" />
-          <rect x="2" y="9"  width="18" height="4" rx="2" fill="#FF596D" />
+          <rect x="9" y="2"  width="4" height="18" rx="2" fill="var(--color-coral)" />
+          <rect x="2" y="9"  width="18" height="4" rx="2" fill="var(--color-coral)" />
         </svg>
       </div>
 
@@ -277,7 +277,7 @@ export default function Sidebar() {
           <button
             aria-label="Cerrar sesión"
             onClick={handleLogout}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--color-rail-muted)] transition-colors hover:text-[var(--color-canvas)] hover:bg-[#FF596D]/10 hover:text-[#FF596D]"
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--color-rail-muted)] transition-colors hover:text-[var(--color-canvas)] hover:bg-[var(--color-coral)]/10 hover:text-[var(--color-coral)]"
           >
             <LogOut className="h-[20px] w-[20px]" strokeWidth={1.9} />
           </button>

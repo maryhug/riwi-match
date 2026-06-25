@@ -28,12 +28,12 @@ export default function Button({
   };
 
   const variants: Record<string, React.CSSProperties> = {
-    primary:   { background: '#967DF5', color: '#fff' },
-    accent:    { background: '#FFB863', color: '#fff' },
-    secondary: { background: '#EEE9FF', color: '#967DF5' },
+    primary:   { background: 'var(--color-primary)', color: '#fff' },
+    accent:    { background: 'var(--color-accent)', color: '#fff' },
+    secondary: { background: 'var(--color-primary-light)', color: 'var(--color-primary)' },
     ghost:     { background: 'transparent', color: '#6B7280' },
-    danger:    { background: '#FF596D', color: '#fff' },
-    outline:   { background: 'transparent', color: '#967DF5', border: '1.5px solid #967DF5' },
+    danger:    { background: 'var(--color-coral)', color: '#fff' },
+    outline:   { background: 'transparent', color: 'var(--color-primary)', border: '1.5px solid var(--color-primary)' },
   };
 
   return (

@@ -22,18 +22,18 @@ export function formatPercent(value: number): string {
 }
 
 export const matchCategoryConfig: Record<MatchCategory, { label: string; color: string; bg: string; border: string }> = {
-  HIGH: { label: 'Alto', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-  MEDIUM: { label: 'Medio', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
-  LOW: { label: 'Bajo', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
+  HIGH: { label: 'Alto', color: 'text-mint', bg: 'bg-mint-light', border: 'border-emerald-200' },
+  MEDIUM: { label: 'Medio', color: 'text-accent', bg: 'bg-accent-light', border: 'border-amber-200' },
+  LOW: { label: 'Bajo', color: 'text-coral-dark', bg: 'bg-coral-light', border: 'border-red-200' },
 };
 
 export const processStatusConfig: Record<ProcessStatus, { label: string; color: string; bg: string }> = {
   DRAFT: { label: 'Borrador', color: 'text-slate-600', bg: 'bg-slate-100' },
   READY_FOR_MATCH: { label: 'Listo para Match', color: 'text-blue-700', bg: 'bg-blue-50' },
-  CVS_UPLOADED: { label: 'CVs Cargados', color: 'text-violet-700', bg: 'bg-violet-50' },
+  CVS_UPLOADED: { label: 'CVs Cargados', color: 'text-primary-dark', bg: 'bg-primary-xlight' },
   MATCHING: { label: 'Procesando...', color: 'text-orange-700', bg: 'bg-orange-50' },
   PROFILING_CONFIGURED: { label: 'Profiling Activo', color: 'text-teal-700', bg: 'bg-teal-50' },
-  COMPLETED: { label: 'Completado', color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  COMPLETED: { label: 'Completado', color: 'text-mint', bg: 'bg-mint-light' },
 };
 
 export const processSteps = [

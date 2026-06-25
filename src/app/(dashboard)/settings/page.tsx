@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Settings, CheckCircle2 } from 'lucide-react';
+import { Settings, CheckCircle2, ChevronDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import Header from '@/components/layout/Header';
 
@@ -46,7 +46,7 @@ export default function SettingsPage() {
               onClick={() => setActiveTab(key)}
               className="px-4 py-1.5 rounded-full text-sm font-medium transition-all"
               style={{
-                background: active ? '#967DF5' : 'white',
+                background: active ? 'var(--color-primary)' : 'white',
                 color: active ? 'white' : '#6B7280',
                 border: active ? 'none' : '1px solid #E5E7EB',
               }}
@@ -75,25 +75,27 @@ export default function SettingsPage() {
                     <td className="px-8 py-5 font-medium text-slate-900">{user.name}</td>
                     <td className="px-8 py-5 text-slate-500">{user.email}</td>
                     <td className="px-8 py-5">
-                      <select
-                        value={user.role}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                        className="text-sm border-none bg-transparent text-slate-700 font-medium cursor-pointer focus:ring-0 focus:outline-none"
-                        style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
-                      >
-                        {ROLES.map(role => (
-                          <option key={role} value={role}>{role}</option>
-                        ))}
-                      </select>
-                      {/* Custom dropdown arrow */}
-                      <span className="ml-2 text-slate-400 text-xs">v</span>
+                      <div className="flex items-center">
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                          className="text-sm border-none bg-transparent text-slate-700 font-medium cursor-pointer focus:ring-0 focus:outline-none pr-2"
+                          style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
+                        >
+                          {ROLES.map(role => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                        </select>
+                        {/* Custom dropdown arrow */}
+                        <ChevronDown className="text-slate-400 w-4 h-4 shrink-0 pointer-events-none" />
+                      </div>
                     </td>
                     <td className="px-8 py-5">
                       <span
                         className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold"
                         style={{
                           background: user.status === 'Activo' ? '#DAFBF2' : '#F3F4F6',
-                          color: user.status === 'Activo' ? '#0D9488' : '#6B7280'
+                          color: user.status === 'Activo' ? '#8ED9C4' : '#6B7280'
                         }}
                       >
                         {user.status}
@@ -113,27 +115,33 @@ export default function SettingsPage() {
             <div className="divide-y divide-slate-100">
               <div className="flex items-center justify-between p-6">
                 <span className="text-sm font-medium text-slate-700">Modelo activo</span>
-                <select className="text-sm border-none bg-transparent text-slate-900 font-medium cursor-pointer focus:ring-0 focus:outline-none">
-                  <option>gpt-X - medium</option>
-                </select>
+                <div className="relative flex items-center">
+                  <select className="text-sm border-none bg-transparent text-slate-900 font-medium cursor-pointer focus:ring-0 focus:outline-none appearance-none pr-6 z-10" style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}>
+                    <option>gpt-X - medium</option>
+                  </select>
+                  <ChevronDown className="absolute right-0 text-slate-400 w-4 h-4 pointer-events-none" />
+                </div>
               </div>
               <div className="flex items-center justify-between p-6">
                 <span className="text-sm font-medium text-slate-700">Prompt de match</span>
-                <select className="text-sm border-none bg-transparent text-slate-900 font-medium cursor-pointer focus:ring-0 focus:outline-none">
-                  <option>Prompt match v3 — activo</option>
-                </select>
+                <div className="relative flex items-center">
+                  <select className="text-sm border-none bg-transparent text-slate-900 font-medium cursor-pointer focus:ring-0 focus:outline-none appearance-none pr-6 z-10" style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}>
+                    <option>Prompt match v3 — activo</option>
+                  </select>
+                  <ChevronDown className="absolute right-0 text-slate-400 w-4 h-4 pointer-events-none" />
+                </div>
               </div>
               <div className="flex items-center justify-between p-6">
                 <span className="text-sm font-medium text-slate-700">Umbral Match alto</span>
-                <input type="number" defaultValue={80} className="w-20 text-right text-sm border border-slate-200 rounded-lg py-1.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                <input type="number" defaultValue={80} className="w-20 text-right text-sm border border-slate-200 rounded-lg py-1.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary" />
               </div>
               <div className="flex items-center justify-between p-6">
                 <span className="text-sm font-medium text-slate-700">Umbral Match medio</span>
-                <input type="number" defaultValue={60} className="w-20 text-right text-sm border border-slate-200 rounded-lg py-1.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                <input type="number" defaultValue={60} className="w-20 text-right text-sm border border-slate-200 rounded-lg py-1.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary" />
               </div>
               <div className="flex items-center justify-between p-6">
                 <span className="text-sm font-medium text-slate-700">Umbral Match bajo</span>
-                <input type="number" defaultValue={40} className="w-20 text-right text-sm border border-slate-200 rounded-lg py-1.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                <input type="number" defaultValue={40} className="w-20 text-right text-sm border border-slate-200 rounded-lg py-1.5 px-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary" />
               </div>
             </div>
           </CardContent>
@@ -145,10 +153,10 @@ export default function SettingsPage() {
           <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
             <CardContent className="p-6">
               <div className="flex justify-between items-start mb-4">
-                <div className="w-10 h-10 rounded-xl bg-[#967DF5] flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-[var(--color-primary)] flex items-center justify-center">
                   <Settings className="w-5 h-5 text-white" />
                 </div>
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-[#DAFBF2] text-[#0D9488]">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-[#DAFBF2] text-[#8ED9C4]">
                   <CheckCircle2 className="w-3 h-3" /> Conectado
                 </span>
               </div>
@@ -160,7 +168,7 @@ export default function SettingsPage() {
                 <p className="text-sm font-medium text-slate-900 tracking-widest">•••••••••••••a3f2</p>
               </div>
 
-              <button className="w-full py-2.5 bg-[#967DF5] text-white rounded-xl text-sm font-medium hover:bg-violet-600 transition-colors">
+              <button className="w-full py-2.5 bg-[var(--color-primary)] text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors">
                 Probar conexión
               </button>
             </CardContent>
@@ -169,10 +177,10 @@ export default function SettingsPage() {
           <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
             <CardContent className="p-6">
               <div className="flex justify-between items-start mb-4">
-                <div className="w-10 h-10 rounded-xl bg-[#967DF5] flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-[var(--color-primary)] flex items-center justify-center">
                   <Settings className="w-5 h-5 text-white" />
                 </div>
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-[#DAFBF2] text-[#0D9488]">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-[#DAFBF2] text-[#8ED9C4]">
                   <CheckCircle2 className="w-3 h-3" /> Conectado
                 </span>
               </div>
@@ -184,7 +192,7 @@ export default function SettingsPage() {
                 <p className="text-sm font-medium text-slate-900 tracking-widest">•••••••••••••b81c</p>
               </div>
 
-              <button className="w-full py-2.5 bg-[#967DF5] text-white rounded-xl text-sm font-medium hover:bg-violet-600 transition-colors">
+              <button className="w-full py-2.5 bg-[var(--color-primary)] text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors">
                 Probar conexión
               </button>
             </CardContent>

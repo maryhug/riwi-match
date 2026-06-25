@@ -56,15 +56,15 @@ export default function QuestionSetsPage() {
               <CardContent className="p-6 flex flex-col h-full">
                 
                 <div className="flex justify-between items-start mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-violet-600" />
+                  <div className="w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-primary-dark" />
                   </div>
                   <div className="flex gap-2">
-                    <span className="text-[10px] font-bold text-violet-600 px-2 py-0.5 bg-violet-50 rounded">
+                    <span className="text-[10px] font-bold text-primary-dark px-2 py-0.5 bg-primary-xlight rounded">
                       {set.version}
                     </span>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                      set.status === 'Activo' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'
+                      set.status === 'Activo' ? 'bg-mint-light text-mint' : 'bg-slate-100 text-slate-500'
                     }`}>
                       {set.status}
                     </span>

@@ -12,8 +12,8 @@ export default function CircularProgress({
   value,
   size = 120,
   strokeWidth = 10,
-  color = '#967DF5',
-  trackColor = '#EEE9FF',
+  color = 'var(--color-primary)',
+  trackColor = 'var(--color-primary-light)',
   label,
   sublabel,
 }: CircularProgressProps) {
@@ -58,7 +58,7 @@ export default function CircularProgress({
             className="font-bold leading-none"
             style={{
               fontSize: size * 0.22,
-              color: '#1E1B4B',
+              color: 'var(--color-ink)',
               fontFamily: 'var(--font-display)',
             }}
           >
@@ -67,12 +67,12 @@ export default function CircularProgress({
         </div>
       </div>
       {label && (
-        <p className="text-sm font-semibold text-center" style={{ color: '#1E1B4B' }}>
+        <p className="text-sm font-semibold text-center" style={{ color: 'var(--color-ink)' }}>
           {label}
         </p>
       )}
       {sublabel && (
-        <p className="text-xs text-center" style={{ color: '#9CA3AF' }}>
+        <p className="text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
           {sublabel}
         </p>
       )}

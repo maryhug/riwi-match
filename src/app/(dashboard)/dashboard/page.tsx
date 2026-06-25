@@ -36,7 +36,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
     <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
       <CardContent className="p-6">
         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">{label}</p>
-        <p className="text-3xl font-bold" style={{ color: '#1E1B4B' }}>{value}</p>
+        <p className="text-3xl font-bold" style={{ color: 'var(--color-ink)' }}>{value}</p>
       </CardContent>
     </Card>
   );
@@ -45,17 +45,20 @@ function StatCard({ label, value }: { label: string; value: string }) {
 export default function DashboardPage() {
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <Header title="Dashboard de equipo" subtitle="Vista consolidada del equipo de Talent Acquisition." />
-        <div className="flex gap-3 pt-6">
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 shadow-sm">
-            Últimos 30 días <ChevronDown className="w-3 h-3" />
-          </button>
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 shadow-sm">
-            Todo el equipo <ChevronDown className="w-3 h-3" />
-          </button>
-        </div>
-      </div>
+      <Header
+        title="Dashboard de equipo"
+        subtitle="Vista consolidada del equipo de Talent Acquisition."
+        rightBelow={
+          <>
+            <button className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 shadow-sm">
+              Últimos 30 días <ChevronDown className="w-3 h-3" />
+            </button>
+            <button className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 shadow-sm">
+              Todo el equipo <ChevronDown className="w-3 h-3" />
+            </button>
+          </>
+        }
+      />
 
       {/* Top Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -70,7 +73,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
           <CardHeader className="px-8 py-6 pb-2">
-            <h3 className="font-semibold text-sm" style={{ color: '#1E1B4B' }}>CVs cargados por recruiter</h3>
+            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-ink)' }}>CVs cargados por recruiter</h3>
           </CardHeader>
           <CardContent className="px-8 pb-8 pt-0">
             <ResponsiveContainer width="100%" height={200}>
@@ -87,7 +90,7 @@ export default function DashboardPage() {
 
         <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
           <CardHeader className="px-8 py-6 pb-2">
-            <h3 className="font-semibold text-sm" style={{ color: '#1E1B4B' }}>Tendencia de calidad de CVs recibidos</h3>
+            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-ink)' }}>Tendencia de calidad de CVs recibidos</h3>
           </CardHeader>
           <CardContent className="px-8 pb-8 pt-0">
             <ResponsiveContainer width="100%" height={200}>
@@ -112,7 +115,7 @@ export default function DashboardPage() {
       {/* Table */}
       <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
         <CardHeader className="px-8 py-6 border-b border-slate-100">
-          <h3 className="font-semibold text-sm" style={{ color: '#1E1B4B' }}>Efectividad de avance por proceso</h3>
+          <h3 className="font-semibold text-sm" style={{ color: 'var(--color-ink)' }}>Efectividad de avance por proceso</h3>
         </CardHeader>
         <CardContent className="p-0">
           <table className="w-full text-sm text-left">
@@ -135,7 +138,7 @@ export default function DashboardPage() {
                   <td className="px-6 py-4 text-slate-900 text-xs text-right font-bold">{row.advance}</td>
                   <td className="px-6 py-4 text-slate-600 text-xs text-right">{row.cost}</td>
                   <td className="px-8 py-4 flex justify-center items-center">
-                    {row.flag ? <div className="w-1.5 h-1.5 rounded-full bg-red-500" /> : null}
+                    {row.flag ? <div className="w-1.5 h-1.5 rounded-full bg-coral" /> : null}
                   </td>
                 </tr>
               ))}
@@ -146,13 +149,13 @@ export default function DashboardPage() {
 
       {/* Insight Alert */}
       <div className="bg-[#FAF5FF] border border-[#F3E8FF] rounded-2xl p-6 flex gap-4 items-start">
-        <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
-          <Sparkles className="w-4 h-4 text-violet-600" />
+        <div className="w-8 h-8 rounded-full bg-primary-light flex items-center justify-center shrink-0">
+          <Sparkles className="w-4 h-4 text-primary-dark" />
         </div>
         <div>
           <h4 className="font-semibold text-slate-900 text-sm mb-1">Insight detectado</h4>
           <p className="text-xs text-slate-600">
-            El proceso <span className="font-medium text-slate-900">"QA Automation Jr"</span> tiene <span className="font-bold text-red-500">62% de CVs con error de lectura</span> — revisar la fuente de hunting o el formato exigido.
+            El proceso <span className="font-medium text-slate-900">"QA Automation Jr"</span> tiene <span className="font-bold text-coral">62% de CVs con error de lectura</span> — revisar la fuente de hunting o el formato exigido.
           </p>
         </div>
       </div>

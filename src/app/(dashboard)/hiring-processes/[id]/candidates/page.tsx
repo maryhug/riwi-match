@@ -35,7 +35,7 @@ function MatchBar({
     <div className="space-y-1">
       <div className="flex justify-between">
         <span className="text-xs font-medium" style={{ color: '#6B7280' }}>{label}</span>
-        <span className="text-xs font-semibold" style={{ color: '#1E1B4B' }}>{formatPercent(pct)}</span>
+        <span className="text-xs font-semibold" style={{ color: 'var(--color-ink)' }}>{formatPercent(pct)}</span>
       </div>
       <div className="h-1.5 rounded-full overflow-hidden" style={{ background: bg }}>
         <div
@@ -119,7 +119,7 @@ function CandidateCard({
       className="rounded-xl border transition-all duration-200"
       style={{
         background: 'white',
-        borderColor:    selected ? '#967DF5' : '#EEE9FF',
+        borderColor:    selected ? 'var(--color-primary)' : 'var(--color-primary-light)',
         boxShadow: selected
           ? '0 0 0 2px rgba(149,125,243,0.25), 0 2px 8px rgba(149,125,243,0.1)'
           : '0 1px 4px rgba(149,125,243,0.06)',
@@ -133,15 +133,15 @@ function CandidateCard({
             className="shrink-0 mt-0.5 transition-transform active:scale-90"
           >
             {selected
-              ? <CheckSquare className="w-5 h-5" style={{ color: '#967DF5' }} />
+              ? <CheckSquare className="w-5 h-5" style={{ color: 'var(--color-primary)' }} />
               : <Square className="w-5 h-5" style={{ color: '#D1D5DB' }} />}
           </button>
 
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold leading-tight truncate" style={{ color: '#1E1B4B' }}>
+            <p className="text-sm font-semibold leading-tight truncate" style={{ color: 'var(--color-ink)' }}>
               {pc.candidate.name} {pc.candidate.last_name}
             </p>
-            <p className="text-xs mt-0.5 truncate" style={{ color: '#9CA3AF' }}>
+            <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-muted)' }}>
               {pc.candidate.email}
             </p>
           </div>
@@ -159,14 +159,14 @@ function CandidateCard({
           {showCV && (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 mb-1">
-                <FileText className="w-3 h-3" style={{ color: '#967DF5' }} strokeWidth={2} />
-                <span className="text-xs font-semibold" style={{ color: '#967DF5' }}>Match CV</span>
+                <FileText className="w-3 h-3" style={{ color: 'var(--color-primary)' }} strokeWidth={2} />
+                <span className="text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>Match CV</span>
               </div>
               <MatchBar
                 label=""
                 pct={pc.cv_match_percentage}
-                color="#967DF5"
-                bg="#EEE9FF"
+                color="var(--color-primary)"
+                bg="var(--color-primary-light)"
               />
             </div>
           )}
@@ -174,13 +174,13 @@ function CandidateCard({
           {showProfiling && hasProfileMatch && profilingPct !== null && (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 mb-1">
-                <Mic className="w-3 h-3" style={{ color: '#8ED9C4' }} strokeWidth={2} />
-                <span className="text-xs font-semibold" style={{ color: '#8ED9C4' }}>Match Profiling</span>
+                <Mic className="w-3 h-3" style={{ color: 'var(--color-mint)' }} strokeWidth={2} />
+                <span className="text-xs font-semibold" style={{ color: 'var(--color-mint)' }}>Match Profiling</span>
               </div>
               <MatchBar
                 label=""
                 pct={profilingPct}
-                color="#8ED9C4"
+                color="var(--color-mint)"
                 bg="#DAFBF2"
               />
             </div>
@@ -189,7 +189,7 @@ function CandidateCard({
           {showProfiling && !hasProfileMatch && (
             <div
               className="flex items-center gap-2 text-xs rounded-lg px-3 py-2"
-              style={{ background: '#F9FAFB', color: '#9CA3AF', border: '1px dashed #E5E7EB' }}
+              style={{ background: '#F9FAFB', color: 'var(--color-text-muted)', border: '1px dashed #E5E7EB' }}
             >
               <Mic className="w-3.5 h-3.5" strokeWidth={1.8} />
               Profiling pendiente
@@ -202,9 +202,9 @@ function CandidateCard({
           <button
             onClick={() => setExpanded(!expanded)}
             className="flex items-center gap-1.5 text-xs font-medium transition-colors"
-            style={{ color: '#967DF5' }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = '#7A6CE0'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = '#967DF5'; }}
+            style={{ color: 'var(--color-primary)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-primary-dark)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-primary)'; }}
           >
             Justificacion IA
             {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -222,8 +222,8 @@ function CandidateCard({
           {showCV && pc.cv_match_explanation && (
             <div>
               <div className="flex items-center gap-1.5 mb-2">
-                <FileText className="w-3.5 h-3.5" style={{ color: '#967DF5' }} />
-                <span className="font-semibold" style={{ color: '#967DF5' }}>Analisis del CV</span>
+                <FileText className="w-3.5 h-3.5" style={{ color: 'var(--color-primary)' }} />
+                <span className="font-semibold" style={{ color: 'var(--color-primary)' }}>Analisis del CV</span>
               </div>
               <p className="mb-2" style={{ color: '#6B7280' }}>{pc.cv_match_explanation.summary}</p>
               {pc.cv_match_explanation.strengths?.length > 0 && (
@@ -231,7 +231,7 @@ function CandidateCard({
                   <p className="font-semibold mb-1" style={{ color: '#166534' }}>Fortalezas</p>
                   <ul className="space-y-0.5">
                     {pc.cv_match_explanation.strengths.map((s, i) => (
-                      <li key={i} className="flex items-start gap-1.5" style={{ color: '#374151' }}>
+                      <li key={i} className="flex items-start gap-1.5" style={{ color: 'var(--color-text)' }}>
                         <span style={{ color: '#16A34A' }}>+</span> {s}
                       </li>
                     ))}
@@ -243,7 +243,7 @@ function CandidateCard({
                   <p className="font-semibold mb-1" style={{ color: '#991B1B' }}>Brechas</p>
                   <ul className="space-y-0.5">
                     {pc.cv_match_explanation.gaps.map((g, i) => (
-                      <li key={i} className="flex items-start gap-1.5" style={{ color: '#374151' }}>
+                      <li key={i} className="flex items-start gap-1.5" style={{ color: 'var(--color-text)' }}>
                         <span style={{ color: '#DC2626' }}>-</span> {g}
                       </li>
                     ))}
@@ -264,10 +264,10 @@ function CandidateCard({
 
           {/* Profiling explanation */}
           {showProfiling && hasProfileMatch && pc.match_explanation?.summary && (
-            <div style={{ borderTop: showCV ? '1px solid #EEE9FF' : 'none', paddingTop: showCV ? '12px' : '0' }}>
+            <div style={{ borderTop: showCV ? '1px solid var(--color-primary-light)' : 'none', paddingTop: showCV ? '12px' : '0' }}>
               <div className="flex items-center gap-1.5 mb-2">
-                <Mic className="w-3.5 h-3.5" style={{ color: '#8ED9C4' }} />
-                <span className="font-semibold" style={{ color: '#8ED9C4' }}>Entrevista de voz</span>
+                <Mic className="w-3.5 h-3.5" style={{ color: 'var(--color-mint)' }} />
+                <span className="font-semibold" style={{ color: 'var(--color-mint)' }}>Entrevista de voz</span>
               </div>
               <p className="mb-2" style={{ color: '#6B7280' }}>{pc.match_explanation.summary}</p>
               {pc.match_explanation.strengths?.length > 0 && (
@@ -275,8 +275,8 @@ function CandidateCard({
                   <p className="font-semibold mb-1" style={{ color: '#166534' }}>Destacados</p>
                   <ul className="space-y-0.5">
                     {pc.match_explanation.strengths.map((s, i) => (
-                      <li key={i} className="flex items-start gap-1.5" style={{ color: '#374151' }}>
-                        <span style={{ color: '#8ED9C4' }}>+</span> {s}
+                      <li key={i} className="flex items-start gap-1.5" style={{ color: 'var(--color-text)' }}>
+                        <span style={{ color: 'var(--color-mint)' }}>+</span> {s}
                       </li>
                     ))}
                   </ul>
@@ -413,13 +413,13 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
       {/* Control bar */}
       <div
         className="flex items-center justify-between mb-5 px-5 py-3.5 rounded-xl"
-        style={{ background: 'white', border: '1px solid #EEE9FF' }}
+        style={{ background: 'white', border: '1px solid var(--color-primary-light)' }}
       >
         <div className="flex items-center gap-4">
           <p className="text-sm" style={{ color: '#6B7280' }}>
-            <strong style={{ color: '#1E1B4B' }}>{totalCandidates}</strong> candidatos evaluados
+            <strong style={{ color: 'var(--color-ink)' }}>{totalCandidates}</strong> candidatos evaluados
             {pendingCandidates > 0 && (
-              <span className="ml-2" style={{ color: '#D97706' }}>
+              <span className="ml-2" style={{ color: '#FFB863' }}>
                 <Loader2 className="inline w-3.5 h-3.5 animate-spin mr-1" />
                 {pendingCandidates} procesando
               </span>
@@ -428,7 +428,7 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
           {selectedIds.size > 0 && (
             <span
               className="text-sm font-semibold px-2.5 py-1 rounded-lg"
-              style={{ background: '#EEE9FF', color: '#7A6CE0' }}
+              style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary-dark)' }}
             >
               {selectedIds.size} seleccionado(s)
             </span>
@@ -439,7 +439,7 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
           {/* View mode toggle */}
           <div
             className="flex items-center rounded-xl overflow-hidden"
-            style={{ border: '1px solid #EEE9FF', background: '#F9F7FF' }}
+            style={{ border: '1px solid var(--color-primary-light)', background: '#F9F7FF' }}
           >
             {VIEW_OPTIONS.map(({ mode, label, icon: Icon }) => (
               <button
@@ -447,8 +447,8 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
                 onClick={() => setViewMode(mode)}
                 className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-all"
                 style={{
-                  background: viewMode === mode ? '#967DF5' : 'transparent',
-                  color:      viewMode === mode ? 'white' : '#9CA3AF',
+                  background: viewMode === mode ? 'var(--color-primary)' : 'transparent',
+                  color:      viewMode === mode ? 'white' : 'var(--color-text-muted)',
                 }}
               >
                 <Icon className="w-3.5 h-3.5" strokeWidth={viewMode === mode ? 2.5 : 2} />
@@ -479,7 +479,7 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
         <div className="flex justify-center py-20">
           <div
             className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-            style={{ borderColor: '#967DF5', borderTopColor: 'transparent' }}
+            style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }}
           />
         </div>
       ) : (

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Lock, AlertCircle } from 'lucide-react';
+import { Mail, Lock, AlertCircle, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
@@ -28,6 +28,8 @@ export default function LoginPage() {
   const router   = useRouter();
   const { login } = useAuth();
   const [error, setError] = useState('');
+  const [view, setView] = useState<'login' | 'forgot' | 'sent'>('login');
+  const [recoverEmail, setRecoverEmail] = useState('');
 
   const {
     register,
@@ -47,6 +49,19 @@ export default function LoginPage() {
     setError('Credenciales incorrectas. Usa los accesos de demo.');
   };
 
+  const handleRecover = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recoverEmail || !recoverEmail.includes('@')) {
+      setError('Por favor ingresa un correo válido.');
+      return;
+    }
+    setError('');
+    // Simulate API call
+    setTimeout(() => {
+      setView('sent');
+    }, 800);
+  };
+
   return (
     <div
       className="min-h-screen flex"
@@ -55,7 +70,7 @@ export default function LoginPage() {
       {/* Panel izquierdo decorativo */}
       <div
         className="hidden lg:flex flex-col justify-between w-[420px] shrink-0 p-12 relative overflow-hidden"
-        style={{ background: 'linear-gradient(145deg, #4F3CC9 0%, #967DF5 70%, #C4B2F9 100%)' }}
+        style={{ background: 'linear-gradient(145deg, #4F3CC9 0%, var(--color-primary) 70%, #C4B2F9 100%)' }}
       >
         {/* Circulos decorativos */}
         <div
@@ -64,7 +79,7 @@ export default function LoginPage() {
         />
         <div
           className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-15"
-          style={{ background: '#FFB863', transform: 'translate(-30%, 30%)' }}
+          style={{ background: 'var(--color-accent)', transform: 'translate(-30%, 30%)' }}
         />
 
         {/* Logo */}
@@ -126,106 +141,193 @@ export default function LoginPage() {
           <div className="flex items-center gap-2 mb-8 lg:hidden">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: '#967DF5' }}
+              style={{ background: 'var(--color-primary)' }}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z" stroke="white" strokeWidth="1.5" fill="none"/>
                 <path d="M8 5L11 7V11H5V7L8 5Z" fill="white" fillOpacity="0.9"/>
               </svg>
             </div>
-            <span className="font-bold text-lg" style={{ color: '#1E1B4B', fontFamily: 'var(--font-display)' }}>
+            <span className="font-bold text-lg" style={{ color: 'var(--color-ink)', fontFamily: 'var(--font-display)' }}>
               Riwi Match
             </span>
           </div>
 
-          <h1
-            className="text-2xl font-bold mb-1"
-            style={{ color: '#1E1B4B', fontFamily: 'var(--font-display)' }}
-          >
-            Iniciar sesion
-          </h1>
-          <p className="text-sm mb-7" style={{ color: '#9CA3AF' }}>
-            Ingresa con tu cuenta corporativa
-          </p>
-
-          {error && (
-            <div
-              className="flex items-center gap-2.5 p-3.5 rounded-xl mb-5 text-sm font-medium"
-              style={{ background: '#FFF4F2', border: '1.5px solid #FF596D', color: '#E11D48' }}
-            >
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="relative">
-              <Input
-                label="Email corporativo"
-                type="email"
-                placeholder="nombre@empresa.com"
-                error={errors.email?.message}
-                required
-                style={{ paddingLeft: '2.75rem' }}
-                {...register('email')}
-              />
-              <Mail
-                className="absolute left-3.5 w-4 h-4 pointer-events-none"
-                style={{ top: '2.45rem', color: '#C4B2F9' }}
-              />
-            </div>
-
-            <div className="relative">
-              <Input
-                label="Contrasena"
-                type="password"
-                placeholder="••••••••"
-                error={errors.password?.message}
-                required
-                style={{ paddingLeft: '2.75rem' }}
-                {...register('password')}
-              />
-              <Lock
-                className="absolute left-3.5 w-4 h-4 pointer-events-none"
-                style={{ top: '2.45rem', color: '#C4B2F9' }}
-              />
-            </div>
-
-            <Button type="submit" loading={isSubmitting} size="lg" className="w-full mt-2">
-              Ingresar
-            </Button>
-          </form>
-
-          {/* Demo credentials */}
-          <div
-            className="mt-7 rounded-2xl p-4 space-y-2"
-            style={{ background: '#EEE9FF', border: '1.5px solid #D0C8FC' }}
-          >
-            <p className="text-xs font-bold mb-3" style={{ color: '#7A6CE0' }}>
-              Credenciales de demo
-            </p>
-            {[
-              { role: 'Admin',      email: 'admin@riwi.com',     pass: 'admin123' },
-              { role: 'Reclutador', email: 'recruiter@riwi.com', pass: 'recruiter123' },
-              { role: 'TA Leader',  email: 'leader@riwi.com',    pass: 'leader123' },
-            ].map((u) => (
-              <button
-                key={u.email}
-                type="button"
-                onClick={() => { setValue('email', u.email); setValue('password', u.pass); }}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors"
-                style={{ background: 'rgba(255,255,255,0.6)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.6)'; }}
+          {view === 'login' ? (
+            <>
+              <h1
+                className="text-2xl font-bold mb-1"
+                style={{ color: 'var(--color-ink)', fontFamily: 'var(--font-display)' }}
               >
-                <span className="text-xs font-semibold" style={{ color: '#1E1B4B' }}>{u.role}</span>
-                <span className="text-xs" style={{ color: '#967DF5' }}>{u.email}</span>
+                Iniciar sesión
+              </h1>
+              <p className="text-sm mb-7" style={{ color: 'var(--color-text-muted)' }}>
+                Ingresa con tu cuenta corporativa
+              </p>
+
+              {error && (
+                <div
+                  className="flex items-center gap-2.5 p-3.5 rounded-xl mb-5 text-sm font-medium"
+                  style={{ background: '#FFF4F2', border: '1.5px solid var(--color-coral)', color: '#FF596D' }}
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div className="relative">
+                  <Input
+                    label="Email corporativo"
+                    type="email"
+                    placeholder="nombre@empresa.com"
+                    error={errors.email?.message}
+                    required
+                    style={{ paddingLeft: '2.75rem' }}
+                    {...register('email')}
+                  />
+                  <Mail
+                    className="absolute left-3.5 w-4 h-4 pointer-events-none"
+                    style={{ top: '2.45rem', color: '#C4B2F9' }}
+                  />
+                </div>
+
+                <div className="relative">
+                  <Input
+                    label="Contraseña"
+                    type="password"
+                    placeholder="••••••••"
+                    error={errors.password?.message}
+                    required
+                    style={{ paddingLeft: '2.75rem' }}
+                    {...register('password')}
+                  />
+                  <Lock
+                    className="absolute left-3.5 w-4 h-4 pointer-events-none"
+                    style={{ top: '2.45rem', color: '#C4B2F9' }}
+                  />
+                </div>
+                
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setView('forgot'); setError(''); setRecoverEmail(''); }}
+                    className="text-xs font-semibold hover:underline"
+                    style={{ color: 'var(--color-primary)' }}
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+
+                <Button type="submit" loading={isSubmitting} size="lg" className="w-full mt-2">
+                  Ingresar
+                </Button>
+              </form>
+
+              {/* Demo credentials */}
+              <div
+                className="mt-7 rounded-2xl p-4 space-y-2"
+                style={{ background: 'var(--color-primary-light)', border: '1.5px solid #D0C8FC' }}
+              >
+                <p className="text-xs font-bold mb-3" style={{ color: 'var(--color-primary-dark)' }}>
+                  Credenciales de demo
+                </p>
+                {[
+                  { role: 'Admin',      email: 'admin@riwi.com',     pass: 'admin123' },
+                  { role: 'Reclutador', email: 'recruiter@riwi.com', pass: 'recruiter123' },
+                  { role: 'TA Leader',  email: 'leader@riwi.com',    pass: 'leader123' },
+                ].map((u) => (
+                  <button
+                    key={u.email}
+                    type="button"
+                    onClick={() => { setValue('email', u.email); setValue('password', u.pass); }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors"
+                    style={{ background: 'rgba(255,255,255,0.6)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.6)'; }}
+                  >
+                    <span className="text-xs font-semibold" style={{ color: 'var(--color-ink)' }}>{u.role}</span>
+                    <span className="text-xs" style={{ color: 'var(--color-primary)' }}>{u.email}</span>
+                  </button>
+                ))}
+                <p className="text-xs pt-1" style={{ color: 'var(--color-text-muted)' }}>
+                  Haz clic para autocompletar, luego presiona Ingresar.
+                </p>
+              </div>
+            </>
+          ) : view === 'forgot' ? (
+            <>
+              <button
+                onClick={() => setView('login')}
+                className="flex items-center gap-2 text-sm font-medium mb-6 text-slate-500 hover:text-slate-900 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Volver al login
               </button>
-            ))}
-            <p className="text-xs pt-1" style={{ color: '#9CA3AF' }}>
-              Haz clic para autocompletar, luego presiona Ingresar.
-            </p>
-          </div>
+
+              <h1
+                className="text-2xl font-bold mb-1"
+                style={{ color: 'var(--color-ink)', fontFamily: 'var(--font-display)' }}
+              >
+                Recuperar contraseña
+              </h1>
+              <p className="text-sm mb-7" style={{ color: 'var(--color-text-muted)' }}>
+                Ingresa tu correo corporativo y te enviaremos un enlace temporal para restablecerla.
+              </p>
+
+              {error && (
+                <div
+                  className="flex items-center gap-2.5 p-3.5 rounded-xl mb-5 text-sm font-medium"
+                  style={{ background: '#FFF4F2', border: '1.5px solid var(--color-coral)', color: '#FF596D' }}
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleRecover} className="space-y-4">
+                <div className="relative">
+                  <Input
+                    label="Email corporativo"
+                    type="email"
+                    placeholder="nombre@empresa.com"
+                    value={recoverEmail}
+                    onChange={(e) => setRecoverEmail(e.target.value)}
+                    required
+                    style={{ paddingLeft: '2.75rem' }}
+                  />
+                  <Mail
+                    className="absolute left-3.5 w-4 h-4 pointer-events-none"
+                    style={{ top: '2.45rem', color: '#C4B2F9' }}
+                  />
+                </div>
+
+                <Button type="submit" size="lg" className="w-full mt-4">
+                  Enviar enlace de recuperación
+                </Button>
+              </form>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col items-center justify-center text-center space-y-4 py-8">
+                <div className="w-16 h-16 bg-mint-light rounded-full flex items-center justify-center mb-2">
+                  <CheckCircle2 className="w-8 h-8 text-mint" />
+                </div>
+                <h1
+                  className="text-2xl font-bold mb-1"
+                  style={{ color: 'var(--color-ink)', fontFamily: 'var(--font-display)' }}
+                >
+                  Revisa tu correo
+                </h1>
+                <p className="text-sm text-slate-500 max-w-[280px]">
+                  Hemos enviado un enlace de recuperación a <span className="font-semibold text-slate-700">{recoverEmail}</span>. Haz clic en él para restablecer tu contraseña.
+                </p>
+                <Button variant="outline" className="w-full mt-6" onClick={() => setView('login')}>
+                  Volver al inicio de sesión
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
