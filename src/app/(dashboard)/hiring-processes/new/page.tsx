@@ -28,7 +28,7 @@ const STEPS = [
 // ─── Stepper — tabs con underline, SIN círculos ───────────────────────────────
 function Stepper({ current }: { current: number }) {
   return (
-    <div className="flex border-b border-slate-200 mb-8">
+    <div className="flex">
       {STEPS.map((step, i) => {
         const done   = i < current;
         const active = i === current;
@@ -235,19 +235,23 @@ export default function NewProcessPage() {
   const [processId, setProcessId] = useState<string | null>(null);
 
   return (
-    <div className="max-w-2xl mx-auto pb-10">
-      <Link href="/hiring-processes" className="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-slate-900 transition-colors mb-6 font-medium">
-        <ArrowLeft className="w-3.5 h-3.5" /> Volver a procesos
-      </Link>
-
-      <div className="mb-6">
+    <div className="pb-10">
+      {/* Header */}
+      <div className="mb-5">
+        <Link href="/hiring-processes" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors mb-3 font-medium">
+          <ArrowLeft className="w-3.5 h-3.5" /> Volver a procesos
+        </Link>
         <h1 className="text-xl font-bold text-slate-900">Nuevo proceso de selección</h1>
         <p className="text-xs text-slate-400 mt-1">Paso {step + 1} de {STEPS.length} — {STEPS[step].title}</p>
       </div>
 
-      <Stepper current={step} />
+      {/* Stepper — banda blanca */}
+      <div className="bg-white border-y border-slate-200 mb-5">
+        <Stepper current={step} />
+      </div>
 
-      <div className="bg-white border border-slate-200 rounded p-6">
+      {/* Contenido del paso — banda blanca sin caja */}
+      <div className="bg-white border-y border-slate-200 px-6 py-5">
         {step === 0 && <Step1 onCreated={(id) => { setProcessId(id); setStep(1); }} />}
         {step === 1 && processId && <Step2 processId={processId} onNext={() => setStep(2)} onSkip={() => setStep(2)} />}
         {step === 2 && processId && <Step3 processId={processId} onDone={() => router.push(`/hiring-processes/${processId}`)} />}
