@@ -15,7 +15,8 @@ import {
   AlertTriangle, RefreshCw, Users, Paperclip, ExternalLink, X, Eye,
 } from 'lucide-react';
 import { processesApi } from '@/lib/api';
-import type { JobDescription } from '@/lib/types';
+import type { JobDescription, HiringProcess, ProfilingRun } from '@/lib/types';
+import { POLL_INTERVAL_MS, profilingRunsRefetchInterval } from '@/lib/polling';
 import { StatusBadge } from '@/components/ui/Badge';
 import UploadCvsModal from '@/components/ui/UploadCvsModal';
 import PdfPreviewModal from '@/components/ui/PdfPreviewModal';
@@ -424,10 +425,14 @@ function MatchStep({ processId }: { processId: string }) {
 // ─── Step 3: Profiling ────────────────────────────────────────────────────────
 function ProfilingStep({ processId }: { processId: string }) {
   const qc = useQueryClient();
+  const [pollStart] = useState(() => Date.now());
   const { data: runs = [], isLoading } = useQuery({
     queryKey: ['profiling-runs', processId],
     queryFn: () => processesApi.getProfilingRuns(processId).then((r) => r.data),
-    refetchInterval: 10_000,
+    refetchInterval: (q) => {
+      const d = q.state.data as ProfilingRun[] | undefined;
+      return profilingRunsRefetchInterval(d?.map((r) => r.status), pollStart);
+    },
   });
 
   const statusCls: Record<string, string> = {
@@ -487,7 +492,12 @@ export default function ProcessDetailPage({ params }: { params: Promise<{ id: st
   const { data: process, isLoading } = useQuery({
     queryKey: ['process', id],
     queryFn: () => processesApi.get(id).then((r) => r.data),
-    refetchInterval: 15_000,
+    // Solo pollea mientras el match está en curso; al terminar el back deja de
+    // estar en 'MATCHING' y detenemos el polling.
+    refetchInterval: (q) => {
+      const d = q.state.data as HiringProcess | undefined;
+      return d?.status === 'MATCHING' ? POLL_INTERVAL_MS : false;
+    },
   });
 
   const currentStep = getProcessStep(process?.status ?? 'DRAFT');

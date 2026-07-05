@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useState, useCallback, useEffect, Fragment } from 'react';
+import { candidateStatusesRefetchInterval } from '@/lib/polling';
 
 function withToken(url: string): string {
   const token = localStorage.getItem('access_token');
@@ -524,15 +525,16 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
   const [previewData, setPreviewData] = useState<{ title: string; url: string } | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
 
+  const [pollStart] = useState(() => Date.now());
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['candidates', id],
     queryFn: () => processesApi.getCandidatesList(id).then((r) => r.data),
     refetchInterval: (q) => {
       const d = q.state.data as import('@/lib/types').CandidateListResponse | undefined;
-      const anyPending = d?.candidates?.some(
-        (c) => !['MATCHED', 'CV_ERROR', 'DISCARDED', 'PROFILING_COMPLETED', 'PROFILING_FAILED'].includes(c.status),
+      return candidateStatusesRefetchInterval(
+        d?.candidates?.map((c) => c.status),
+        pollStart,
       );
-      return anyPending ? 5000 : false;
     },
   });
 

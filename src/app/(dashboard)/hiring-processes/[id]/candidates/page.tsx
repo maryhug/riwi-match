@@ -2,6 +2,7 @@
 
 import { use, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { candidateStatusesRefetchInterval } from '@/lib/polling';
 import Link from 'next/link';
 import {
   ArrowLeft, Phone, RefreshCw, ChevronDown, ChevronUp,
@@ -248,10 +249,17 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
   const [viewMode, setViewMode] = useState<ViewMode>('both');
   const [isUploadOpen, setIsUploadOpen] = useState(false);
 
+  const [pollStart] = useState(() => Date.now());
   const { data: kanban, isLoading, refetch } = useQuery({
     queryKey: ['kanban', id],
     queryFn: () => processesApi.getKanban(id).then((r) => r.data as unknown as DualKanbanResponse),
-    refetchInterval: 20_000,
+    refetchInterval: (q) => {
+      const d = q.state.data as DualKanbanResponse | undefined;
+      const statuses = d
+        ? [...d.HIGH, ...d.MEDIUM, ...d.LOW, ...d.LOADED, ...d.PARSING].map((c) => c.status)
+        : undefined;
+      return candidateStatusesRefetchInterval(statuses, pollStart);
+    },
   });
 
   const profilingMutation = useMutation({
