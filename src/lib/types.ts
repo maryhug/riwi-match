@@ -246,6 +246,8 @@ export interface ProcessCandidate {
 }
 
 // ─── Dual match (CV + Profiling) ──────────────────────────────────────────────
+export type WhatsAppConsentStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'TIMEOUT';
+
 export interface DualMatchCandidate extends ProcessCandidate {
   cv_match_percentage: number;
   cv_match_category: 'HIGH' | 'MEDIUM' | 'LOW';
@@ -255,6 +257,7 @@ export interface DualMatchCandidate extends ProcessCandidate {
     summary: string;
     risk_flags?: string[];
   };
+  whatsapp_consent: WhatsAppConsentStatus | null;
 }
 
 export interface DualKanbanResponse {

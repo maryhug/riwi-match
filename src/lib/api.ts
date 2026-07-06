@@ -12,6 +12,7 @@ import type {
   QuestionSet,
   CreateQuestionSetDTO,
   ProfilingQuestion,
+  WhatsAppConsentStatus,
 } from './types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -69,6 +70,7 @@ function adaptCandidatesToKanban(candidates: CandidateListResponse['candidates']
       human_notes: undefined,
       created_at: '',
       updated_at: '',
+      whatsapp_consent: (c.whatsapp_consent as WhatsAppConsentStatus | null) ?? null,
       candidate: {
         id: c.candidate_id,
         name: c.name.split(' ').slice(0, -1).join(' ') || c.name,
@@ -288,6 +290,12 @@ export const processesApi = {
 
   getNormalizedCvFileUrl: (processId: string, pcId: string) =>
     `${BASE_URL}/api/v1/processes/${processId}/candidates/${pcId}/cv-normalized/file`,
+
+  /** Dispara o reenvía manualmente la plantilla de consentimiento de WhatsApp */
+  sendWhatsApp: (processId: string, pcId: string) =>
+    api.post<{ process_candidate_id: string; task_id: string; status: string }>(
+      `/api/v1/processes/${processId}/candidates/${pcId}/whatsapp/send`,
+    ),
 
   /** Profiling aún no disponible en el back */
   startProfiling: (_id: string, _candidateIds: string[]) =>

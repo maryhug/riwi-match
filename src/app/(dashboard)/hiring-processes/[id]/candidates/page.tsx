@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   ArrowLeft, Phone, RefreshCw, ChevronDown, ChevronUp,
   CheckSquare, Square, Loader2, Users, FileText, Mic, Minus,
-  TrendingUp, TrendingDown, Upload,
+  TrendingUp, TrendingDown, Upload, MessageCircle,
 } from 'lucide-react';
 import { processesApi } from '@/lib/api';
 import Button from '@/components/ui/Button';
@@ -35,6 +35,27 @@ function CategoryPill({ category }: { category: string | null | undefined }) {
       style={{ background: s.bg, color: s.color }}
     >
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
+      {s.label}
+    </span>
+  );
+}
+
+// ─── WhatsApp consent status ──────────────────────────────────────────────────
+const WHATSAPP_STYLES: Record<string, { bg: string; color: string; label: string }> = {
+  PENDING:  { bg: '#FFFBEB', color: '#D97706', label: 'WhatsApp: pendiente' },
+  ACCEPTED: { bg: '#ECFDF5', color: '#059669', label: 'WhatsApp: autorizado' },
+  REJECTED: { bg: '#FEF2F2', color: '#DC2626', label: 'WhatsApp: rechazado' },
+  TIMEOUT:  { bg: '#F8FAFC', color: '#94A3B8', label: 'WhatsApp: sin respuesta' },
+};
+
+function WhatsAppPill({ status }: { status: string | null | undefined }) {
+  const s = WHATSAPP_STYLES[status ?? 'PENDING'] ?? WHATSAPP_STYLES.PENDING;
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
+      style={{ background: s.bg, color: s.color }}
+    >
+      <MessageCircle className="w-3 h-3" />
       {s.label}
     </span>
   );
@@ -79,10 +100,12 @@ function MatchBar({ label, pct, color, bg }: { label: string; pct: number; color
 }
 
 // ─── Candidate Card ───────────────────────────────────────────────────────────
-function CandidateCard({ pc, selected, onToggle, viewMode }: {
+function CandidateCard({ pc, selected, onToggle, viewMode, onSendWhatsApp, sendingWhatsApp, whatsappError }: {
   pc: DualMatchCandidate; selected: boolean; onToggle: () => void; viewMode: ViewMode;
+  onSendWhatsApp: () => void; sendingWhatsApp: boolean; whatsappError?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const canSendWhatsApp = pc.whatsapp_consent === 'PENDING' || pc.whatsapp_consent === 'TIMEOUT' || !pc.whatsapp_consent;
   const hasProfileMatch = pc.match_percentage !== pc.cv_match_percentage;
   const profilingPct = hasProfileMatch ? pc.match_percentage : null;
   const showCV        = viewMode === 'both' || viewMode === 'cv';
@@ -117,6 +140,25 @@ function CandidateCard({ pc, selected, onToggle, viewMode }: {
             )}
           </div>
         </div>
+
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <WhatsAppPill status={pc.whatsapp_consent} />
+          {canSendWhatsApp && (
+            <button
+              onClick={onSendWhatsApp}
+              disabled={sendingWhatsApp}
+              className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-800 transition-colors disabled:opacity-50"
+            >
+              {sendingWhatsApp
+                ? <Loader2 className="w-3 h-3 animate-spin" />
+                : <MessageCircle className="w-3 h-3" />}
+              {pc.whatsapp_consent === 'TIMEOUT' ? 'Reenviar' : 'Enviar WhatsApp'}
+            </button>
+          )}
+        </div>
+        {whatsappError && (
+          <p className="text-xs text-red-600 mb-2">{whatsappError}</p>
+        )}
 
         <div className="space-y-2.5 mb-3">
           {showCV && (
@@ -194,8 +236,9 @@ function CandidateCard({ pc, selected, onToggle, viewMode }: {
 }
 
 // ─── Kanban Column ────────────────────────────────────────────────────────────
-function KanbanColumn({ category, candidates, selectedIds, onToggle, viewMode }: {
+function KanbanColumn({ category, candidates, selectedIds, onToggle, viewMode, onSendWhatsApp, sendingWhatsAppId, whatsappErrorId }: {
   category: MatchCategory; candidates: DualMatchCandidate[]; selectedIds: Set<string>; onToggle: (id: string) => void; viewMode: ViewMode;
+  onSendWhatsApp: (pcId: string) => void; sendingWhatsAppId: string | null; whatsappErrorId: { id: string; message: string } | null;
 }) {
   const s = CATEGORY_STYLES[category];
   const labels: Record<MatchCategory, string> = {
@@ -232,6 +275,9 @@ function KanbanColumn({ category, candidates, selectedIds, onToggle, viewMode }:
               selected={selectedIds.has(pc.candidate_id)}
               onToggle={() => onToggle(pc.candidate_id)}
               viewMode={viewMode}
+              onSendWhatsApp={() => onSendWhatsApp(pc.id)}
+              sendingWhatsApp={sendingWhatsAppId === pc.id}
+              whatsappError={whatsappErrorId?.id === pc.id ? whatsappErrorId.message : undefined}
             />
           ))
         )}
@@ -247,11 +293,41 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>('both');
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [whatsappError, setWhatsappError] = useState<{ id: string; message: string } | null>(null);
+  const [bulkWhatsappResult, setBulkWhatsappResult] = useState<{ sent: number; failed: number } | null>(null);
 
   const { data: kanban, isLoading, refetch } = useQuery({
     queryKey: ['kanban', id],
     queryFn: () => processesApi.getKanban(id).then((r) => r.data as unknown as DualKanbanResponse),
     refetchInterval: 20_000,
+  });
+
+  const whatsappMutation = useMutation({
+    mutationFn: (pcId: string) => processesApi.sendWhatsApp(id, pcId),
+    onMutate: () => setWhatsappError(null),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['kanban', id] }),
+    onError: (err: unknown, pcId) => {
+      const message =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        ?? 'No se pudo enviar el WhatsApp';
+      setWhatsappError({ id: pcId, message });
+    },
+  });
+
+  const bulkWhatsappMutation = useMutation({
+    mutationFn: async (pcIds: string[]) => {
+      const results = await Promise.allSettled(
+        pcIds.map((pcId) => processesApi.sendWhatsApp(id, pcId)),
+      );
+      const sent = results.filter((r) => r.status === 'fulfilled').length;
+      return { sent, failed: results.length - sent };
+    },
+    onMutate: () => setBulkWhatsappResult(null),
+    onSuccess: (result) => {
+      setBulkWhatsappResult(result);
+      setSelectedIds(new Set());
+      qc.invalidateQueries({ queryKey: ['kanban', id] });
+    },
   });
 
   const profilingMutation = useMutation({
@@ -270,6 +346,12 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
       return next;
     });
   };
+
+  const allCandidates = kanban ? [...(kanban.HIGH ?? []), ...(kanban.MEDIUM ?? []), ...(kanban.LOW ?? [])] : [];
+  const eligibleSelectedPcIds = allCandidates
+    .filter((pc) => selectedIds.has(pc.candidate_id))
+    .filter((pc) => pc.whatsapp_consent === 'PENDING' || pc.whatsapp_consent === 'TIMEOUT' || !pc.whatsapp_consent)
+    .map((pc) => pc.id);
 
   const totalCandidates  = kanban ? (kanban.HIGH?.length ?? 0) + (kanban.MEDIUM?.length ?? 0) + (kanban.LOW?.length ?? 0) : 0;
   const pendingCandidates = kanban ? (kanban.LOADED?.length ?? 0) + (kanban.PARSING?.length ?? 0) : 0;
@@ -314,6 +396,12 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
               {selectedIds.size} seleccionado(s)
             </span>
           )}
+          {bulkWhatsappResult && (
+            <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">
+              WhatsApp enviado: {bulkWhatsappResult.sent}
+              {bulkWhatsappResult.failed > 0 && `, fallaron: ${bulkWhatsappResult.failed}`}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -338,6 +426,18 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
             <RefreshCw className="w-3.5 h-3.5" />
           </Button>
 
+          {selectedIds.size > 0 && eligibleSelectedPcIds.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => bulkWhatsappMutation.mutate(eligibleSelectedPcIds)}
+              loading={bulkWhatsappMutation.isPending}
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              Enviar WhatsApp ({eligibleSelectedPcIds.length})
+            </Button>
+          )}
+
           {selectedIds.size > 0 && (
             <Button size="sm" onClick={() => profilingMutation.mutate()} loading={profilingMutation.isPending}>
               <Phone className="w-3.5 h-3.5" />
@@ -361,6 +461,9 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
               selectedIds={selectedIds}
               onToggle={toggleSelect}
               viewMode={viewMode}
+              onSendWhatsApp={(pcId) => whatsappMutation.mutate(pcId)}
+              sendingWhatsAppId={whatsappMutation.isPending ? (whatsappMutation.variables ?? null) : null}
+              whatsappErrorId={whatsappError}
             />
           ))}
         </div>
