@@ -330,14 +330,6 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
     },
   });
 
-  const profilingMutation = useMutation({
-    mutationFn: () => processesApi.startProfiling(id, Array.from(selectedIds)),
-    onSuccess: () => {
-      setSelectedIds(new Set());
-      qc.invalidateQueries({ queryKey: ['kanban', id] });
-    },
-  });
-
   const toggleSelect = (candidateId: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -428,20 +420,12 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
 
           {selectedIds.size > 0 && eligibleSelectedPcIds.length > 0 && (
             <Button
-              variant="outline"
               size="sm"
               onClick={() => bulkWhatsappMutation.mutate(eligibleSelectedPcIds)}
               loading={bulkWhatsappMutation.isPending}
             >
-              <MessageCircle className="w-3.5 h-3.5" />
-              Enviar WhatsApp ({eligibleSelectedPcIds.length})
-            </Button>
-          )}
-
-          {selectedIds.size > 0 && (
-            <Button size="sm" onClick={() => profilingMutation.mutate()} loading={profilingMutation.isPending}>
               <Phone className="w-3.5 h-3.5" />
-              Iniciar profiling ({selectedIds.size})
+              Iniciar profiling ({eligibleSelectedPcIds.length})
             </Button>
           )}
         </div>
