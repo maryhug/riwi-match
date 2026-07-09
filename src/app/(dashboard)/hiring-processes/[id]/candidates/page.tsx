@@ -379,16 +379,6 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
         </div>
       </Header>
 
-      {(() => {
-        const err = (profilingMutation.error as { response?: { data?: { detail?: string } } } | null)
-          ?.response?.data?.detail;
-        return err ? (
-          <div className="mb-3 px-4 py-2 rounded bg-red-50 border border-red-200 text-xs text-red-700">
-            {err}
-          </div>
-        ) : null;
-      })()}
-
       {/* Control bar */}
       <div className="flex items-center justify-between mb-5 px-4 py-3 rounded bg-white border border-slate-200">
         <div className="flex items-center gap-4">
