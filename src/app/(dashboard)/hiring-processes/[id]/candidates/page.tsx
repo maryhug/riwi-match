@@ -349,7 +349,7 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
 
   const allCandidates = kanban ? [...(kanban.HIGH ?? []), ...(kanban.MEDIUM ?? []), ...(kanban.LOW ?? [])] : [];
   const eligibleSelectedPcIds = allCandidates
-    .filter((pc) => selectedIds.has(pc.candidate_id))
+    .filter((pc) => selectedIds.has(pc.id))
     .filter((pc) => pc.whatsapp_consent === 'PENDING' || pc.whatsapp_consent === 'TIMEOUT' || !pc.whatsapp_consent)
     .map((pc) => pc.id);
 
