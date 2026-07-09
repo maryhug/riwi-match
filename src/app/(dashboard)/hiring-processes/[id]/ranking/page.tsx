@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useState, useCallback, useEffect, Fragment } from 'react';
+import { candidateStatusesRefetchInterval } from '@/lib/polling';
 
 function withToken(url: string): string {
   const token = localStorage.getItem('access_token');
@@ -13,7 +14,7 @@ import {
   ChevronDown, ChevronUp, Users, Phone, Sparkles,
   MapPin, Mail, PhoneCall, FileText, User, Eye, Download, ExternalLink,
 } from 'lucide-react';
-import { processesApi } from '@/lib/api';
+import { processesApi, candidatesApi } from '@/lib/api';
 import Header from '@/components/layout/Header';
 import Button from '@/components/ui/Button';
 import PdfPreviewModal from '@/components/ui/PdfPreviewModal';
@@ -463,23 +464,26 @@ function OverrideSection({
     }
   }, [detail]);
 
-  const save = useCallback(async () => {
-    await fetch(`/api/v1/processes/${processId}/candidates/${pcId}/override`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-      },
-      body: JSON.stringify({
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      candidatesApi.updateOverride(processId, pcId, {
         human_notes: notes || null,
         human_override_match: override ? parseFloat(override) : null,
       }),
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-    qc.invalidateQueries({ queryKey: ['candidate-detail', processId, pcId] });
-    qc.invalidateQueries({ queryKey: ['candidates', processId] });
-  }, [notes, override, processId, pcId, qc]);
+    onSuccess: () => {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      qc.invalidateQueries({ queryKey: ['candidate-detail', processId, pcId] });
+      qc.invalidateQueries({ queryKey: ['candidates', processId] });
+    },
+  });
+
+  const save = useCallback(() => {
+    saveMutation.mutate();
+  }, [saveMutation]);
+
+  const saveError = saveMutation.error as { response?: { data?: { detail?: string } } } | undefined;
+  const saveErrorMessage = saveError?.response?.data?.detail;
 
   return (
     <div>
@@ -501,10 +505,13 @@ function OverrideSection({
             placeholder="Observaciones, contexto adicional..."
             className="w-full px-3 py-2 text-xs border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 resize-none" />
         </div>
-        <button onClick={save}
-          className="px-4 py-1.5 rounded text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 transition-colors">
-          {saved ? 'Guardado ✓' : 'Guardar'}
+        <button onClick={save} disabled={saveMutation.isPending}
+          className="px-4 py-1.5 rounded text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 transition-colors disabled:opacity-60">
+          {saveMutation.isPending ? 'Guardando...' : saved ? 'Guardado ✓' : 'Guardar'}
         </button>
+        {saveErrorMessage && (
+          <p className="text-xs text-red-600">{saveErrorMessage}</p>
+        )}
       </div>
     </div>
   );
@@ -524,15 +531,16 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
   const [previewData, setPreviewData] = useState<{ title: string; url: string } | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
 
+  const [pollStart] = useState(() => Date.now());
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['candidates', id],
     queryFn: () => processesApi.getCandidatesList(id).then((r) => r.data),
     refetchInterval: (q) => {
       const d = q.state.data as import('@/lib/types').CandidateListResponse | undefined;
-      const anyPending = d?.candidates?.some(
-        (c) => !['MATCHED', 'CV_ERROR', 'DISCARDED', 'PROFILING_COMPLETED', 'PROFILING_FAILED'].includes(c.status),
+      return candidateStatusesRefetchInterval(
+        d?.candidates?.map((c) => c.status),
+        pollStart,
       );
-      return anyPending ? 5000 : false;
     },
   });
 
@@ -581,6 +589,16 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
           </Link>
         </div>
       </Header>
+
+      {(() => {
+        const err = (profilingMutation.error as { response?: { data?: { detail?: string } } } | null)
+          ?.response?.data?.detail;
+        return err ? (
+          <div className="mb-3 px-4 py-2 rounded bg-red-50 border border-red-200 text-xs text-red-700">
+            {err}
+          </div>
+        ) : null;
+      })()}
 
       {/* Filter bar */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">

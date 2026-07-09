@@ -62,7 +62,10 @@ export interface HiringProcess {
   status: ProcessStatus;
   budget_max_usd: number;
   recruiter_id: string;
-  question_set_id?: string;
+  question_set_id?: string | null;
+  /** Override por proceso del prompt/saludo del agente de voz (ElevenLabs). */
+  voice_override_system_prompt?: string | null;
+  voice_override_first_message?: string | null;
   created_at: string;
   updated_at: string;
   /** Datos de la JD activa — solo disponible en GET /processes/{id} */
@@ -102,6 +105,9 @@ export interface ProcessDetail {
   status: string;
   budget_max_usd: number;
   match_weights: Record<string, number> | null;
+  question_set_id?: string | null;
+  voice_override_system_prompt?: string | null;
+  voice_override_first_message?: string | null;
   job_description: {
     jd_id: string;
     version: number;
@@ -376,6 +382,37 @@ export interface GlobalSettings {
   setting_value: Record<string, unknown>;
   updated_by: string;
   updated_at: string;
+}
+
+// ─── Profiling runs (backend raw) ─────────────────────────────────────────────
+export interface BackendProfilingRunItem {
+  id: string;
+  process_candidate_id: string;
+  candidate_id: string;
+  candidate_name: string;
+  question_set_id: string;
+  status: string;
+  call_attempts: number;
+  advancement_probability: 'HIGH' | 'MEDIUM' | 'LOW' | null;
+  advancement_explanation: string | null;
+  transcription_url: string | null;
+  transcript_summary: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProfilingRunsResponse {
+  total: number;
+  profiling_runs: BackendProfilingRunItem[];
+}
+
+export interface ProfilingTriggerResponse {
+  process_id: string;
+  queued: number;
+  tasks: Array<{ process_candidate_id: string; task_id: string }>;
+  skipped: Array<{ process_candidate_id: string; reason: string }>;
 }
 
 export interface MetricsDashboard {

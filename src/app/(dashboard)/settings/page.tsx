@@ -1,9 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Settings, CheckCircle2, ChevronDown } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Settings, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import Header from '@/components/layout/Header';
+import Button from '@/components/ui/Button';
+import { Input, Select } from '@/components/ui/Input';
+import { settingsApi } from '@/lib/api';
+
+type MatchThresholds = { high: number; medium: number; low: number };
+const DEFAULT_THRESHOLDS: MatchThresholds = { high: 80, medium: 60, low: 40 };
 
 type Tab = 'usuarios' | 'parametros' | 'integraciones';
 
@@ -12,6 +19,171 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'parametros',    label: 'Parámetros de IA' },
   { key: 'integraciones', label: 'Integraciones' },
 ];
+
+function AIParamsPanel() {
+  const qc = useQueryClient();
+
+  const { data: models = [], isLoading: loadingModels } = useQuery({
+    queryKey: ['ai-models'],
+    queryFn: () => settingsApi.getModels().then((r) => r.data),
+  });
+  const matchModels = models.filter((m) => m.task_type === 'CV_MATCH');
+
+  const { data: prompts = [], isLoading: loadingPrompts } = useQuery({
+    queryKey: ['ai-prompts'],
+    queryFn: () => settingsApi.getPrompts().then((r) => r.data),
+  });
+  const matchPrompts = prompts.filter((p) => p.task_type === 'CV_MATCH');
+
+  const { data: globalSettings = [] } = useQuery({
+    queryKey: ['global-settings'],
+    queryFn: () => settingsApi.getGlobalSettings().then((r) => r.data),
+  });
+  const thresholdsSetting = globalSettings.find((s) => s.setting_key === 'match_thresholds');
+  // Valor guardado en el backend (o default) + ediciones locales del usuario aún no guardadas.
+  // Se deriva en el render en vez de sincronizarse vía efecto.
+  const savedThresholds: MatchThresholds = {
+    ...DEFAULT_THRESHOLDS,
+    ...(thresholdsSetting?.setting_value as Partial<MatchThresholds> | undefined),
+  };
+  const [thresholdOverrides, setThresholdOverrides] = useState<Partial<MatchThresholds>>({});
+  const thresholds: MatchThresholds = { ...savedThresholds, ...thresholdOverrides };
+
+  const [newModelName, setNewModelName] = useState('');
+  const createModelMutation = useMutation({
+    mutationFn: (modelName: string) =>
+      settingsApi.createModel({ task_type: 'CV_MATCH', provider: 'OPENAI', model_name: modelName }),
+    onSuccess: () => {
+      setNewModelName('');
+      qc.invalidateQueries({ queryKey: ['ai-models'] });
+    },
+  });
+
+  const activateModelMutation = useMutation({
+    mutationFn: (modelId: string) => settingsApi.setActiveModel(modelId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ai-models'] }),
+  });
+
+  const [newPromptText, setNewPromptText] = useState('');
+  const createPromptMutation = useMutation({
+    mutationFn: (text: string) =>
+      settingsApi.updatePrompt({
+        task_type: 'CV_MATCH',
+        version_name: `v${matchPrompts.length + 1}`,
+        system_prompt_text: text,
+        activate: true,
+      }),
+    onSuccess: () => {
+      setNewPromptText('');
+      qc.invalidateQueries({ queryKey: ['ai-prompts'] });
+    },
+  });
+
+  const thresholdsMutation = useMutation({
+    mutationFn: (t: MatchThresholds) => settingsApi.updateThresholds(t),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['global-settings'] }),
+  });
+
+  return (
+    <div className="space-y-5">
+      <Card>
+        <CardContent className="p-5 space-y-3">
+          <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Modelo activo (match de CVs)</p>
+          {loadingModels ? (
+            <p className="text-xs text-slate-400">Cargando...</p>
+          ) : matchModels.length === 0 ? (
+            <p className="text-xs text-slate-400">Aún no hay modelos configurados para CV_MATCH.</p>
+          ) : (
+            <Select
+              value={matchModels.find((m) => m.is_active)?.id ?? ''}
+              onChange={(e) => e.target.value && activateModelMutation.mutate(e.target.value)}
+              options={[
+                { value: '', label: 'Selecciona un modelo' },
+                ...matchModels.map((m) => ({ value: m.id, label: `${m.model_name} (${m.provider})${m.is_active ? ' — activo' : ''}` })),
+              ]}
+            />
+          )}
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Nombre del modelo, ej. gpt-4o"
+              value={newModelName}
+              onChange={(e) => setNewModelName(e.target.value)}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!newModelName.trim() || createModelMutation.isPending}
+              onClick={() => createModelMutation.mutate(newModelName.trim())}
+            >
+              Agregar
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-5 space-y-3">
+          <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Prompt de match</p>
+          {loadingPrompts ? (
+            <p className="text-xs text-slate-400">Cargando...</p>
+          ) : matchPrompts.length === 0 ? (
+            <p className="text-xs text-slate-400">Aún no hay versiones de prompt para CV_MATCH.</p>
+          ) : (
+            <ul className="text-xs text-slate-600 space-y-1">
+              {matchPrompts.map((p) => (
+                <li key={p.id} className="flex items-center justify-between">
+                  <span>{p.version_name}</span>
+                  {p.is_active && <span className="text-emerald-600 font-semibold">activo</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <textarea
+            rows={3}
+            placeholder="Nuevo texto de prompt (se guarda como versión nueva y se activa)"
+            value={newPromptText}
+            onChange={(e) => setNewPromptText(e.target.value)}
+            className="w-full px-3 py-2 text-xs border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 resize-none"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!newPromptText.trim() || createPromptMutation.isPending}
+            onClick={() => createPromptMutation.mutate(newPromptText.trim())}
+          >
+            Guardar nueva versión
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-5 space-y-3">
+          <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Umbrales de match</p>
+          <div className="flex items-center gap-4">
+            {(['high', 'medium', 'low'] as const).map((key) => (
+              <label key={key} className="flex items-center gap-2 text-xs text-slate-600">
+                {key === 'high' ? 'Alto' : key === 'medium' ? 'Medio' : 'Bajo'}
+                <input
+                  type="number"
+                  value={thresholds[key]}
+                  onChange={(e) => setThresholdOverrides((o) => ({ ...o, [key]: Number(e.target.value) }))}
+                  className="w-16 text-right text-xs border border-slate-200 rounded-md py-1.5 px-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400"
+                />
+              </label>
+            ))}
+          </div>
+          <Button
+            size="sm"
+            disabled={thresholdsMutation.isPending}
+            onClick={() => thresholdsMutation.mutate(thresholds)}
+          >
+            {thresholdsMutation.isPending ? 'Guardando...' : 'Guardar umbrales'}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('usuarios');
@@ -52,53 +224,7 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {activeTab === 'parametros' && (
-        <Card>
-          <CardContent className="p-0 divide-y divide-slate-100">
-            {[
-              {
-                label: 'Modelo activo',
-                control: (
-                  <div className="relative flex items-center">
-                    <select className="text-xs border-none bg-transparent text-slate-900 font-medium cursor-pointer focus:ring-0 focus:outline-none appearance-none pr-5 z-10" style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}>
-                      <option>gpt-X - medium</option>
-                    </select>
-                    <ChevronDown className="absolute right-0 text-slate-400 w-3.5 h-3.5 pointer-events-none" />
-                  </div>
-                ),
-              },
-              {
-                label: 'Prompt de match',
-                control: (
-                  <div className="relative flex items-center">
-                    <select className="text-xs border-none bg-transparent text-slate-900 font-medium cursor-pointer focus:ring-0 focus:outline-none appearance-none pr-5 z-10" style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}>
-                      <option>Prompt match v3 — activo</option>
-                    </select>
-                    <ChevronDown className="absolute right-0 text-slate-400 w-3.5 h-3.5 pointer-events-none" />
-                  </div>
-                ),
-              },
-              {
-                label: 'Umbral Match alto',
-                control: <input type="number" defaultValue={80} className="w-16 text-right text-xs border border-slate-200 rounded-md py-1.5 px-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 transition-colors" />,
-              },
-              {
-                label: 'Umbral Match medio',
-                control: <input type="number" defaultValue={60} className="w-16 text-right text-xs border border-slate-200 rounded-md py-1.5 px-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 transition-colors" />,
-              },
-              {
-                label: 'Umbral Match bajo',
-                control: <input type="number" defaultValue={40} className="w-16 text-right text-xs border border-slate-200 rounded-md py-1.5 px-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 transition-colors" />,
-              },
-            ].map(({ label, control }) => (
-              <div key={label} className="flex items-center justify-between px-5 py-3.5">
-                <span className="text-xs font-medium text-slate-700">{label}</span>
-                {control}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      {activeTab === 'parametros' && <AIParamsPanel />}
 
       {activeTab === 'integraciones' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

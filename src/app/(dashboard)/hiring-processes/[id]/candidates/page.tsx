@@ -2,6 +2,7 @@
 
 import { use, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { candidateStatusesRefetchInterval } from '@/lib/polling';
 import Link from 'next/link';
 import {
   ArrowLeft, Phone, RefreshCw, ChevronDown, ChevronUp,
@@ -272,8 +273,8 @@ function KanbanColumn({ category, candidates, selectedIds, onToggle, viewMode, o
             <CandidateCard
               key={pc.id}
               pc={pc}
-              selected={selectedIds.has(pc.candidate_id)}
-              onToggle={() => onToggle(pc.candidate_id)}
+              selected={selectedIds.has(pc.id)}
+              onToggle={() => onToggle(pc.id)}
               viewMode={viewMode}
               onSendWhatsApp={() => onSendWhatsApp(pc.id)}
               sendingWhatsApp={sendingWhatsAppId === pc.id}
@@ -296,10 +297,17 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
   const [whatsappError, setWhatsappError] = useState<{ id: string; message: string } | null>(null);
   const [bulkWhatsappResult, setBulkWhatsappResult] = useState<{ sent: number; failed: number } | null>(null);
 
+  const [pollStart] = useState(() => Date.now());
   const { data: kanban, isLoading, refetch } = useQuery({
     queryKey: ['kanban', id],
     queryFn: () => processesApi.getKanban(id).then((r) => r.data as unknown as DualKanbanResponse),
-    refetchInterval: 20_000,
+    refetchInterval: (q) => {
+      const d = q.state.data as DualKanbanResponse | undefined;
+      const statuses = d
+        ? [...d.HIGH, ...d.MEDIUM, ...d.LOW, ...d.LOADED, ...d.PARSING].map((c) => c.status)
+        : undefined;
+      return candidateStatusesRefetchInterval(statuses, pollStart);
+    },
   });
 
   const whatsappMutation = useMutation({
@@ -330,11 +338,11 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
     },
   });
 
-  const toggleSelect = (candidateId: string) => {
+  const toggleSelect = (processCandidateId: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(candidateId)) next.delete(candidateId);
-      else next.add(candidateId);
+      if (next.has(processCandidateId)) next.delete(processCandidateId);
+      else next.add(processCandidateId);
       return next;
     });
   };
@@ -370,6 +378,16 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
           </Link>
         </div>
       </Header>
+
+      {(() => {
+        const err = (profilingMutation.error as { response?: { data?: { detail?: string } } } | null)
+          ?.response?.data?.detail;
+        return err ? (
+          <div className="mb-3 px-4 py-2 rounded bg-red-50 border border-red-200 text-xs text-red-700">
+            {err}
+          </div>
+        ) : null;
+      })()}
 
       {/* Control bar */}
       <div className="flex items-center justify-between mb-5 px-4 py-3 rounded bg-white border border-slate-200">

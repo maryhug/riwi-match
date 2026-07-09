@@ -14,13 +14,14 @@ import {
   CheckCircle2, ChevronRight, Sparkles,
   AlertTriangle, RefreshCw, Users, Paperclip, ExternalLink, X, Eye,
 } from 'lucide-react';
-import { processesApi } from '@/lib/api';
-import type { JobDescription } from '@/lib/types';
+import { processesApi, questionSetsApi } from '@/lib/api';
+import type { JobDescription, HiringProcess, ProfilingRun } from '@/lib/types';
+import { POLL_INTERVAL_MS, profilingRunsRefetchInterval } from '@/lib/polling';
 import { StatusBadge } from '@/components/ui/Badge';
 import UploadCvsModal from '@/components/ui/UploadCvsModal';
 import PdfPreviewModal from '@/components/ui/PdfPreviewModal';
 import Button from '@/components/ui/Button';
-import { Textarea } from '@/components/ui/Input';
+import { Textarea, Select } from '@/components/ui/Input';
 import Header from '@/components/layout/Header';
 import { formatCurrency, getProcessStep } from '@/lib/utils';
 import type { StructuredJD } from '@/lib/types';
@@ -421,13 +422,142 @@ function MatchStep({ processId }: { processId: string }) {
   );
 }
 
+// ─── Configuración de voz del agente (system prompt / saludo) ────────────────
+function VoiceConfigCard({ processId }: { processId: string }) {
+  const qc = useQueryClient();
+  const { data: process } = useQuery({
+    queryKey: ['process', processId],
+    queryFn: () => processesApi.get(processId).then((r) => r.data),
+  });
+
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const [firstMessage, setFirstMessage] = useState('');
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (process && !initialized) {
+      setSystemPrompt(process.voice_override_system_prompt ?? '');
+      setFirstMessage(process.voice_override_first_message ?? '');
+      setInitialized(true);
+    }
+  }, [process, initialized]);
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      processesApi.updateVoiceConfig(processId, {
+        voice_override_system_prompt: systemPrompt.trim() || null,
+        voice_override_first_message: firstMessage.trim() || null,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['process', processId] }),
+  });
+
+  return (
+    <div className="bg-white border border-slate-200 rounded p-5">
+      <SectionTitle icon={Phone} title="Configuración de voz del agente" />
+      <p className="text-xs text-slate-500 mb-4">
+        Personaliza el prompt y el saludo con el que el agente llama a los candidatos de{' '}
+        <strong>este proceso</strong>. Usa <code className="bg-slate-100 px-1 rounded">{'{{candidate_name}}'}</code>{' '}
+        y <code className="bg-slate-100 px-1 rounded">{'{{job_title}}'}</code> para personalizar cada llamada.
+        Si se deja vacío, se usa la configuración por defecto del set de preguntas.
+      </p>
+      <div className="space-y-4">
+        <Textarea
+          label="System prompt"
+          placeholder="Eres un agente de voz de Riwi llamando a un candidato para..."
+          rows={6}
+          value={systemPrompt}
+          onChange={(e) => setSystemPrompt(e.target.value)}
+        />
+        <Textarea
+          label="Primer saludo (first message)"
+          placeholder="Hola, ¿hablo con {{candidate_name}}? Te llamo de parte de Riwi..."
+          rows={2}
+          value={firstMessage}
+          onChange={(e) => setFirstMessage(e.target.value)}
+        />
+        <div className="flex items-center gap-3">
+          <Button onClick={() => saveMutation.mutate()} loading={saveMutation.isPending}>
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Guardar configuración de voz
+          </Button>
+          {saveMutation.isSuccess && (
+            <span className="text-xs text-emerald-600">Guardado</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Step 3: Profiling ────────────────────────────────────────────────────────
+function QuestionSetAssignmentCard({ processId, currentQuestionSetId }: { processId: string; currentQuestionSetId?: string | null }) {
+  const qc = useQueryClient();
+  // El padre solo monta esta card una vez que `process` ya cargó, así que el valor
+  // inicial siempre refleja el question_set_id real (sin necesidad de sincronizar en un efecto).
+  const [selected, setSelected] = useState(currentQuestionSetId ?? '');
+
+  const { data: questionSets = [], isLoading } = useQuery({
+    queryKey: ['question-sets'],
+    queryFn: () => questionSetsApi.list().then((r) => r.data),
+  });
+  const activeSets = questionSets.filter((qs) => qs.status === 'ACTIVE');
+
+  const saveMutation = useMutation({
+    mutationFn: (questionSetId: string) => processesApi.updateQuestionSet(processId, questionSetId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['process', processId] }),
+  });
+
+  const errorDetail = (saveMutation.error as { response?: { data?: { detail?: string } } } | undefined)
+    ?.response?.data?.detail;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded p-5">
+      <SectionTitle icon={CheckCircle2} title="Set de preguntas de profiling" />
+      <p className="text-xs text-slate-500 mb-4">
+        Asocia un set de preguntas activo a este proceso (RB-003): es requisito para poder iniciar
+        llamadas de profiling desde el Kanban o el Ranking.
+      </p>
+      <div className="flex items-end gap-3">
+        <div className="flex-1 max-w-sm">
+          <Select
+            label="Set de preguntas"
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            disabled={isLoading}
+            options={[
+              { value: '', label: isLoading ? 'Cargando...' : 'Selecciona un set activo' },
+              ...activeSets.map((qs) => ({ value: qs.id, label: qs.name })),
+            ]}
+          />
+        </div>
+        <Button
+          size="sm"
+          disabled={!selected || selected === currentQuestionSetId || saveMutation.isPending}
+          onClick={() => saveMutation.mutate(selected)}
+        >
+          {saveMutation.isPending ? 'Guardando...' : 'Asociar'}
+        </Button>
+      </div>
+      {activeSets.length === 0 && !isLoading && (
+        <p className="text-xs text-amber-600 mt-2">
+          No hay sets de preguntas activos. Crea uno en Question Sets antes de continuar.
+        </p>
+      )}
+      {errorDetail && <p className="text-xs text-red-600 mt-2">{errorDetail}</p>}
+    </div>
+  );
+}
+
 function ProfilingStep({ processId }: { processId: string }) {
   const qc = useQueryClient();
+  const [pollStart] = useState(() => Date.now());
   const { data: runs = [], isLoading } = useQuery({
     queryKey: ['profiling-runs', processId],
     queryFn: () => processesApi.getProfilingRuns(processId).then((r) => r.data),
-    refetchInterval: 10_000,
+    refetchInterval: (q) => {
+      const d = q.state.data as ProfilingRun[] | undefined;
+      return profilingRunsRefetchInterval(d?.map((r) => r.status), pollStart);
+    },
   });
 
   const statusCls: Record<string, string> = {
@@ -487,7 +617,12 @@ export default function ProcessDetailPage({ params }: { params: Promise<{ id: st
   const { data: process, isLoading } = useQuery({
     queryKey: ['process', id],
     queryFn: () => processesApi.get(id).then((r) => r.data),
-    refetchInterval: 15_000,
+    // Solo pollea mientras el match está en curso; al terminar el back deja de
+    // estar en 'MATCHING' y detenemos el polling.
+    refetchInterval: (q) => {
+      const d = q.state.data as HiringProcess | undefined;
+      return d?.status === 'MATCHING' ? POLL_INTERVAL_MS : false;
+    },
   });
 
   const currentStep = getProcessStep(process?.status ?? 'DRAFT');
@@ -557,6 +692,8 @@ export default function ProcessDetailPage({ params }: { params: Promise<{ id: st
       )}
       {(activeStep ?? currentStep) === 3 && (
         <div className="space-y-5">
+          <QuestionSetAssignmentCard processId={id} currentQuestionSetId={process.question_set_id} />
+          <VoiceConfigCard processId={id} />
           <ProfilingStep processId={id} />
           <div className="bg-white border border-slate-200 rounded-lg p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
