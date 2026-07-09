@@ -40,7 +40,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-slate-50">
       <FloatingNav />
       <main className="min-h-screen bg-slate-50 transition-all duration-300" style={pad}>
-        {children}
+        <div className="max-w-[1400px] mx-auto">
+          {children}
+        </div>
       </main>
     </div>
   );

@@ -1,0 +1,171 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+@theme {
+  /* ===== Paleta modo claro (default) ===== */
+  --color-bg: #f5f0e6;
+  --color-bg-subtle: #ece3d2;
+  --color-surface: #fffcf6;
+  --color-surface-raised: #ffffff;
+  --color-border: #e3d9c4;
+  --color-border-strong: #cfc0a0;
+  --color-ink: #1c1712;
+  --color-text: #5b5445;
+  --color-text-muted: #8b8271;
+
+  --color-primary: #7c3aed;
+  --color-primary-dark: #5b21b6;
+  --color-primary-light: #ede9fe;
+  --color-primary-xlight: #f5f3ff;
+
+  --color-mint: #059669;
+  --color-mint-dark: #047857;
+  --color-mint-light: #d1fae5;
+
+  --color-accent: #d97706;
+  --color-accent-dark: #b45309;
+  --color-accent-light: #fef3c7;
+
+  --color-coral: #dc2626;
+  --color-coral-dark: #b91c1c;
+  --color-coral-light: #fee2e2;
+
+  --color-blue: #2563eb;
+  --color-blue-light: #dbeafe;
+
+  --color-pink: #db2777;
+  --color-pink-light: #fce7f3;
+
+  --color-slate-chip: #f1f5f9;
+  --color-slate-icon: #475569;
+
+  /* ===== Radios ===== */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 999px;
+
+  /* ===== Sombras con tinte de color ===== */
+  --shadow-tinted: 0 4px 24px rgba(124, 58, 237, 0.1), 0 1px 4px rgba(0, 0, 0, 0.05);
+  --shadow-tinted-lg: 0 12px 40px rgba(124, 58, 237, 0.14), 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+@theme inline {
+  --font-sans: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-ubuntu-mono), ui-monospace, monospace;
+}
+
+/* ===== Paleta modo oscuro (violeta-carbón) ===== */
+[data-theme='dark'] {
+  --color-bg: #14121b;
+  --color-bg-subtle: #1c1926;
+  --color-surface: #201c2c;
+  --color-surface-raised: #262233;
+  --color-border: #332d45;
+  --color-border-strong: #453d5c;
+  --color-ink: #f5f3fa;
+  --color-text: #c7c2d6;
+  --color-text-muted: #8b84a3;
+
+  /* Texto/ícono suelto sobre fondo oscuro: variantes claras.
+     Los rellenos sólidos con texto blanco usan las variantes -solid (mismos hex que light). */
+  --color-primary: #a78bfa;
+  --color-primary-light: rgba(124, 58, 237, 0.22);
+  --color-primary-xlight: rgba(124, 58, 237, 0.12);
+  --color-mint: #34d399;
+  --color-mint-light: rgba(5, 150, 105, 0.2);
+  --color-accent: #fbbf24;
+  --color-accent-light: rgba(217, 119, 6, 0.2);
+  --color-coral: #f87171;
+  --color-coral-light: rgba(220, 38, 38, 0.2);
+  --color-blue: #60a5fa;
+  --color-blue-light: rgba(37, 99, 235, 0.22);
+  --color-pink: #f472b6;
+  --color-pink-light: rgba(219, 39, 119, 0.22);
+
+  --color-slate-chip: #2a2638;
+  --color-slate-icon: #a5a0b8;
+
+  --shadow-tinted: 0 4px 24px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.3);
+  --shadow-tinted-lg: 0 12px 40px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* Rellenos sólidos (texto blanco) — mismos hex en ambos temas */
+:root,
+[data-theme='dark'] {
+  --color-primary-solid: #7c3aed;
+  --color-primary-solid-hover: #5b21b6;
+  --color-mint-solid: #047857;
+  --color-accent-solid: #b45309;
+  --color-coral-solid: #dc2626;
+  --color-coral-solid-hover: #b91c1c;
+  --color-blue-solid: #2563eb;
+  --color-pink-solid: #db2777;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    background-color: var(--color-bg);
+  }
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  ::selection {
+    background-color: var(--color-primary-light);
+    color: var(--color-ink);
+  }
+}
+
+@layer utilities {
+  .bg-primary-solid {
+    background-color: var(--color-primary-solid);
+  }
+  .hover\:bg-primary-solid-hover:hover {
+    background-color: var(--color-primary-solid-hover);
+  }
+  .bg-mint-solid {
+    background-color: var(--color-mint-solid);
+  }
+  .bg-accent-solid {
+    background-color: var(--color-accent-solid);
+  }
+  .bg-coral-solid {
+    background-color: var(--color-coral-solid);
+  }
+  .hover\:bg-coral-solid-hover:hover {
+    background-color: var(--color-coral-solid-hover);
+  }
+  .bg-blue-solid {
+    background-color: var(--color-blue-solid);
+  }
+  .bg-pink-solid {
+    background-color: var(--color-pink-solid);
+  }
+  .shadow-tinted {
+    box-shadow: var(--shadow-tinted);
+  }
+  .shadow-tinted-lg {
+    box-shadow: var(--shadow-tinted-lg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
