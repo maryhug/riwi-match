@@ -1,5 +1,11 @@
 # Plan de conexión Frontend ↔ Backend — RIWI MATCH
 
+> **COMPLETADO / HISTÓRICO (2026-07-08):** la integración descrita en este documento ya se hizo —
+> `src/lib/api.ts` consume el backend real en el 100% de sus métodos, sin fallback a mocks. Se
+> conserva como registro de la auditoría original. Las brechas que siguen abiertas (UI decorativa,
+> tab de Usuarios, transcripciones de profiling, etc.) están consolidadas en `PLAN_MVP_100.md`, en
+> la raíz del monorepo (repo padre `RiwiMatch`).
+
 Auditoría de toda la interfaz interactiva (páginas bajo `src/app/(auth)` y
 `src/app/(dashboard)`, más componentes reutilizables con acciones). Objetivo:
 identificar qué está realmente conectado al backend, qué usa datos falsos/mock,
