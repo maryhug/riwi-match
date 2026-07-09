@@ -12,6 +12,16 @@ import type {
   QuestionSet,
   CreateQuestionSetDTO,
   ProfilingQuestion,
+  ProfilingRun,
+  ProfilingStatus,
+  ProfilingRunsResponse,
+  BackendProfilingRunItem,
+  ProfilingTriggerResponse,
+  StructuredJD,
+  AIModelConfig,
+  AIPrompt,
+  GlobalSettings,
+  MetricsDashboard,
 } from './types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -123,6 +133,9 @@ function adaptProcessDetail(p: ProcessDetail): HiringProcess {
     status: adaptStatus(p.status),
     budget_max_usd: p.budget_max_usd ?? 0,
     recruiter_id: '',
+    question_set_id: p.question_set_id ?? null,
+    voice_override_system_prompt: p.voice_override_system_prompt ?? null,
+    voice_override_first_message: p.voice_override_first_message ?? null,
     created_at: p.created_at,
     updated_at: p.updated_at,
     job_description_data: p.job_description
@@ -157,6 +170,56 @@ function adaptStatus(s: string): HiringProcess['status'] {
     ARCHIVED:             'COMPLETED',
   };
   return map[s] ?? 'DRAFT';
+}
+
+/**
+ * Mapea ProfilingRunStatus del backend (10 valores) al ProfilingStatus del front
+ * (5 valores). Los estados "en progreso" del backend (ANSWERED, RETRY_PENDING)
+ * caen en CALLING; QUEUED cae en PENDING; CANCELLED cae en FAILED.
+ */
+function adaptProfilingStatus(s: string): ProfilingStatus {
+  const map: Record<string, ProfilingStatus> = {
+    PENDING: 'PENDING',
+    QUEUED: 'PENDING',
+    CALLING: 'CALLING',
+    ANSWERED: 'CALLING',
+    RETRY_PENDING: 'CALLING',
+    NO_ANSWER: 'NO_ANSWER',
+    VOICEMAIL_DETECTED: 'NO_ANSWER',
+    FAILED: 'FAILED',
+    CANCELLED: 'FAILED',
+    COMPLETED: 'COMPLETED',
+  };
+  return map[s] ?? 'PENDING';
+}
+
+function adaptProfilingRun(r: BackendProfilingRunItem, processId = ''): ProfilingRun {
+  const nameParts = r.candidate_name.trim().split(' ');
+  return {
+    id: r.id,
+    process_id: processId,
+    candidate_id: r.candidate_id,
+    question_set_id: r.question_set_id,
+    status: adaptProfilingStatus(r.status),
+    call_attempts: r.call_attempts,
+    advancement_prob: r.advancement_probability ?? undefined,
+    transcription_url: r.transcription_url ?? undefined,
+    profiling_eval: r.advancement_explanation || r.transcript_summary
+      ? { explanation: r.advancement_explanation, summary: r.transcript_summary }
+      : undefined,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    candidate: {
+      id: r.candidate_id,
+      name: nameParts.slice(0, -1).join(' ') || r.candidate_name,
+      last_name: nameParts.slice(-1)[0] ?? '',
+      email: '',
+      phone: '',
+      cv_file_url: '',
+      created_at: '',
+      updated_at: '',
+    },
+  };
 }
 
 // ─── Auth ──────────────────────────────────────────────────────────────────────
@@ -206,22 +269,31 @@ export const processesApi = {
       };
     }),
 
-  /**
-   * El backend NO tiene endpoint de parseo IA de JD.
-   * Guardamos directamente el texto raw — cada POST crea una nueva versión.
-   */
-  parseJD: (_id: string, rawText: string) =>
-    Promise.resolve({
-      data: {
-        structured_jd: {
-          must_have: [] as string[],
-          nice_to_have: [] as string[],
-          deal_breakers: [] as string[],
-          weights: {} as Record<string, number>,
-          summary: rawText.slice(0, 300),
+  /** Analiza la JD con IA (no persiste nada — la persistencia sigue pasando por saveJD). */
+  parseJD: (id: string, rawText: string) =>
+    api
+      .post<Omit<StructuredJD, 'weights' | 'raw_text'>>(
+        `/api/v1/processes/${id}/job-description/parse`,
+        { jd_raw_text: rawText }
+      )
+      .then((r) => ({
+        data: {
+          structured_jd: {
+            must_have: r.data.must_have,
+            nice_to_have: r.data.nice_to_have,
+            deal_breakers: r.data.deal_breakers,
+            weights: {} as Record<string, number>,
+            summary: r.data.summary,
+          },
         },
-      },
-    }),
+      })),
+
+  /** Asocia un QuestionSet al proceso — precondición RB-003 para habilitar profiling. */
+  updateQuestionSet: (id: string, questionSetId: string) =>
+    api.patch<{ process_id: string; question_set_id: string }>(
+      `/api/v1/processes/${id}/question-set`,
+      { question_set_id: questionSetId }
+    ),
 
   saveJD: (id: string, rawText: string) =>
     api.post<JobDescriptionSaved>(`/api/v1/processes/${id}/job-description`, {
@@ -289,21 +361,57 @@ export const processesApi = {
   getNormalizedCvFileUrl: (processId: string, pcId: string) =>
     `${BASE_URL}/api/v1/processes/${processId}/candidates/${pcId}/cv-normalized/file`,
 
-  /** Profiling aún no disponible en el back */
-  startProfiling: (_id: string, _candidateIds: string[]) =>
-    Promise.resolve({ data: { status: 'not_available' } }),
+  /**
+   * Override por proceso del prompt/saludo del agente de voz. Tiene prioridad
+   * sobre los default_* del QuestionSet asociado cuando un campo no es null.
+   */
+  updateVoiceConfig: (
+    id: string,
+    data: { voice_override_system_prompt?: string | null; voice_override_first_message?: string | null }
+  ) =>
+    api.patch<{
+      voice_override_system_prompt: string | null;
+      voice_override_first_message: string | null;
+    }>(`/api/v1/processes/${id}/voice-config`, data),
 
-  getProfilingRuns: (_id: string) =>
-    Promise.resolve({ data: [] as import('./types').ProfilingRun[] }),
+  /**
+   * Dispara profiling manual (RB-004) para los `process_candidate_id`s seleccionados.
+   * Requiere que el proceso tenga un QuestionSet asociado (RB-003, ver updateQuestionSet).
+   */
+  startProfiling: (id: string, processCandidateIds: string[]) =>
+    api.post<ProfilingTriggerResponse>(`/api/v1/processes/${id}/profiling/trigger`, {
+      process_candidate_ids: processCandidateIds,
+    }),
+
+  getProfilingRuns: (id: string) =>
+    api.get<ProfilingRunsResponse>(`/api/v1/processes/${id}/profiling/runs`).then((r) => ({
+      data: r.data.profiling_runs.map((run) => adaptProfilingRun(run, id)),
+    })),
+
+  /** Listado global de ProfilingRun (todos los procesos visibles para el usuario) — página /profiling */
+  getGlobalProfilingRuns: () =>
+    api.get<ProfilingRunsResponse>('/api/v1/profiling/runs').then((r) => ({
+      data: r.data.profiling_runs.map((run) => adaptProfilingRun(run)),
+    })),
 };
 
 // ─── Candidates ────────────────────────────────────────────────────────────────
 
 export const candidatesApi = {
-  updateNotes: (_pcId: string, _notes: string) =>
-    Promise.resolve({ data: {} }),
-  updateStatus: (_pcId: string, _status: string) =>
-    Promise.resolve({ data: {} }),
+  /**
+   * El backend requiere que `human_override_match` viaje explícito (incluso `null`)
+   * para limpiar el override existente; omitirlo no lo toca. Por eso ambos campos
+   * son siempre parte del body, nunca opcionales aquí.
+   */
+  updateOverride: (
+    processId: string,
+    pcId: string,
+    body: { human_notes: string | null; human_override_match: number | null }
+  ) =>
+    api.patch<{ status: string }>(
+      `/api/v1/processes/${processId}/candidates/${pcId}/override`,
+      body
+    ),
 };
 
 // ─── Question Sets ─────────────────────────────────────────────────────────────
@@ -339,25 +447,39 @@ export const questionSetsApi = {
 // ─── Settings / Metrics ────────────────────────────────────────────────────────
 
 export const settingsApi = {
-  getModels: () => Promise.resolve({ data: [] }),
-  setActiveModel: () => Promise.resolve({ data: {} }),
-  getPrompts: () => Promise.resolve({ data: [] }),
-  updatePrompt: () => Promise.resolve({ data: {} }),
-  getGlobalSettings: () => Promise.resolve({ data: [] }),
-  updateThresholds: () => Promise.resolve({ data: {} }),
+  getModels: () =>
+    api.get<{ models: AIModelConfig[] }>('/api/v1/ai-config/models').then((r) => ({
+      data: r.data.models,
+    })),
+
+  createModel: (data: { task_type: string; provider: string; model_name: string }) =>
+    api.post<AIModelConfig>('/api/v1/ai-config/models', data),
+
+  setActiveModel: (modelId: string) =>
+    api.patch<AIModelConfig>(`/api/v1/ai-config/models/${modelId}/activate`),
+
+  getPrompts: () =>
+    api.get<{ prompts: AIPrompt[] }>('/api/v1/ai-config/prompts').then((r) => ({
+      data: r.data.prompts,
+    })),
+
+  /** Append-only: siempre crea una versión nueva, nunca edita una existente. */
+  updatePrompt: (data: { task_type: string; version_name: string; system_prompt_text: string; activate?: boolean }) =>
+    api.post<AIPrompt>('/api/v1/ai-config/prompts', data),
+
+  getGlobalSettings: () =>
+    api.get<{ settings: GlobalSettings[] }>('/api/v1/ai-config/global-settings').then((r) => ({
+      data: r.data.settings,
+    })),
+
+  updateThresholds: (thresholds: { high: number; medium: number; low: number }) =>
+    api.patch<GlobalSettings>('/api/v1/ai-config/global-settings/match_thresholds', {
+      setting_value: thresholds,
+    }),
 };
 
 export const metricsApi = {
-  getDashboard: () =>
-    Promise.resolve({
-      data: {
-        total_cost_usd: 0,
-        cost_by_process:  [] as import('./types').MetricsDashboard['cost_by_process'],
-        cost_by_user:     [] as import('./types').MetricsDashboard['cost_by_user'],
-        cost_by_operation:[] as import('./types').MetricsDashboard['cost_by_operation'],
-        daily_costs:      [] as import('./types').MetricsDashboard['daily_costs'],
-      },
-    }),
+  getDashboard: () => api.get<MetricsDashboard>('/api/v1/metrics/dashboard'),
 };
 
 export default api;

@@ -230,8 +230,8 @@ function KanbanColumn({ category, candidates, selectedIds, onToggle, viewMode }:
             <CandidateCard
               key={pc.id}
               pc={pc}
-              selected={selectedIds.has(pc.candidate_id)}
-              onToggle={() => onToggle(pc.candidate_id)}
+              selected={selectedIds.has(pc.id)}
+              onToggle={() => onToggle(pc.id)}
               viewMode={viewMode}
             />
           ))
@@ -270,11 +270,11 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
     },
   });
 
-  const toggleSelect = (candidateId: string) => {
+  const toggleSelect = (processCandidateId: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(candidateId)) next.delete(candidateId);
-      else next.add(candidateId);
+      if (next.has(processCandidateId)) next.delete(processCandidateId);
+      else next.add(processCandidateId);
       return next;
     });
   };
@@ -304,6 +304,16 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
           </Link>
         </div>
       </Header>
+
+      {(() => {
+        const err = (profilingMutation.error as { response?: { data?: { detail?: string } } } | null)
+          ?.response?.data?.detail;
+        return err ? (
+          <div className="mb-3 px-4 py-2 rounded bg-red-50 border border-red-200 text-xs text-red-700">
+            {err}
+          </div>
+        ) : null;
+      })()}
 
       {/* Control bar */}
       <div className="flex items-center justify-between mb-5 px-4 py-3 rounded bg-white border border-slate-200">

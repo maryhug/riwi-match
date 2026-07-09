@@ -14,7 +14,7 @@ import {
   ChevronDown, ChevronUp, Users, Phone, Sparkles,
   MapPin, Mail, PhoneCall, FileText, User, Eye, Download, ExternalLink,
 } from 'lucide-react';
-import { processesApi } from '@/lib/api';
+import { processesApi, candidatesApi } from '@/lib/api';
 import Header from '@/components/layout/Header';
 import Button from '@/components/ui/Button';
 import PdfPreviewModal from '@/components/ui/PdfPreviewModal';
@@ -464,23 +464,26 @@ function OverrideSection({
     }
   }, [detail]);
 
-  const save = useCallback(async () => {
-    await fetch(`/api/v1/processes/${processId}/candidates/${pcId}/override`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-      },
-      body: JSON.stringify({
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      candidatesApi.updateOverride(processId, pcId, {
         human_notes: notes || null,
         human_override_match: override ? parseFloat(override) : null,
       }),
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-    qc.invalidateQueries({ queryKey: ['candidate-detail', processId, pcId] });
-    qc.invalidateQueries({ queryKey: ['candidates', processId] });
-  }, [notes, override, processId, pcId, qc]);
+    onSuccess: () => {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      qc.invalidateQueries({ queryKey: ['candidate-detail', processId, pcId] });
+      qc.invalidateQueries({ queryKey: ['candidates', processId] });
+    },
+  });
+
+  const save = useCallback(() => {
+    saveMutation.mutate();
+  }, [saveMutation]);
+
+  const saveError = saveMutation.error as { response?: { data?: { detail?: string } } } | undefined;
+  const saveErrorMessage = saveError?.response?.data?.detail;
 
   return (
     <div>
@@ -502,10 +505,13 @@ function OverrideSection({
             placeholder="Observaciones, contexto adicional..."
             className="w-full px-3 py-2 text-xs border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 resize-none" />
         </div>
-        <button onClick={save}
-          className="px-4 py-1.5 rounded text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 transition-colors">
-          {saved ? 'Guardado ✓' : 'Guardar'}
+        <button onClick={save} disabled={saveMutation.isPending}
+          className="px-4 py-1.5 rounded text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 transition-colors disabled:opacity-60">
+          {saveMutation.isPending ? 'Guardando...' : saved ? 'Guardado ✓' : 'Guardar'}
         </button>
+        {saveErrorMessage && (
+          <p className="text-xs text-red-600">{saveErrorMessage}</p>
+        )}
       </div>
     </div>
   );
@@ -583,6 +589,16 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
           </Link>
         </div>
       </Header>
+
+      {(() => {
+        const err = (profilingMutation.error as { response?: { data?: { detail?: string } } } | null)
+          ?.response?.data?.detail;
+        return err ? (
+          <div className="mb-3 px-4 py-2 rounded bg-red-50 border border-red-200 text-xs text-red-700">
+            {err}
+          </div>
+        ) : null;
+      })()}
 
       {/* Filter bar */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
