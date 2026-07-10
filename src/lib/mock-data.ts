@@ -108,6 +108,7 @@ export interface CallItem {
   posicion?: number;
   intento?: number;
   proximoIntento?: string;
+  respondioWhatsapp?: boolean;
 }
 
 export const llamadas: CallItem[] = [
@@ -115,9 +116,9 @@ export const llamadas: CallItem[] = [
   { id: "l2", candidato: "Mariana Ospina", cargo: "Backend Sr", estado: "activa", duracion: "04:32" },
   { id: "l3", candidato: "Esteban Quintero", cargo: "Backend Sr", estado: "activa", duracion: "01:08" },
   { id: "l4", candidato: "Sara Gutiérrez", cargo: "Backend Sr", estado: "activa", duracion: "03:45" },
-  { id: "l5", candidato: "Laura Mendoza", cargo: "Backend Sr", estado: "cola", posicion: 1 },
-  { id: "l6", candidato: "Juan Pablo Henao", cargo: "Backend Sr", estado: "cola", posicion: 2 },
-  { id: "l7", candidato: "Carlos Aristizábal", cargo: "Backend Sr", estado: "cola", posicion: 3 },
+  { id: "l5", candidato: "Laura Mendoza", cargo: "Backend Sr", estado: "cola", posicion: 1, respondioWhatsapp: true },
+  { id: "l6", candidato: "Juan Pablo Henao", cargo: "Backend Sr", estado: "cola", posicion: 2, respondioWhatsapp: false },
+  { id: "l7", candidato: "Carlos Aristizábal", cargo: "Backend Sr", estado: "cola", posicion: 3, respondioWhatsapp: true },
   { id: "l8", candidato: "Camilo Restrepo", cargo: "DevOps", estado: "completada" },
   { id: "l9", candidato: "Diana Marín", cargo: "DevOps", estado: "completada" },
   { id: "l10", candidato: "Miguel Ángel Soto", cargo: "Backend Sr", estado: "fallida", intento: 2, proximoIntento: "Hoy 14:30" },

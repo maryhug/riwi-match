@@ -47,7 +47,7 @@ export function Sidebar() {
       <div className="relative z-10 flex items-center justify-between px-5 pt-6 pb-8">
         {!sidebarCollapsed && (
           <Link to="/app" className="flex items-center gap-2">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary to-info shadow-lg shadow-primary/40">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary shadow-md">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -57,7 +57,7 @@ export function Sidebar() {
           </Link>
         )}
         {sidebarCollapsed && (
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary to-info shadow-lg shadow-primary/40">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary shadow-md">
             <Sparkles className="h-5 w-5 text-white" />
           </div>
         )}
@@ -94,7 +94,7 @@ export function Sidebar() {
 
       <div className="relative z-10 m-3 rounded-2xl bg-white/5 border border-white/10 p-3 backdrop-blur">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-primary to-info text-white font-semibold">
+          <div className="grid h-10 w-10 place-items-center rounded-full bg-primary text-white font-semibold">
             {role === "admin" ? "MV" : role === "recruiter" ? "CR" : "SH"}
           </div>
           {!sidebarCollapsed && (

@@ -10,9 +10,13 @@ export const Route = createFileRoute("/app/sets")({
 });
 
 function Sets() {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState<string | "new" | null>(null);
 
-  if (editing) return <Builder onBack={() => setEditing(false)} />;
+  if (editing) {
+    const isNew = editing === "new";
+    const setInfo = isNew ? null : sets.find((s) => s.id === editing);
+    return <Builder isNew={isNew} setInfo={setInfo} onBack={() => setEditing(null)} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -22,14 +26,14 @@ function Sets() {
           <h1 className="mt-1 text-3xl font-bold tracking-tight">Sets de preguntas</h1>
           <p className="text-sm text-muted-foreground mt-1">Plantillas de profiling automatizado por cargo.</p>
         </div>
-        <button onClick={() => setEditing(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30">
+        <button onClick={() => setEditing("new")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30">
           <Plus className="h-4 w-4" /> Nuevo set
         </button>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {sets.map((s) => (
-          <GlassCard key={s.id} className="cursor-pointer" onClick={() => setEditing(true)}>
+          <GlassCard key={s.id} className="cursor-pointer" onClick={() => setEditing(s.id)}>
             <div className="flex items-start justify-between mb-3">
               <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-info">
                 <FileText className="h-5 w-5 text-white" />
@@ -62,8 +66,8 @@ function Sets() {
   );
 }
 
-function Builder({ onBack }: { onBack: () => void }) {
-  const questions = [
+function Builder({ isNew, setInfo, onBack }: { isNew: boolean; setInfo: any; onBack: () => void }) {
+  const defaultQuestions = isNew ? [] : [
     { texto: "¿Tienes disponibilidad para modalidad híbrida en Medellín?", tipo: "Sí/No", critica: true, peso: 30 },
     { texto: "Cuéntanos por qué saliste de tu último empleo", tipo: "Abierta", critica: false, peso: 20 },
     { texto: "¿Cuál es tu expectativa salarial?", tipo: "Numérica", critica: false, peso: 15 },
@@ -72,15 +76,38 @@ function Builder({ onBack }: { onBack: () => void }) {
     { texto: "¿Tu inglés es B2 o superior?", tipo: "Sí/No", critica: true, peso: 5 },
   ];
 
+  const [questions, setQuestions] = useState(defaultQuestions);
+
+  const addQuestion = () => {
+    setQuestions([
+      ...questions,
+      { texto: "Escribe tu nueva pregunta aquí...", tipo: "Abierta", critica: false, peso: 10 }
+    ]);
+  };
+
+  const removeQuestion = (index: number) => {
+    setQuestions(questions.filter((_, i) => i !== index));
+  };
+
   return (
     <div className="space-y-5">
       <button onClick={onBack} className="text-xs text-muted-foreground hover:text-foreground">← Volver a sets</button>
       <div>
-        <h1 className="text-2xl font-bold">Profiling Backend Sr v2</h1>
-        <p className="text-sm text-muted-foreground">Editor de preguntas · arrastra para reordenar.</p>
+        {isNew ? (
+          <input type="text" placeholder="Nombre del nuevo set..." className="text-2xl font-bold bg-transparent border-b border-border focus:border-primary outline-none w-full max-w-md pb-1" autoFocus />
+        ) : (
+          <h1 className="text-2xl font-bold">{setInfo?.nombre || "Cargando..."}</h1>
+        )}
+        <p className="text-sm text-muted-foreground mt-2">Editor de preguntas · arrastra para reordenar.</p>
       </div>
 
       <div className="space-y-3">
+        {questions.length === 0 && (
+          <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed border-border rounded-2xl">
+            Aún no hay preguntas en este set.
+          </div>
+        )}
+        
         {questions.map((q, i) => (
           <GlassCard key={i} className="p-4">
             <div className="flex items-start gap-3">
@@ -96,7 +123,9 @@ function Builder({ onBack }: { onBack: () => void }) {
                   )}
                   <div className="ml-auto text-xs text-muted-foreground">Peso: <span className="font-semibold text-foreground">{q.peso}%</span></div>
                 </div>
-                <div className="font-medium text-sm">{q.texto}</div>
+                {/* Simulated editable input */}
+                <input type="text" defaultValue={q.texto} className="font-medium text-sm w-full bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none transition-colors" />
+                
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   <span className="text-[10px] text-muted-foreground mr-1">Keywords positivas:</span>
                   {["disponible","sí","aceptado"].map(k=><span key={k} className="px-2 py-0.5 rounded bg-success/15 text-success text-[10px]">{k}</span>)}
@@ -105,11 +134,11 @@ function Builder({ onBack }: { onBack: () => void }) {
                 </div>
                 <div className="mt-2 text-[10px] text-muted-foreground italic">Las palabras clave no descartan automáticamente; activan revisión humana.</div>
               </div>
-              <button className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
+              <button onClick={() => removeQuestion(i)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
             </div>
           </GlassCard>
         ))}
-        <button className="w-full py-3 rounded-2xl border-2 border-dashed border-border text-sm text-muted-foreground hover:border-primary hover:text-primary transition">
+        <button onClick={addQuestion} className="w-full py-3 rounded-2xl border-2 border-dashed border-border text-sm text-muted-foreground hover:border-primary hover:text-primary transition">
           + Agregar pregunta
         </button>
       </div>

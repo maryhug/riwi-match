@@ -29,7 +29,7 @@ function Login() {
       <div className="relative z-10 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <Link to="/" className="inline-flex items-center gap-2 mb-10">
-            <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-primary to-info shadow-lg shadow-primary/40">
+            <div className="grid h-11 w-11 place-items-center rounded-xl bg-primary shadow-md">
               <Sparkles className="h-6 w-6 text-white" />
             </div>
             <div>
