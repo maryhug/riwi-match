@@ -159,8 +159,9 @@ export function FloatingNav() {
             <DropdownMenuItem className="cursor-pointer gap-2 text-destructive focus:text-destructive">
               <LogOut className="h-4 w-4" /> Cerrar sesión
             </DropdownMenuItem>
-          </DropdownMenu>
+          </DropdownMenuContent>
         </DropdownMenu>
+
 
         <div
           className={cn(
