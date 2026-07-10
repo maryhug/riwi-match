@@ -1,0 +1,234 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   RIWI MATCH — Design System
+   Glassmorphic + maximalist · HSL tokens
+   ============================================================ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
+
+  --font-sans: "Ubuntu", system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.75rem;
+
+  --background: hsl(228 16% 98%);
+  --foreground: hsl(233 52% 19%);
+
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(233 52% 19%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(233 52% 19%);
+
+  --primary: hsl(248 100% 68%);
+  --primary-foreground: hsl(0 0% 100%);
+
+  --secondary: hsl(248 100% 96%);
+  --secondary-foreground: hsl(233 52% 19%);
+
+  --muted: hsl(220 20% 95%);
+  --muted-foreground: hsl(233 20% 46%);
+
+  --accent: hsl(248 100% 96%);
+  --accent-foreground: hsl(248 100% 40%);
+
+  --destructive: hsl(9 99% 65%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --success: hsl(155 55% 58%);
+  --success-foreground: hsl(0 0% 100%);
+  --warning: hsl(45 75% 61%);
+  --warning-foreground: hsl(233 52% 19%);
+  --info: hsl(285 92% 82%);
+  --info-foreground: hsl(233 52% 19%);
+
+  --border: hsl(220 20% 91%);
+  --input: hsl(220 20% 91%);
+  --ring: hsl(248 100% 68%);
+
+  --sidebar: hsl(233 52% 12%);
+  --sidebar-foreground: hsl(228 30% 92%);
+  --sidebar-accent: hsl(248 100% 68%);
+  --sidebar-border: hsl(233 40% 22%);
+
+  /* Glass + decorative */
+  --glass-bg: hsl(0 0% 100% / 0.55);
+  --glass-border: hsl(0 0% 100% / 0.6);
+  --glass-shadow: 0 8px 32px hsl(233 52% 19% / 0.08);
+  --glass-blur: 18px;
+
+  --mesh-1: hsl(248 100% 68% / 0.35);
+  --mesh-2: hsl(285 92% 82% / 0.45);
+  --mesh-3: hsl(155 55% 75% / 0.30);
+  --mesh-4: hsl(45 100% 80% / 0.30);
+}
+
+.dark {
+  --background: hsl(233 52% 8%);
+  --foreground: hsl(228 30% 96%);
+
+  --card: hsl(233 52% 14%);
+  --card-foreground: hsl(228 30% 96%);
+  --popover: hsl(233 52% 14%);
+  --popover-foreground: hsl(228 30% 96%);
+
+  --primary: hsl(248 100% 72%);
+  --primary-foreground: hsl(233 52% 10%);
+
+  --secondary: hsl(233 40% 22%);
+  --secondary-foreground: hsl(228 30% 96%);
+
+  --muted: hsl(233 40% 18%);
+  --muted-foreground: hsl(220 20% 65%);
+
+  --accent: hsl(248 80% 25%);
+  --accent-foreground: hsl(228 30% 96%);
+
+  --destructive: hsl(9 99% 65%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --success: hsl(155 55% 58%);
+  --warning: hsl(45 75% 61%);
+  --info: hsl(285 92% 82%);
+
+  --border: hsl(233 40% 22%);
+  --input: hsl(233 40% 22%);
+  --ring: hsl(248 100% 72%);
+
+  --sidebar: hsl(233 60% 6%);
+  --sidebar-foreground: hsl(228 30% 92%);
+  --sidebar-accent: hsl(248 100% 68%);
+  --sidebar-border: hsl(233 40% 18%);
+
+  --glass-bg: hsl(233 52% 14% / 0.55);
+  --glass-border: hsl(228 30% 96% / 0.1);
+  --glass-shadow: 0 8px 32px hsl(0 0% 0% / 0.35);
+
+  --mesh-1: hsl(248 100% 60% / 0.35);
+  --mesh-2: hsl(285 92% 60% / 0.30);
+  --mesh-3: hsl(155 55% 50% / 0.25);
+  --mesh-4: hsl(45 90% 55% / 0.20);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html, body {
+    font-family: var(--font-sans);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    background-image:
+      radial-gradient(at 8% 6%, var(--mesh-1) 0px, transparent 45%),
+      radial-gradient(at 92% 12%, var(--mesh-2) 0px, transparent 45%),
+      radial-gradient(at 78% 92%, var(--mesh-3) 0px, transparent 45%),
+      radial-gradient(at 12% 88%, var(--mesh-4) 0px, transparent 45%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+}
+
+@utility glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+@utility glass-strong {
+  background: color-mix(in oklab, var(--card) 75%, transparent);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+@utility glass-subtle {
+  background: color-mix(in oklab, var(--card) 40%, transparent);
+  backdrop-filter: blur(10px) saturate(140%);
+  border: 1px solid var(--glass-border);
+}
+
+@utility sidebar-mesh {
+  background-color: var(--sidebar);
+  background-image:
+    radial-gradient(circle at 20% 0%, hsl(248 100% 60% / 0.55), transparent 50%),
+    radial-gradient(circle at 100% 30%, hsl(285 92% 60% / 0.35), transparent 55%),
+    radial-gradient(circle at 0% 70%, hsl(200 100% 60% / 0.30), transparent 55%),
+    radial-gradient(circle at 80% 100%, hsl(155 60% 50% / 0.25), transparent 55%);
+}
+
+@utility text-gradient-primary {
+  background: linear-gradient(135deg, hsl(248 100% 68%), hsl(285 92% 75%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 hsl(248 100% 68% / 0.7); }
+  70% { box-shadow: 0 0 0 12px hsl(248 100% 68% / 0); }
+  100% { box-shadow: 0 0 0 0 hsl(248 100% 68% / 0); }
+}
+@utility pulse-ring {
+  animation: pulse-ring 1.8s cubic-bezier(0.66, 0, 0, 1) infinite;
+}
+
+@keyframes waveform {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+.wave-bar { animation: waveform 1s ease-in-out infinite; transform-origin: center; }
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+@utility shimmer {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    hsl(248 100% 68% / 0.15) 50%,
+    transparent 100%);
+  background-size: 1000px 100%;
+  animation: shimmer 1.8s linear infinite;
+}
