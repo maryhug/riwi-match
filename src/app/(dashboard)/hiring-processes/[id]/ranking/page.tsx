@@ -13,6 +13,7 @@ import {
   ArrowLeft, RefreshCw, Search, AlertTriangle, X, Upload,
   ChevronDown, ChevronUp, Users, Phone, Sparkles,
   MapPin, Mail, PhoneCall, FileText, User, Eye, Download, ExternalLink,
+  BarChart2, TrendingUp, TrendingDown,
 } from 'lucide-react';
 import { processesApi, candidatesApi } from '@/lib/api';
 import Header from '@/components/layout/Header';
