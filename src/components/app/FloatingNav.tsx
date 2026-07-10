@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Briefcase, ListChecks, PhoneCall, Users, DollarSign, Settings,
-  Move, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, LogOut, Sparkles,
+  Move, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, LogOut, Sparkles, Plus,
 } from "lucide-react";
 import { useApp, type NavPosition } from "@/lib/app-context";
 import { roleLabels, type Role } from "@/lib/mock-data";
@@ -20,11 +20,11 @@ const items: { to: string; label: string; icon: typeof Briefcase; roles: Role[] 
   { to: "/app/admin", label: "Admin", icon: Settings, roles: ["admin"] },
 ];
 
-const positionClasses: Record<NavPosition, string> = {
-  top: "top-4 left-1/2 -translate-x-1/2",
-  bottom: "bottom-4 left-1/2 -translate-x-1/2",
-  left: "left-4 top-1/2 -translate-y-1/2",
-  right: "right-4 top-1/2 -translate-y-1/2",
+const wrapperPos: Record<NavPosition, string> = {
+  top: "top-4 left-1/2 -translate-x-1/2 flex-row",
+  bottom: "bottom-4 left-1/2 -translate-x-1/2 flex-row",
+  left: "left-4 top-1/2 -translate-y-1/2 flex-col",
+  right: "right-4 top-1/2 -translate-y-1/2 flex-col",
 };
 
 const moveOptions: { pos: NavPosition; label: string; icon: typeof ChevronUp }[] = [
@@ -40,27 +40,37 @@ export function FloatingNav() {
   const visible = items.filter((i) => i.roles.includes(role));
   const isVertical = navPosition === "left" || navPosition === "right";
 
+  const pillClass = cn(
+    "flex items-center gap-1 rounded-full border border-border/60 bg-card/85 p-1.5 shadow-lg backdrop-blur-xl",
+    isVertical && "flex-col",
+  );
+
+  const bubbleBtn =
+    "grid h-11 w-11 shrink-0 place-items-center rounded-full transition";
+
   return (
-    <nav
+    <div
       className={cn(
-        "fixed z-40 group/nav",
+        "fixed z-40 flex gap-3 group/nav",
         "transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-        positionClasses[navPosition],
+        wrapperPos[navPosition],
       )}
       style={{ willChange: "transform" }}
     >
-      <div
+      {/* Separated "add" / brand button */}
+      <button
         className={cn(
-          "flex items-center gap-1 rounded-full border border-border/60 bg-card/80 p-1.5 shadow-lg backdrop-blur-xl",
-          "transition-[padding,gap] duration-300",
-          isVertical && "flex-col",
+          bubbleBtn,
+          "border border-border/60 bg-primary text-primary-foreground shadow-lg hover:scale-105",
         )}
+        aria-label="Nuevo"
       >
-        {/* Brand mark */}
-        <div className={cn(
-          "grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground",
-          isVertical ? "mb-1" : "mr-1",
-        )}>
+        <Plus className="h-5 w-5" />
+      </button>
+
+      {/* Main nav pill */}
+      <nav className={pillClass}>
+        <div className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted text-foreground")}>
           <Sparkles className="h-4 w-4" />
         </div>
 
@@ -72,10 +82,10 @@ export function FloatingNav() {
               key={item.to}
               to={item.to}
               className={cn(
-                "group/item relative flex items-center gap-2 rounded-full px-2.5 py-2 text-sm font-medium",
+                "relative flex items-center gap-2 rounded-full h-9 px-2 text-sm font-medium",
                 "transition-all duration-300 ease-out",
                 active
-                  ? "bg-primary/10 text-primary"
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
               aria-label={item.label}
@@ -84,10 +94,9 @@ export function FloatingNav() {
               <span
                 className={cn(
                   "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out",
-                  // Expand on hover of the item OR the whole nav (for horizontal); collapsed for non-active by default
                   active
-                    ? "max-w-[160px] opacity-100"
-                    : "max-w-0 opacity-0 group-hover/nav:max-w-[160px] group-hover/nav:opacity-100",
+                    ? "max-w-[160px] pr-1.5 opacity-100"
+                    : "max-w-0 opacity-0 group-hover/nav:max-w-[160px] group-hover/nav:pr-1.5 group-hover/nav:opacity-100",
                 )}
               >
                 {item.label}
@@ -95,17 +104,13 @@ export function FloatingNav() {
             </Link>
           );
         })}
+      </nav>
 
-        {/* Divider */}
-        <div className={cn(
-          "shrink-0 bg-border/60",
-          isVertical ? "my-1 h-px w-6" : "mx-1 h-6 w-px",
-        )} />
-
-        {/* Move menu */}
+      {/* Separated utility pill (move + avatar) */}
+      <div className={pillClass}>
         <DropdownMenu>
           <DropdownMenuTrigger
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition"
+            className={cn(bubbleBtn, "h-9 w-9 text-muted-foreground hover:bg-muted hover:text-foreground")}
             aria-label="Mover navegación"
           >
             <Move className="h-4 w-4" />
@@ -134,17 +139,15 @@ export function FloatingNav() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Avatar */}
         <div
           className={cn(
-            "grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted text-xs font-bold text-foreground",
-            isVertical ? "mt-1" : "ml-1",
+            "grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-info text-xs font-bold text-primary-foreground",
           )}
           title={roleLabels[role]}
         >
           {role === "admin" ? "MV" : role === "recruiter" ? "CR" : "SH"}
         </div>
       </div>
-    </nav>
+    </div>
   );
 }
