@@ -41,7 +41,7 @@ export function FloatingNav() {
   const isVertical = navPosition === "left" || navPosition === "right";
 
   const pillClass = cn(
-    "flex items-center gap-1 rounded-full border border-border/60 bg-card/85 p-1.5 shadow-lg backdrop-blur-xl",
+    "flex items-center gap-1 rounded-full border border-border/60 bg-card/85 p-1.5 shadow-sm backdrop-blur-xl",
     isVertical && "flex-col",
   );
 
@@ -53,6 +53,7 @@ export function FloatingNav() {
       className={cn(
         "fixed z-40 flex gap-3 group/nav",
         "transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+        isVertical ? "gap-3" : "gap-3",
         wrapperPos[navPosition],
       )}
       style={{ willChange: "transform" }}
@@ -60,23 +61,45 @@ export function FloatingNav() {
       {/* Separated "add" / brand button */}
       <button
         className={cn(
-          bubbleBtn,
-          "border border-border/60 bg-primary text-primary-foreground shadow-lg hover:scale-105",
+          "grid shrink-0 place-items-center rounded-full border border-border/60 bg-primary text-primary-foreground shadow-sm hover:scale-105 transition",
+          isVertical ? "h-10 w-10" : "h-11 w-11",
         )}
         aria-label="Nuevo"
       >
-        <Plus className="h-5 w-5" />
+        <Plus className={isVertical ? "h-4 w-4" : "h-5 w-5"} />
       </button>
 
       {/* Main nav pill */}
       <nav className={pillClass}>
-        <div className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted text-foreground")}>
-          <Sparkles className="h-4 w-4" />
-        </div>
+        {!isVertical && (
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted text-foreground">
+            <Sparkles className="h-4 w-4" />
+          </div>
+        )}
 
         {visible.map((item) => {
           const Icon = item.icon;
           const active = path === item.to || (item.to !== "/app" && path.startsWith(item.to));
+
+          if (isVertical) {
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={cn(
+                  "grid h-9 w-9 shrink-0 place-items-center rounded-full transition-all duration-300",
+                  active
+                    ? "bg-background text-primary shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+                aria-label={item.label}
+                title={item.label}
+              >
+                <Icon className="h-4 w-4" />
+              </Link>
+            );
+          }
+
           return (
             <Link
               key={item.to}
@@ -85,7 +108,7 @@ export function FloatingNav() {
                 "relative flex items-center gap-2 rounded-full h-9 px-2 text-sm font-medium",
                 "transition-all duration-300 ease-out",
                 active
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
+                  ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
               aria-label={item.label}
@@ -136,12 +159,12 @@ export function FloatingNav() {
             <DropdownMenuItem className="cursor-pointer gap-2 text-destructive focus:text-destructive">
               <LogOut className="h-4 w-4" /> Cerrar sesión
             </DropdownMenuItem>
-          </DropdownMenuContent>
+          </DropdownMenu>
         </DropdownMenu>
 
         <div
           className={cn(
-            "grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-info text-xs font-bold text-primary-foreground",
+            "grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground",
           )}
           title={roleLabels[role]}
         >
