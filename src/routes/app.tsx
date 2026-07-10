@@ -19,14 +19,15 @@ function AppLayout() {
 
 function LayoutInner() {
   const { navPosition } = useApp();
+  const topOffset = navPosition === "top";
   return (
     <div
       className={cn(
         "min-h-screen w-full flex flex-col transition-[padding] duration-500",
-        navPosition === "top" && "pt-20",
-        navPosition === "bottom" && "pb-20",
-        navPosition === "left" && "pl-24",
-        navPosition === "right" && "pr-24",
+        topOffset && "pt-20",
+        navPosition === "bottom" && "pb-24",
+        navPosition === "left" && "pl-28",
+        navPosition === "right" && "pr-28",
       )}
     >
       <Topbar />
