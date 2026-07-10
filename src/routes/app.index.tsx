@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Plus, FileText, PhoneCall, CheckCircle2, DollarSign, Filter, MoreHorizontal, TrendingUp } from "lucide-react";
 import { procesos, type ProcesoEstado } from "@/lib/mock-data";
 import { GlassCard } from "@/components/app/GlassCard";
