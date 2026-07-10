@@ -28,21 +28,21 @@ export function Topbar() {
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/40">
-      <div className="flex items-center gap-4 px-6 h-16">
-        {/* Breadcrumbs — every segment is clickable */}
-        <nav className="flex items-center gap-2 text-sm">
+    <header className="sticky top-4 z-30 mx-4 lg:mx-6">
+      <div className="flex items-center gap-3 px-3 py-2 rounded-full border border-border/60 bg-card/80 shadow-lg backdrop-blur-xl">
+        {/* Breadcrumbs */}
+        <nav className="flex items-center gap-1 text-sm pl-2 shrink-0">
           {segments.map((seg, i) => {
             const label = breadcrumbMap[seg] || decodeURIComponent(seg);
             const isLast = i === segments.length - 1;
             const href = "/" + segments.slice(0, i + 1).join("/");
             return (
-              <span key={i} className="flex items-center gap-2">
+              <span key={i} className="flex items-center gap-1">
                 {i > 0 && <span className="text-muted-foreground/40">/</span>}
                 <Link
                   to={href as never}
                   className={cn(
-                    "rounded-md px-1.5 py-0.5 transition hover:bg-muted hover:text-foreground",
+                    "rounded-full px-2 py-0.5 transition hover:bg-muted hover:text-foreground",
                     isLast ? "font-semibold text-foreground" : "text-muted-foreground",
                   )}
                 >
@@ -54,20 +54,20 @@ export function Topbar() {
         </nav>
 
         {/* Search */}
-        <div className="flex-1 max-w-md ml-6">
+        <div className="flex-1 min-w-0 max-w-md">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               placeholder="Buscar procesos, candidatos, sets…"
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-xl bg-background/60 border border-border/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 placeholder:text-muted-foreground"
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-full bg-muted/60 border border-transparent focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-background placeholder:text-muted-foreground"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 ml-auto">
           {/* Role switcher */}
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary/15 to-info/15 border border-primary/20 text-sm font-medium hover:from-primary/25 hover:to-info/25 transition">
+            <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium hover:bg-primary/15 transition">
               <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
               <span className="hidden sm:inline">Rol: {roleLabels[role]}</span>
               <ChevronDown className="h-3.5 w-3.5" />
@@ -87,7 +87,7 @@ export function Topbar() {
 
           {/* Notifications */}
           <Popover open={notifOpen} onOpenChange={setNotifOpen}>
-            <PopoverTrigger className="relative h-9 w-9 grid place-items-center rounded-xl bg-background/60 border border-border/60 hover:bg-background transition">
+            <PopoverTrigger className="relative h-9 w-9 grid place-items-center rounded-full hover:bg-muted transition">
               <Bell className="h-4 w-4" />
               <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
             </PopoverTrigger>
@@ -118,7 +118,7 @@ export function Topbar() {
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
-            className="h-9 w-9 grid place-items-center rounded-xl bg-background/60 border border-border/60 hover:bg-background transition"
+            className="h-9 w-9 grid place-items-center rounded-full hover:bg-muted transition"
             aria-label="Toggle theme"
           >
             {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
