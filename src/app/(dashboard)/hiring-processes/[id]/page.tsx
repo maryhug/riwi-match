@@ -15,16 +15,16 @@ import {
   AlertTriangle, RefreshCw, Users, Paperclip, ExternalLink, X, Eye,
 } from 'lucide-react';
 import { processesApi, questionSetsApi } from '@/lib/api';
-import type { JobDescription, HiringProcess, ProfilingRun } from '@/lib/types';
+import type { JobDescription, HiringProcess, ProfilingRun, StructuredJD } from '@/lib/types';
 import { POLL_INTERVAL_MS, profilingRunsRefetchInterval } from '@/lib/polling';
 import { StatusBadge } from '@/components/ui/Badge';
 import UploadCvsModal from '@/components/ui/UploadCvsModal';
 import PdfPreviewModal from '@/components/ui/PdfPreviewModal';
 import Button from '@/components/ui/Button';
 import { Textarea, Select } from '@/components/ui/Input';
-import Header from '@/components/layout/Header';
+import { Header } from '@/components/layout/Header';
+import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { formatCurrency, getProcessStep } from '@/lib/utils';
-import type { StructuredJD } from '@/lib/types';
 
 const STEPS = [
   { label: 'Job Description' },
@@ -33,18 +33,10 @@ const STEPS = [
   { label: 'Profiling de Voz' },
 ];
 
-// ─── Stepper — tab style, sin círculos (Clickable tabs) ──────────────────────
-function Stepper({
-  activeStep,
-  maxStep,
-  onChangeStep,
-}: {
-  activeStep: number;
-  maxStep: number;
-  onChangeStep: (step: number) => void;
-}) {
+// --- Stepper ---
+function Stepper({ activeStep, maxStep, onChangeStep }: { activeStep: number; maxStep: number; onChangeStep: (step: number) => void; }) {
   return (
-    <div className="flex border-b border-slate-200 mb-6">
+    <div className="flex border-b border-border mb-6 bg-surface">
       {STEPS.map((step, i) => {
         const done   = i < activeStep;
         const active = i === activeStep;
@@ -60,26 +52,26 @@ function Stepper({
               isSelectable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
             }`}
             style={{
-              borderBottom: active ? '2px solid #7C3AED' : '2px solid transparent',
+              borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent',
               marginBottom: -1,
             }}
           >
             <span
               className={`flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded transition-colors ${
-                done   ? 'bg-violet-600 text-white' :
-                active ? 'bg-violet-100 text-violet-700' :
-                         'bg-slate-100 text-slate-400'
+                done   ? 'bg-primary text-white' :
+                active ? 'bg-primary-light text-primary-dark' :
+                         'bg-bg-subtle text-text-muted'
               }`}
             >
               {i < maxStep ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
             </span>
             <span className={`text-xs font-semibold whitespace-nowrap transition-colors ${
-              active ? 'text-violet-700' : isSelectable ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400'
+              active ? 'text-primary-dark' : isSelectable ? 'text-text hover:text-ink' : 'text-text-muted'
             }`}>
               {step.label}
             </span>
             {i < STEPS.length - 1 && (
-              <ChevronRight className="w-3.5 h-3.5 text-slate-300 ml-2" />
+              <ChevronRight className="w-3.5 h-3.5 text-border-strong ml-2" />
             )}
           </button>
         );
@@ -88,56 +80,45 @@ function Stepper({
   );
 }
 
-// ─── Section title helper ─────────────────────────────────────────────────────
+// --- Section title helper ---
 function SectionTitle({ icon: Icon, title, action }: { icon?: React.ElementType; title: string; action?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200">
+    <div className="flex items-center justify-between pb-4 mb-5 border-b border-border">
       <div className="flex items-center gap-2">
-        {Icon && <Icon className="w-4 h-4 text-slate-400" />}
-        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+        {Icon && <Icon className="w-4 h-4 text-text-muted" />}
+        <h3 className="text-sm font-semibold text-ink">{title}</h3>
       </div>
       {action}
     </div>
   );
 }
 
-// ─── File attachment banner ───────────────────────────────────────────────────
-function JDFileBanner({
-  filename,
-  fileUrl,
-  onPreview,
-}: {
-  filename: string;
-  fileUrl: string;
-  onPreview?: () => void;
-}) {
+// --- File attachment banner ---
+function JDFileBanner({ filename, fileUrl, onPreview }: { filename: string; fileUrl: string; onPreview?: () => void; }) {
   return (
-    <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded px-4 py-3 mb-4 animate-in fade-in duration-200">
-      <div className="flex items-center gap-3">
-        <Paperclip className="w-4 h-4 text-violet-600 shrink-0" />
-        <div>
-          <p className="text-sm font-semibold text-slate-900">{filename}</p>
-          <p className="text-xs text-slate-500">Archivo adjunto al JD</p>
+    <Card className="mb-4 bg-primary-xlight border-primary-light">
+      <CardContent className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3">
+          <Paperclip className="w-4 h-4 text-primary shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-ink">{filename}</p>
+            <p className="text-xs text-text-muted">Archivo adjunto al JD</p>
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {onPreview && (
-          <button
-            type="button"
-            onClick={onPreview}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-white border border-violet-200 text-violet-700 text-xs font-semibold hover:bg-violet-50 transition-colors"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            Previsualizar
-          </button>
-        )}
-        <a href={fileUrl} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-colors">
-          <ExternalLink className="w-3.5 h-3.5" />
-          Ver / descargar
-        </a>
-      </div>
-    </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {onPreview && (
+            <Button variant="outline" size="sm" onClick={onPreview} className="h-8 border-primary-light hover:bg-primary-light hover:text-primary-dark text-primary-dark">
+              <Eye className="w-3.5 h-3.5 mr-1.5" />
+              Previsualizar
+            </Button>
+          )}
+          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] bg-primary text-white text-xs font-semibold hover:bg-primary-dark transition-colors shadow-sm">
+            <ExternalLink className="w-3.5 h-3.5" />
+            Ver / descargar
+          </a>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -169,10 +150,10 @@ function JDStep({ processId }: { processId: string }) {
   const fileDownloadUrl = processesApi.getJDFileUrl(processId);
 
   const modeToggle = (
-    <div className="flex border border-slate-200 rounded overflow-hidden">
+    <div className="flex border border-border rounded-[var(--radius-sm)] overflow-hidden bg-surface">
       {(['file', 'text'] as const).map((m) => (
         <button key={m} onClick={() => setUploadMode(m)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${uploadMode === m ? 'bg-violet-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${uploadMode === m ? 'bg-primary text-white' : 'text-text-muted hover:bg-bg-subtle hover:text-text'}`}>
           {m === 'file' ? <Paperclip className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
           {m === 'file' ? 'Subir archivo' : 'Pegar texto'}
         </button>
@@ -181,7 +162,7 @@ function JDStep({ processId }: { processId: string }) {
   );
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {existingJD?.jd_file_url && (
         <JDFileBanner
           filename={existingJD.original_filename ?? 'job_description.pdf'}
@@ -199,74 +180,78 @@ function JDStep({ processId }: { processId: string }) {
         />
       )}
 
-      <div className="bg-white border border-slate-200 rounded p-5">
-        <SectionTitle icon={Sparkles} title="Job Description" action={modeToggle} />
+      <Card>
+        <CardContent className="p-6">
+          <SectionTitle icon={Sparkles} title="Job Description" action={modeToggle} />
 
-        {uploadMode === 'file' && (
-          <div className="space-y-4">
-            <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc,.txt" className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) setJdFile(f); }} />
-            {!jdFile ? (
-              <button onClick={() => fileInputRef.current?.click()}
-                className="w-full border-2 border-dashed border-slate-200 rounded p-7 flex flex-col items-center gap-3 hover:border-violet-300 hover:bg-violet-50 transition-colors">
-                <Paperclip className="w-8 h-8 text-slate-300" />
-                <div className="text-center">
-                  <p className="text-sm font-medium text-slate-700">Haz clic para seleccionar el archivo</p>
-                  <p className="text-xs text-slate-400 mt-1">PDF, DOCX o TXT · máx. 10 MB</p>
-                </div>
-              </button>
-            ) : (
-              <div className="flex items-center justify-between bg-slate-50 rounded px-4 py-3 border border-slate-200">
-                <div className="flex items-center gap-3">
-                  <Paperclip className="w-4 h-4 text-violet-600" />
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{jdFile.name}</p>
-                    <p className="text-xs text-slate-400">{(jdFile.size / 1024).toFixed(1)} KB</p>
+          {uploadMode === 'file' && (
+            <div className="space-y-4">
+              <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc,.txt" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) setJdFile(f); }} />
+              {!jdFile ? (
+                <button onClick={() => fileInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-border rounded-[var(--radius-md)] p-7 flex flex-col items-center gap-3 hover:border-primary hover:bg-primary-xlight transition-colors">
+                  <Paperclip className="w-8 h-8 text-border-strong" />
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-text">Haz clic para seleccionar el archivo</p>
+                    <p className="text-xs text-text-muted mt-1">PDF, DOCX o TXT · máx. 10 MB</p>
                   </div>
+                </button>
+              ) : (
+                <div className="flex items-center justify-between bg-bg-subtle rounded-[var(--radius-md)] px-4 py-3 border border-border">
+                  <div className="flex items-center gap-3">
+                    <Paperclip className="w-4 h-4 text-primary" />
+                    <div>
+                      <p className="text-sm font-semibold text-ink">{jdFile.name}</p>
+                      <p className="text-xs text-text-muted">{(jdFile.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setJdFile(null)} className="text-text-muted hover:text-coral"><X className="w-4 h-4" /></button>
                 </div>
-                <button onClick={() => setJdFile(null)} className="text-slate-300 hover:text-red-400"><X className="w-4 h-4" /></button>
-              </div>
-            )}
-            <Button onClick={() => uploadFileMutation.mutate()} loading={uploadFileMutation.isPending} disabled={!jdFile} className="w-full">
-              <Paperclip className="w-3.5 h-3.5" />
-              {existingJD?.jd_file_url ? 'Reemplazar archivo' : 'Subir archivo JD'}
-            </Button>
-            {uploadFileMutation.isSuccess && <p className="text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded">Archivo subido. El texto se extrajo automáticamente.</p>}
-          </div>
-        )}
+              )}
+              <Button onClick={() => uploadFileMutation.mutate()} loading={uploadFileMutation.isPending} disabled={!jdFile} className="w-full">
+                <Paperclip className="w-3.5 h-3.5 mr-2" />
+                {existingJD?.jd_file_url ? 'Reemplazar archivo' : 'Subir archivo JD'}
+              </Button>
+              {uploadFileMutation.isSuccess && <p className="text-xs text-mint-dark bg-mint-light px-3 py-2 rounded-[var(--radius-sm)] font-medium">Archivo subido. El texto se extrajo automáticamente.</p>}
+            </div>
+          )}
 
-        {uploadMode === 'text' && (
-          <div className="space-y-4">
-            <Textarea label="Texto del Job Description" placeholder="Pega aquí el texto completo del Job Description..." rows={8}
-              value={rawText} onChange={(e) => setRawText(e.target.value)} />
-            <Button onClick={() => parseMutation.mutate()} loading={parseMutation.isPending} disabled={!rawText.trim()} variant="outline">
-              <Sparkles className="w-3.5 h-3.5" />
-              Analizar con IA
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {jd && (
-        <div className="bg-white border border-slate-200 rounded p-5">
-          <SectionTitle title="JD Estructurado" action={
-            <Button variant="ghost" size="sm" onClick={() => setEditMode(!editMode)}>{editMode ? 'Vista' : 'Editar'}</Button>
-          } />
-          <div className="space-y-4">
-            <JDSection title="Must-Have" colorClass="text-emerald-700" bgClass="bg-emerald-50" items={jd.must_have} editMode={editMode}
-              onChange={(items) => setStructuredJD((prev) => ({ ...prev!, must_have: items }))} />
-            <JDSection title="Nice-to-Have" colorClass="text-blue-700" bgClass="bg-blue-50" items={jd.nice_to_have} editMode={editMode}
-              onChange={(items) => setStructuredJD((prev) => ({ ...prev!, nice_to_have: items }))} />
-            <JDSection title="Deal-Breakers" colorClass="text-red-700" bgClass="bg-red-50" items={jd.deal_breakers} editMode={editMode}
-              onChange={(items) => setStructuredJD((prev) => ({ ...prev!, deal_breakers: items }))} />
-            <div className="flex justify-end pt-2 border-t border-slate-100">
-              <Button onClick={() => saveMutation.mutate()} loading={saveMutation.isPending} disabled={!rawText.trim()}>
-                <CheckCircle2 className="w-4 h-4" />
-                Confirmar y guardar JD
+          {uploadMode === 'text' && (
+            <div className="space-y-4">
+              <Textarea label="Texto del Job Description" placeholder="Pega aquí el texto completo del Job Description..." rows={8}
+                value={rawText} onChange={(e) => setRawText(e.target.value)} />
+              <Button onClick={() => parseMutation.mutate()} loading={parseMutation.isPending} disabled={!rawText.trim()} variant="outline" className="w-full sm:w-auto">
+                <Sparkles className="w-3.5 h-3.5 mr-2" />
+                Analizar con IA
               </Button>
             </div>
-          </div>
-        </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {jd && (
+        <Card>
+          <CardContent className="p-6">
+            <SectionTitle title="JD Estructurado" action={
+              <Button variant="ghost" size="sm" onClick={() => setEditMode(!editMode)}>{editMode ? 'Vista' : 'Editar'}</Button>
+            } />
+            <div className="space-y-6">
+              <JDSection title="Must-Have" colorClass="text-mint-dark" bgClass="bg-mint-light border border-mint-light" items={jd.must_have} editMode={editMode}
+                onChange={(items) => setStructuredJD((prev) => ({ ...prev!, must_have: items }))} />
+              <JDSection title="Nice-to-Have" colorClass="text-blue-dark" bgClass="bg-blue-light border border-blue-light" items={jd.nice_to_have} editMode={editMode}
+                onChange={(items) => setStructuredJD((prev) => ({ ...prev!, nice_to_have: items }))} />
+              <JDSection title="Deal-Breakers" colorClass="text-coral-dark" bgClass="bg-coral-light border border-coral" items={jd.deal_breakers} editMode={editMode}
+                onChange={(items) => setStructuredJD((prev) => ({ ...prev!, deal_breakers: items }))} />
+              <div className="flex justify-end pt-4 border-t border-border mt-4">
+                <Button onClick={() => saveMutation.mutate()} loading={saveMutation.isPending} disabled={!rawText.trim()}>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Confirmar y guardar JD
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
@@ -277,26 +262,26 @@ function JDSection({ title, colorClass, bgClass, items, editMode, onChange }: {
 }) {
   return (
     <div>
-      <p className={`text-xs font-semibold mb-2 ${colorClass}`}>{title}</p>
-      <div className={`rounded p-3 ${bgClass} space-y-1.5`}>
+      <p className={`text-xs font-bold mb-2 uppercase tracking-wide ${colorClass}`}>{title}</p>
+      <div className={`rounded-[var(--radius-md)] p-4 ${bgClass} space-y-2`}>
         {items.map((item, i) =>
           editMode ? (
             <input key={i} value={item} onChange={(e) => { const next = [...items]; next[i] = e.target.value; onChange(next); }}
-              className="w-full bg-transparent text-sm border-b border-current/20 focus:outline-none py-0.5" />
+              className="w-full bg-surface-raised/50 text-sm border-b border-black/10 focus:border-black/30 focus:outline-none py-1.5 px-2 rounded-sm" />
           ) : (
-            <div key={i} className="flex items-start gap-2 text-sm">
-              <ChevronRight className="w-3.5 h-3.5 mt-0.5 shrink-0 opacity-60" />
+            <div key={i} className="flex items-start gap-2 text-sm text-ink font-medium">
+              <ChevronRight className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${colorClass}`} />
               {item}
             </div>
           )
         )}
-        {editMode && <button onClick={() => onChange([...items, ''])} className={`text-xs font-medium ${colorClass} hover:opacity-70 mt-1`}>+ Agregar</button>}
+        {editMode && <button onClick={() => onChange([...items, ''])} className={`text-xs font-bold ${colorClass} hover:opacity-70 mt-2 flex items-center gap-1`}>+ Agregar</button>}
       </div>
     </div>
   );
 }
 
-// ─── Step 1: Upload CVs ───────────────────────────────────────────────────────
+// --- Step 1: Upload CVs ---
 function UploadCVsStep({ processId }: { processId: string }) {
   const qc = useQueryClient();
   const [files, setFiles] = useState<File[]>([]);
@@ -328,101 +313,112 @@ function UploadCVsStep({ processId }: { processId: string }) {
   }, []);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {successCount !== null && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-emerald-950">¡Candidatos cargados con éxito!</p>
-              <p className="text-xs text-emerald-700 mt-0.5">
-                Se han encolado <strong>{successCount} CV(s)</strong> para procesamiento. La IA los normalizará y evaluará su porcentaje de match de forma automática en pocos segundos.
-              </p>
+        <Card className="bg-mint-light border-mint">
+          <CardContent className="p-4 flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-mint-dark shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-mint-dark">¡Candidatos cargados con éxito!</p>
+                <p className="text-xs text-mint-dark/80 mt-1 font-medium">
+                  Se han encolado <strong>{successCount} CV(s)</strong> para procesamiento. La IA los normalizará y evaluará su porcentaje de match de forma automática en pocos segundos.
+                </p>
+              </div>
             </div>
-          </div>
-          <button onClick={() => setSuccessCount(null)} className="text-emerald-500 hover:text-emerald-700 p-1">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+            <button onClick={() => setSuccessCount(null)} className="text-mint-dark/60 hover:text-mint-dark p-1 rounded-full hover:bg-mint-dark/10 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </CardContent>
+        </Card>
       )}
-      <div className="bg-white border border-slate-200 rounded p-5">
-        <SectionTitle icon={Upload} title="Carga masiva de CVs" />
-        <p className="text-xs text-slate-500 mb-4">Sube los CVs — PDF, DOCX, JPG, PNG o WEBP. Se procesarán con IA automáticamente.</p>
-        <div onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}
-          className={`border-2 border-dashed rounded p-8 text-center transition-colors ${dragging ? 'border-violet-400 bg-violet-50' : 'border-slate-200 hover:border-violet-300 hover:bg-slate-50'}`}>
-          <Upload className="w-9 h-9 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-700 mb-1">Arrastra los CVs aquí</p>
-          <p className="text-xs text-slate-500 mb-4">PDF · DOCX · JPG · PNG · WEBP · máx. 10 MB</p>
-          <label className="cursor-pointer">
-            <span className="px-4 py-1.5 bg-violet-600 text-white rounded text-xs font-semibold hover:bg-violet-700 transition-colors">Seleccionar CVs</span>
-            <input type="file" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.webp,.tiff,.bmp" multiple className="hidden" onChange={(e) => { if (e.target.files) setFiles((prev) => [...prev, ...Array.from(e.target.files!).filter(isCvAllowed)]); }} />
-          </label>
-        </div>
-
-        {files.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <p className="text-xs font-medium text-slate-700 border-b border-slate-100 pb-2">{files.length} archivo(s) seleccionado(s)</p>
-            <div className="max-h-40 overflow-y-auto divide-y divide-slate-100">
-              {files.map((f, i) => (
-                <div key={i} className="flex items-center justify-between py-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="text-xs text-slate-700 truncate max-w-[240px]">{f.name}</span>
-                  </div>
-                  <button onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} className="text-slate-300 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
-                </div>
-              ))}
-            </div>
-            <Button onClick={() => uploadMutation.mutate()} loading={uploadMutation.isPending} className="w-full mt-2">
-              <Upload className="w-3.5 h-3.5" /> Subir {files.length} CV(s)
-            </Button>
+      
+      <Card>
+        <CardContent className="p-6">
+          <SectionTitle icon={Upload} title="Carga masiva de CVs" />
+          <p className="text-xs text-text-muted mb-5">Sube los CVs — PDF, DOCX, JPG, PNG o WEBP. Se procesarán con IA automáticamente.</p>
+          <div onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}
+            className={`border-2 border-dashed rounded-[var(--radius-md)] p-8 text-center transition-colors ${dragging ? 'border-primary bg-primary-xlight' : 'border-border hover:border-primary hover:bg-bg-subtle'}`}>
+            <Upload className="w-9 h-9 text-border-strong mx-auto mb-3" />
+            <p className="text-sm font-medium text-text mb-1">Arrastra los CVs aquí</p>
+            <p className="text-xs text-text-muted mb-4">PDF · DOCX · JPG · PNG · WEBP · máx. 10 MB</p>
+            <label className="cursor-pointer">
+              <span className="px-5 py-2 bg-primary text-white rounded-[var(--radius-sm)] text-xs font-semibold hover:bg-primary-dark transition-colors shadow-sm inline-block">Seleccionar CVs</span>
+              <input type="file" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.webp,.tiff,.bmp" multiple className="hidden" onChange={(e) => { if (e.target.files) setFiles((prev) => [...prev, ...Array.from(e.target.files!).filter(isCvAllowed)]); }} />
+            </label>
           </div>
-        )}
-      </div>
 
-      <div className="bg-white border border-slate-200 rounded p-5">
-        <SectionTitle icon={BarChart2} title="Ejecutar Match" />
-        <p className="text-xs text-slate-500 mb-4">Evalúa todos los CVs cargados contra el Job Description con IA</p>
-        <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded mb-4">
-          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-800">Asegúrate de haber subido todos los CVs antes de ejecutar el match.</p>
-        </div>
-        <Button onClick={() => matchMutation.mutate()} loading={matchMutation.isPending}>
-          <Sparkles className="w-3.5 h-3.5" /> Ejecutar Match con IA
-        </Button>
-      </div>
+          {files.length > 0 && (
+            <div className="mt-6 space-y-3">
+              <p className="text-xs font-bold text-text border-b border-border pb-2 uppercase tracking-wide">{files.length} archivo(s) seleccionado(s)</p>
+              <div className="max-h-40 overflow-y-auto divide-y divide-border">
+                {files.map((f, i) => (
+                  <div key={i} className="flex items-center justify-between py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <FileText className="w-4 h-4 text-text-muted shrink-0" />
+                      <span className="text-xs font-medium text-ink truncate max-w-[240px]">{f.name}</span>
+                    </div>
+                    <button onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} className="text-text-muted hover:text-coral p-1 rounded-full hover:bg-coral-light transition-colors"><X className="w-3.5 h-3.5" /></button>
+                  </div>
+                ))}
+              </div>
+              <div className="pt-3">
+                <Button onClick={() => uploadMutation.mutate()} loading={uploadMutation.isPending} className="w-full sm:w-auto">
+                  <Upload className="w-3.5 h-3.5 mr-2" /> Subir {files.length} CV(s)
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <SectionTitle icon={BarChart2} title="Ejecutar Match" />
+          <p className="text-xs text-text-muted mb-5">Evalúa todos los CVs cargados contra el Job Description con IA</p>
+          <div className="flex items-start gap-3 p-4 bg-accent-light border border-accent rounded-[var(--radius-md)] mb-5">
+            <AlertTriangle className="w-5 h-5 text-accent-dark shrink-0 mt-0.5" />
+            <p className="text-sm text-accent-dark font-medium">Asegúrate de haber subido todos los CVs antes de ejecutar el match.</p>
+          </div>
+          <Button onClick={() => matchMutation.mutate()} loading={matchMutation.isPending}>
+            <Sparkles className="w-3.5 h-3.5 mr-2" /> Ejecutar Match con IA
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-// ─── Step 2: Match Results ────────────────────────────────────────────────────
+// --- Step 2: Match Results ---
 function MatchStep({ processId }: { processId: string }) {
   return (
-    <div className="space-y-4">
-      <div className="bg-white border border-slate-200 rounded p-5">
-        <SectionTitle icon={BarChart2} title="Resultados del Match" />
-        <div className="grid grid-cols-2 gap-3">
-          <Link href={`/hiring-processes/${processId}/ranking`}>
-            <div className="p-5 text-center border border-slate-200 rounded hover:border-violet-300 hover:bg-violet-50 transition-colors cursor-pointer">
-              <BarChart2 className="w-8 h-8 text-violet-600 mx-auto mb-2 opacity-80" />
-              <p className="font-semibold text-slate-800 text-sm">Ranking de candidatos</p>
-              <p className="text-xs text-slate-400 mt-1">Tabla ordenada por match % con filtros</p>
-            </div>
-          </Link>
-          <Link href={`/hiring-processes/${processId}/candidates`}>
-            <div className="p-5 text-center border border-slate-200 rounded hover:border-violet-300 hover:bg-violet-50 transition-colors cursor-pointer">
-              <Users className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-              <p className="font-semibold text-slate-800 text-sm">Vista Kanban</p>
-              <p className="text-xs text-slate-400 mt-1">Columnas por categoría: Alto / Medio / Bajo</p>
-            </div>
-          </Link>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <Card>
+        <CardContent className="p-6">
+          <SectionTitle icon={BarChart2} title="Resultados del Match" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Link href={`/hiring-processes/${processId}/ranking`}>
+              <div className="p-6 text-center border border-border rounded-[var(--radius-md)] hover:border-primary hover:bg-primary-xlight hover:shadow-sm transition-all cursor-pointer group">
+                <BarChart2 className="w-10 h-10 text-primary mx-auto mb-3 opacity-90 group-hover:scale-110 transition-transform" />
+                <p className="font-bold text-ink text-sm">Ranking de candidatos</p>
+                <p className="text-xs text-text-muted mt-1.5 font-medium">Tabla ordenada por match % con filtros</p>
+              </div>
+            </Link>
+            <Link href={`/hiring-processes/${processId}/candidates`}>
+              <div className="p-6 text-center border border-border rounded-[var(--radius-md)] hover:border-primary hover:bg-primary-xlight hover:shadow-sm transition-all cursor-pointer group">
+                <Users className="w-10 h-10 text-border-strong mx-auto mb-3 group-hover:text-primary group-hover:scale-110 transition-transform" />
+                <p className="font-bold text-ink text-sm">Vista Kanban</p>
+                <p className="text-xs text-text-muted mt-1.5 font-medium">Columnas por categoría: Alto / Medio / Bajo</p>
+              </div>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-// ─── Configuración de voz del agente (system prompt / saludo) ────────────────
+// --- Configuración de voz del agente ---
 function VoiceConfigCard({ processId }: { processId: string }) {
   const qc = useQueryClient();
   const { data: process } = useQuery({
@@ -452,48 +448,48 @@ function VoiceConfigCard({ processId }: { processId: string }) {
   });
 
   return (
-    <div className="bg-white border border-slate-200 rounded p-5">
-      <SectionTitle icon={Phone} title="Configuración de voz del agente" />
-      <p className="text-xs text-slate-500 mb-4">
-        Personaliza el prompt y el saludo con el que el agente llama a los candidatos de{' '}
-        <strong>este proceso</strong>. Usa <code className="bg-slate-100 px-1 rounded">{'{{candidate_name}}'}</code>{' '}
-        y <code className="bg-slate-100 px-1 rounded">{'{{job_title}}'}</code> para personalizar cada llamada.
-        Si se deja vacío, se usa la configuración por defecto del set de preguntas.
-      </p>
-      <div className="space-y-4">
-        <Textarea
-          label="System prompt"
-          placeholder="Eres un agente de voz de Riwi llamando a un candidato para..."
-          rows={6}
-          value={systemPrompt}
-          onChange={(e) => setSystemPrompt(e.target.value)}
-        />
-        <Textarea
-          label="Primer saludo (first message)"
-          placeholder="Hola, ¿hablo con {{candidate_name}}? Te llamo de parte de Riwi..."
-          rows={2}
-          value={firstMessage}
-          onChange={(e) => setFirstMessage(e.target.value)}
-        />
-        <div className="flex items-center gap-3">
-          <Button onClick={() => saveMutation.mutate()} loading={saveMutation.isPending}>
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Guardar configuración de voz
-          </Button>
-          {saveMutation.isSuccess && (
-            <span className="text-xs text-emerald-600">Guardado</span>
-          )}
+    <Card>
+      <CardContent className="p-6">
+        <SectionTitle icon={Phone} title="Configuración de voz del agente" />
+        <p className="text-xs text-text-muted mb-5 leading-relaxed">
+          Personaliza el prompt y el saludo con el que el agente llama a los candidatos de{' '}
+          <strong className="text-text">este proceso</strong>. Usa <code className="bg-bg-subtle border border-border px-1.5 py-0.5 rounded font-mono text-[10px] text-ink">{'{{candidate_name}}'}</code>{' '}
+          y <code className="bg-bg-subtle border border-border px-1.5 py-0.5 rounded font-mono text-[10px] text-ink">{'{{job_title}}'}</code> para personalizar cada llamada.
+          Si se deja vacío, se usa la configuración por defecto del set de preguntas.
+        </p>
+        <div className="space-y-4">
+          <Textarea
+            label="System prompt"
+            placeholder="Eres un agente de voz de Riwi llamando a un candidato para..."
+            rows={6}
+            value={systemPrompt}
+            onChange={(e) => setSystemPrompt(e.target.value)}
+          />
+          <Textarea
+            label="Primer saludo (first message)"
+            placeholder="Hola, ¿hablo con {{candidate_name}}? Te llamo de parte de Riwi..."
+            rows={2}
+            value={firstMessage}
+            onChange={(e) => setFirstMessage(e.target.value)}
+          />
+          <div className="flex items-center gap-3 pt-2">
+            <Button onClick={() => saveMutation.mutate()} loading={saveMutation.isPending}>
+              <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
+              Guardar configuración de voz
+            </Button>
+            {saveMutation.isSuccess && (
+              <span className="text-xs font-bold text-mint-dark bg-mint-light px-2 py-1 rounded-[var(--radius-sm)]">Guardado</span>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
-// ─── Step 3: Profiling ────────────────────────────────────────────────────────
+// --- Step 3: Profiling ---
 function QuestionSetAssignmentCard({ processId, currentQuestionSetId }: { processId: string; currentQuestionSetId?: string | null }) {
   const qc = useQueryClient();
-  // El padre solo monta esta card una vez que `process` ya cargó, así que el valor
-  // inicial siempre refleja el question_set_id real (sin necesidad de sincronizar en un efecto).
   const [selected, setSelected] = useState(currentQuestionSetId ?? '');
 
   const { data: questionSets = [], isLoading } = useQuery({
@@ -511,40 +507,42 @@ function QuestionSetAssignmentCard({ processId, currentQuestionSetId }: { proces
     ?.response?.data?.detail;
 
   return (
-    <div className="bg-white border border-slate-200 rounded p-5">
-      <SectionTitle icon={CheckCircle2} title="Set de preguntas de profiling" />
-      <p className="text-xs text-slate-500 mb-4">
-        Asocia un set de preguntas activo a este proceso (RB-003): es requisito para poder iniciar
-        llamadas de profiling desde el Kanban o el Ranking.
-      </p>
-      <div className="flex items-end gap-3">
-        <div className="flex-1 max-w-sm">
-          <Select
-            label="Set de preguntas"
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
-            disabled={isLoading}
-            options={[
-              { value: '', label: isLoading ? 'Cargando...' : 'Selecciona un set activo' },
-              ...activeSets.map((qs) => ({ value: qs.id, label: qs.name })),
-            ]}
-          />
-        </div>
-        <Button
-          size="sm"
-          disabled={!selected || selected === currentQuestionSetId || saveMutation.isPending}
-          onClick={() => saveMutation.mutate(selected)}
-        >
-          {saveMutation.isPending ? 'Guardando...' : 'Asociar'}
-        </Button>
-      </div>
-      {activeSets.length === 0 && !isLoading && (
-        <p className="text-xs text-amber-600 mt-2">
-          No hay sets de preguntas activos. Crea uno en Question Sets antes de continuar.
+    <Card>
+      <CardContent className="p-6">
+        <SectionTitle icon={CheckCircle2} title="Set de preguntas de profiling" />
+        <p className="text-xs text-text-muted mb-5 leading-relaxed">
+          Asocia un set de preguntas activo a este proceso (RB-003): es requisito para poder iniciar
+          llamadas de profiling desde el Kanban o el Ranking.
         </p>
-      )}
-      {errorDetail && <p className="text-xs text-red-600 mt-2">{errorDetail}</p>}
-    </div>
+        <div className="flex flex-col sm:flex-row items-end gap-3">
+          <div className="w-full sm:flex-1 sm:max-w-sm">
+            <Select
+              label="Set de preguntas"
+              value={selected}
+              onChange={(e) => setSelected(e.target.value)}
+              disabled={isLoading}
+              options={[
+                { value: '', label: isLoading ? 'Cargando...' : 'Selecciona un set activo' },
+                ...activeSets.map((qs) => ({ value: qs.id, label: qs.name })),
+              ]}
+            />
+          </div>
+          <Button
+            className="w-full sm:w-auto"
+            disabled={!selected || selected === currentQuestionSetId || saveMutation.isPending}
+            onClick={() => saveMutation.mutate(selected)}
+          >
+            {saveMutation.isPending ? 'Guardando...' : 'Asociar'}
+          </Button>
+        </div>
+        {activeSets.length === 0 && !isLoading && (
+          <p className="text-xs text-accent-dark bg-accent-light px-3 py-2 rounded-[var(--radius-sm)] font-medium mt-4">
+            No hay sets de preguntas activos. Crea uno en Question Sets antes de continuar.
+          </p>
+        )}
+        {errorDetail && <p className="text-xs text-coral-dark bg-coral-light px-3 py-2 rounded-[var(--radius-sm)] mt-4">{errorDetail}</p>}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -561,55 +559,57 @@ function ProfilingStep({ processId }: { processId: string }) {
   });
 
   const statusCls: Record<string, string> = {
-    PENDING:   'bg-slate-100 text-slate-500',
-    CALLING:   'bg-blue-50 text-blue-700',
-    COMPLETED: 'bg-emerald-50 text-emerald-700',
-    FAILED:    'bg-red-50 text-red-600',
-    NO_ANSWER: 'bg-amber-50 text-amber-700',
+    PENDING:   'bg-bg-subtle text-text-muted border-border',
+    CALLING:   'bg-blue-light text-blue-dark border-blue',
+    COMPLETED: 'bg-mint-light text-mint-dark border-mint',
+    FAILED:    'bg-coral-light text-coral-dark border-coral',
+    NO_ANSWER: 'bg-accent-light text-accent-dark border-accent',
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded">
-      <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+    <Card>
+      <CardHeader className="px-6 py-4 border-b border-border flex flex-row items-center justify-between bg-surface-raised rounded-t-[var(--radius-xl)]">
         <div className="flex items-center gap-2">
-          <Phone className="w-4 h-4 text-slate-400" />
-          <h3 className="text-sm font-semibold text-slate-900">Estado de llamadas de profiling</h3>
+          <Phone className="w-4 h-4 text-text-muted" />
+          <h3 className="text-sm font-semibold text-ink">Estado de llamadas de profiling</h3>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['profiling-runs', processId] })}>
-          <RefreshCw className="w-3.5 h-3.5" /> Actualizar
+        <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['profiling-runs', processId] })}>
+          <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Actualizar
         </Button>
-      </div>
-      <div className="divide-y divide-slate-100">
+      </CardHeader>
+      <div className="divide-y divide-border">
         {isLoading ? (
-          <div className="py-8 flex justify-center"><div className="w-5 h-5 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" /></div>
+          <div className="py-10 flex justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
         ) : runs.length === 0 ? (
-          <div className="py-10 text-center">
-            <Phone className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-            <p className="text-sm text-slate-500">Selecciona candidatos finalistas en el Kanban para iniciar las llamadas</p>
-            <Link href={`/hiring-processes/${processId}/candidates`} className="mt-3 inline-block">
+          <div className="py-12 text-center bg-surface">
+            <Phone className="w-10 h-10 text-border-strong mx-auto mb-3" />
+            <p className="text-sm font-medium text-text mb-4">Selecciona candidatos finalistas en el Kanban para iniciar las llamadas</p>
+            <Link href={`/hiring-processes/${processId}/candidates`} className="inline-block">
               <Button size="sm" variant="outline">Ir al Kanban</Button>
             </Link>
           </div>
         ) : (
           runs.map((run) => (
-            <div key={run.id} className="flex items-center justify-between px-5 py-3">
+            <div key={run.id} className="flex items-center justify-between px-6 py-4 bg-surface hover:bg-bg-subtle/30 transition-colors">
               <div>
-                <p className="text-sm font-medium text-slate-900">{run.candidate?.name} {run.candidate?.last_name}</p>
-                <p className="text-xs text-slate-400">{run.call_attempts} intento(s)</p>
+                <p className="text-sm font-semibold text-ink">{run.candidate?.name} {run.candidate?.last_name}</p>
+                <p className="text-[11px] font-medium text-text-muted mt-0.5">{run.call_attempts} intento(s)</p>
               </div>
               <div className="flex items-center gap-3">
-                {run.advancement_prob && <span className="text-xs font-semibold text-violet-700">Prob: {run.advancement_prob}</span>}
-                <span className={`px-2.5 py-0.5 rounded text-xs font-medium ${statusCls[run.status] ?? 'bg-slate-100 text-slate-500'}`}>{run.status}</span>
+                {run.advancement_prob && <span className="text-xs font-bold text-primary-dark">Prob: {run.advancement_prob}</span>}
+                <span className={`px-2.5 py-0.5 rounded-[var(--radius-sm)] border text-[10px] font-bold uppercase tracking-wider ${statusCls[run.status] ?? 'bg-bg-subtle text-text-muted border-border'}`}>
+                  {run.status}
+                </span>
               </div>
             </div>
           ))
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// --- Main Page ---
 export default function ProcessDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -617,8 +617,6 @@ export default function ProcessDetailPage({ params }: { params: Promise<{ id: st
   const { data: process, isLoading } = useQuery({
     queryKey: ['process', id],
     queryFn: () => processesApi.get(id).then((r) => r.data),
-    // Solo pollea mientras el match está en curso; al terminar el back deja de
-    // estar en 'MATCHING' y detenemos el polling.
     refetchInterval: (q) => {
       const d = q.state.data as HiringProcess | undefined;
       return d?.status === 'MATCHING' ? POLL_INTERVAL_MS : false;
@@ -636,37 +634,39 @@ export default function ProcessDetailPage({ params }: { params: Promise<{ id: st
     }
   }, [process?.status]);
 
-  if (isLoading) return <div className="flex justify-center py-16"><div className="w-7 h-7 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" /></div>;
-  if (!process) return <div className="text-slate-500 text-sm">Proceso no encontrado</div>;
+  if (isLoading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (!process) return <div className="text-text-muted text-sm text-center py-20">Proceso no encontrado</div>;
 
   return (
-    <div>
+    <div className="bg-bg min-h-screen py-6 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
       <Header title={process.name} subtitle={`${process.job_title} · ${process.area} · ${process.seniority}`}>
-        <Link href="/hiring-processes"><Button variant="outline" size="sm"><ArrowLeft className="w-3.5 h-3.5" />Volver</Button></Link>
+        <Link href="/hiring-processes"><Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" />Volver</Button></Link>
       </Header>
 
       {/* Info bar */}
-      <div className="flex items-center gap-4 mb-5 px-4 py-3 bg-white border border-slate-200 rounded">
-        <StatusBadge status={process.status} />
-        <div className="h-4 w-px bg-slate-200" />
-        <div className="flex-1 max-w-xs">
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-violet-700 font-medium">Consumo IA: {formatCurrency(process.budget_max_usd * 0.45)}</span>
-            <span className="text-slate-400">Máx {formatCurrency(process.budget_max_usd)}</span>
+      <Card className="mb-6 shadow-sm overflow-visible">
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+          <StatusBadge status={process.status} />
+          <div className="hidden sm:block h-6 w-px bg-border mx-2" />
+          <div className="flex-1 max-w-sm w-full">
+            <div className="flex justify-between text-[11px] font-bold mb-1.5 uppercase tracking-wide">
+              <span className="text-primary-dark">Consumo IA: {formatCurrency(process.budget_max_usd * 0.45)}</span>
+              <span className="text-text-muted">Máx {formatCurrency(process.budget_max_usd)}</span>
+            </div>
+            <div className="w-full bg-bg-subtle rounded-full h-1.5 overflow-hidden">
+              <div className="bg-primary h-full rounded-full" style={{ width: '45%' }} />
+            </div>
           </div>
-          <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
-            <div className="bg-violet-600 h-full rounded-full" style={{ width: '45%' }} />
+          <div className="sm:ml-auto flex items-center gap-2 mt-2 sm:mt-0">
+            <Link href={`/hiring-processes/${id}/ranking`}>
+              <Button variant="outline" size="sm" className="bg-surface"><BarChart2 className="w-3.5 h-3.5 mr-2" />Ranking</Button>
+            </Link>
+            <Link href={`/hiring-processes/${id}/candidates`}>
+              <Button variant="outline" size="sm" className="bg-surface"><Users className="w-3.5 h-3.5 mr-2" />Kanban</Button>
+            </Link>
           </div>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <Link href={`/hiring-processes/${id}/ranking`}>
-            <Button variant="outline" size="sm"><BarChart2 className="w-3.5 h-3.5" />Ranking</Button>
-          </Link>
-          <Link href={`/hiring-processes/${id}/candidates`}>
-            <Button variant="outline" size="sm"><Users className="w-3.5 h-3.5" />Kanban</Button>
-          </Link>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       <Stepper
         activeStep={activeStep ?? currentStep}
@@ -674,38 +674,44 @@ export default function ProcessDetailPage({ params }: { params: Promise<{ id: st
         onChangeStep={(s) => setActiveStep(s)}
       />
 
-      {(activeStep ?? currentStep) === 0 && <JDStep processId={id} />}
-      {(activeStep ?? currentStep) === 1 && <UploadCVsStep processId={id} />}
-      {(activeStep ?? currentStep) === 2 && (
-        <div className="space-y-5">
-          <MatchStep processId={id} />
-          <div className="bg-white border border-slate-200 rounded-lg p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-1">Cargar más candidatos (CVs)</h3>
-              <p className="text-xs text-slate-400">Sube CVs (PDF, DOCX, JPG, PNG) de nuevos candidatos. Se normalizarán y evaluarán automáticamente con IA.</p>
-            </div>
-            <Button onClick={() => setIsUploadOpen(true)} className="shrink-0">
-              <Upload className="w-3.5 h-3.5" /> Subir más CVs
-            </Button>
+      <div className="mt-6">
+        {(activeStep ?? currentStep) === 0 && <JDStep processId={id} />}
+        {(activeStep ?? currentStep) === 1 && <UploadCVsStep processId={id} />}
+        {(activeStep ?? currentStep) === 2 && (
+          <div className="space-y-6">
+            <MatchStep processId={id} />
+            <Card className="bg-primary-xlight border-primary-light">
+              <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+                <div>
+                  <h3 className="text-sm font-bold text-ink mb-1">Cargar más candidatos (CVs)</h3>
+                  <p className="text-xs text-text-muted font-medium">Sube CVs (PDF, DOCX, JPG, PNG) de nuevos candidatos. Se normalizarán y evaluarán automáticamente con IA.</p>
+                </div>
+                <Button onClick={() => setIsUploadOpen(true)} className="shrink-0 bg-primary text-white shadow-sm hover:bg-primary-dark">
+                  <Upload className="w-4 h-4 mr-2" /> Subir más CVs
+                </Button>
+              </CardContent>
+            </Card>
           </div>
-        </div>
-      )}
-      {(activeStep ?? currentStep) === 3 && (
-        <div className="space-y-5">
-          <QuestionSetAssignmentCard processId={id} currentQuestionSetId={process.question_set_id} />
-          <VoiceConfigCard processId={id} />
-          <ProfilingStep processId={id} />
-          <div className="bg-white border border-slate-200 rounded-lg p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-1">Cargar más candidatos (CVs)</h3>
-              <p className="text-xs text-slate-400">Sube CVs (PDF, DOCX, JPG, PNG) de nuevos candidatos. Se normalizarán y evaluarán automáticamente con IA.</p>
-            </div>
-            <Button onClick={() => setIsUploadOpen(true)} className="shrink-0">
-              <Upload className="w-3.5 h-3.5" /> Subir más CVs
-            </Button>
+        )}
+        {(activeStep ?? currentStep) === 3 && (
+          <div className="space-y-6">
+            <QuestionSetAssignmentCard processId={id} currentQuestionSetId={process.question_set_id} />
+            <VoiceConfigCard processId={id} />
+            <ProfilingStep processId={id} />
+            <Card className="bg-primary-xlight border-primary-light mt-4">
+              <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+                <div>
+                  <h3 className="text-sm font-bold text-ink mb-1">Cargar más candidatos (CVs)</h3>
+                  <p className="text-xs text-text-muted font-medium">Sube CVs (PDF, DOCX, JPG, PNG) de nuevos candidatos. Se normalizarán y evaluarán automáticamente con IA.</p>
+                </div>
+                <Button onClick={() => setIsUploadOpen(true)} className="shrink-0 bg-primary text-white shadow-sm hover:bg-primary-dark">
+                  <Upload className="w-4 h-4 mr-2" /> Subir más CVs
+                </Button>
+              </CardContent>
+            </Card>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <UploadCvsModal
         isOpen={isUploadOpen}

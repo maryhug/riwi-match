@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
   ArrowLeft, Phone, RefreshCw, ChevronDown, ChevronUp,
   CheckSquare, Square, Loader2, Users, FileText, Mic, Minus,
-  TrendingUp, TrendingDown, Upload,
+  TrendingUp, TrendingDown, Upload, AlertTriangle,
 } from 'lucide-react';
 import { processesApi } from '@/lib/api';
 import Button from '@/components/ui/Button';
@@ -17,22 +17,22 @@ import { formatPercent } from '@/lib/utils';
 import type { MatchCategory } from '@/lib/types';
 import type { DualMatchCandidate, DualKanbanResponse } from '@/lib/types';
 
-// ─── View mode ───────────────────────────────────────────────────────────────
+// --- View mode ---
 type ViewMode = 'both' | 'cv' | 'profiling';
 
-// ─── Category config ──────────────────────────────────────────────────────────
+// --- Category config ---
 const CATEGORY_STYLES: Record<string, { bg: string; color: string; label: string; headerBg: string; headerBorder: string }> = {
-  HIGH:            { bg: '#ECFDF5', color: '#059669', label: 'Alto',           headerBg: '#F0FDF4', headerBorder: '#BBF7D0' },
-  MEDIUM:          { bg: '#FFFBEB', color: '#D97706', label: 'Medio',          headerBg: '#FEFCE8', headerBorder: '#FDE68A' },
-  LOW:             { bg: '#FEF2F2', color: '#DC2626', label: 'Bajo',           headerBg: '#FFF1F2', headerBorder: '#FECDD3' },
-  NOT_RECOMMENDED: { bg: '#F8FAFC', color: '#94A3B8', label: 'No recomendado', headerBg: '#F1F5F9', headerBorder: '#CBD5E1' },
+  HIGH:            { bg: 'var(--color-mint-light)', color: 'var(--color-mint-dark)', label: 'Alto',           headerBg: 'var(--color-mint-xlight)', headerBorder: 'var(--color-mint)' },
+  MEDIUM:          { bg: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', label: 'Medio',          headerBg: '#FEFCE8', headerBorder: 'var(--color-accent)' },
+  LOW:             { bg: 'var(--color-coral-light)', color: 'var(--color-coral-dark)', label: 'Bajo',           headerBg: '#FFF1F2', headerBorder: 'var(--color-coral)' },
+  NOT_RECOMMENDED: { bg: 'var(--color-bg-subtle)', color: 'var(--color-text-muted)', label: 'No recomendado', headerBg: 'var(--color-surface)', headerBorder: 'var(--color-border)' },
 };
 
 function CategoryPill({ category }: { category: string | null | undefined }) {
   const s = CATEGORY_STYLES[category ?? 'LOW'] ?? CATEGORY_STYLES.LOW;
   return (
     <span
-      className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+      className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-[var(--radius-full)] uppercase tracking-wide"
       style={{ background: s.bg, color: s.color }}
     >
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
@@ -46,20 +46,20 @@ function DeltaBadge({ cvPct, profilingPct }: { cvPct: number; profilingPct: numb
   const delta = profilingPct - cvPct;
   if (Math.abs(delta) < 1) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+      <span className="inline-flex items-center gap-0.5 text-[11px] font-bold px-2 py-0.5 rounded-[var(--radius-full)] bg-bg-subtle text-text-muted">
         <Minus className="w-3 h-3" /> Sin cambio
       </span>
     );
   }
   if (delta > 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+      <span className="inline-flex items-center gap-0.5 text-[11px] font-bold px-2 py-0.5 rounded-[var(--radius-full)] bg-mint-light text-mint-dark">
         <TrendingUp className="w-3 h-3" /> +{delta.toFixed(0)}%
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-700">
+    <span className="inline-flex items-center gap-0.5 text-[11px] font-bold px-2 py-0.5 rounded-[var(--radius-full)] bg-coral-light text-coral-dark">
       <TrendingDown className="w-3 h-3" /> {delta.toFixed(0)}%
     </span>
   );
@@ -69,17 +69,17 @@ function MatchBar({ label, pct, color, bg }: { label: string; pct: number; color
   return (
     <div className="space-y-1">
       <div className="flex justify-between">
-        <span className="text-xs text-slate-500">{label}</span>
-        <span className="text-xs font-semibold text-slate-900">{formatPercent(pct)}</span>
+        <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{label}</span>
+        <span className="text-[10px] font-bold text-ink">{formatPercent(pct)}</span>
       </div>
-      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: bg }}>
-        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: color }} />
+      <div className="h-1.5 rounded-[var(--radius-full)] overflow-hidden" style={{ background: bg }}>
+        <div className="h-full rounded-[var(--radius-full)] transition-all duration-700" style={{ width: `${pct}%`, background: color }} />
       </div>
     </div>
   );
 }
 
-// ─── Candidate Card ───────────────────────────────────────────────────────────
+// --- Candidate Card ---
 function CandidateCard({ pc, selected, onToggle, viewMode }: {
   pc: DualMatchCandidate; selected: boolean; onToggle: () => void; viewMode: ViewMode;
 }) {
@@ -91,27 +91,28 @@ function CandidateCard({ pc, selected, onToggle, viewMode }: {
 
   return (
     <div
-      className="rounded border transition-all duration-150"
+      className={`rounded-[var(--radius-md)] border transition-all duration-200 ${
+        selected ? 'border-primary shadow-sm' : 'border-border shadow-[0_1px_2px_rgba(0,0,0,0.02)]'
+      }`}
       style={{
-        background: 'white',
-        borderColor: selected ? '#7C3AED' : '#E2E8F0',
-        boxShadow: selected ? '0 0 0 2px rgba(124,58,237,0.2)' : '0 1px 2px rgba(0,0,0,0.04)',
+        background: 'var(--color-surface)',
+        boxShadow: selected ? '0 0 0 2px rgba(124,58,237,0.15)' : undefined,
       }}
     >
-      <div className="p-3.5">
-        <div className="flex items-start gap-2 mb-3">
-          <button onClick={onToggle} className="shrink-0 mt-0.5 transition-transform active:scale-90">
+      <div className="p-4">
+        <div className="flex items-start gap-3 mb-4">
+          <button onClick={onToggle} className="shrink-0 mt-0.5 transition-transform active:scale-90 hover:opacity-80">
             {selected
-              ? <CheckSquare className="w-4.5 h-4.5 text-violet-600" />
-              : <Square className="w-4.5 h-4.5 text-slate-300" />}
+              ? <CheckSquare className="w-5 h-5 text-primary" />
+              : <Square className="w-5 h-5 text-border-strong" />}
           </button>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold leading-tight truncate text-slate-900">
+            <p className="text-sm font-bold leading-tight truncate text-ink">
               {pc.candidate.name} {pc.candidate.last_name}
             </p>
-            <p className="text-xs mt-0.5 truncate text-slate-400">{pc.candidate.email}</p>
+            <p className="text-xs mt-1 truncate text-text-muted font-medium">{pc.candidate.email}</p>
           </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
             <CategoryPill category={pc.match_category ?? 'LOW'} />
             {hasProfileMatch && profilingPct !== null && (
               <DeltaBadge cvPct={pc.cv_match_percentage} profilingPct={profilingPct} />
@@ -119,27 +120,27 @@ function CandidateCard({ pc, selected, onToggle, viewMode }: {
           </div>
         </div>
 
-        <div className="space-y-2.5 mb-3">
+        <div className="space-y-3 mb-4">
           {showCV && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 mb-1">
-                <FileText className="w-3 h-3 text-violet-600" strokeWidth={2} />
-                <span className="text-xs font-semibold text-violet-600">Match CV</span>
+            <div className="space-y-1 bg-primary-xlight/50 p-2.5 rounded-[var(--radius-sm)] border border-primary-light">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <FileText className="w-3.5 h-3.5 text-primary-dark" strokeWidth={2} />
+                <span className="text-[10px] font-bold text-primary-dark uppercase tracking-wider">Match CV</span>
               </div>
-              <MatchBar label="" pct={pc.cv_match_percentage} color="#7C3AED" bg="#EDE9FE" />
+              <MatchBar label="" pct={pc.cv_match_percentage} color="var(--color-primary)" bg="var(--color-primary-light)" />
             </div>
           )}
           {showProfiling && hasProfileMatch && profilingPct !== null && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Mic className="w-3 h-3 text-emerald-600" strokeWidth={2} />
-                <span className="text-xs font-semibold text-emerald-600">Match Profiling</span>
+            <div className="space-y-1 bg-mint-xlight/50 p-2.5 rounded-[var(--radius-sm)] border border-mint-light">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Mic className="w-3.5 h-3.5 text-mint-dark" strokeWidth={2} />
+                <span className="text-[10px] font-bold text-mint-dark uppercase tracking-wider">Match Profiling</span>
               </div>
-              <MatchBar label="" pct={profilingPct} color="#059669" bg="#D1FAE5" />
+              <MatchBar label="" pct={profilingPct} color="var(--color-mint)" bg="var(--color-mint-light)" />
             </div>
           )}
           {showProfiling && !hasProfileMatch && (
-            <div className="flex items-center gap-2 text-xs rounded-md px-3 py-2 bg-slate-50 text-slate-400 border border-dashed border-slate-200">
+            <div className="flex items-center gap-2 text-xs font-medium rounded-[var(--radius-sm)] px-3 py-2 bg-bg-subtle text-text-muted border border-dashed border-border">
               <Mic className="w-3.5 h-3.5" strokeWidth={1.8} />
               Profiling pendiente
             </div>
@@ -149,39 +150,43 @@ function CandidateCard({ pc, selected, onToggle, viewMode }: {
         {((pc.cv_match_explanation?.strengths?.length ?? 0) > 0 || (pc.match_explanation?.strengths?.length ?? 0) > 0) && (
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-800 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-dark transition-colors w-full justify-center py-1.5 bg-bg-subtle/50 rounded-[var(--radius-sm)] hover:bg-bg-subtle"
           >
             Justificación IA
-            {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         )}
       </div>
 
       {expanded && (
-        <div className="border-t border-slate-100 px-3.5 py-3 space-y-3 text-xs bg-slate-50 rounded-b-lg">
+        <div className="border-t border-border px-4 py-3.5 space-y-4 text-xs bg-bg-subtle/30 rounded-b-[var(--radius-md)]">
           {showCV && pc.cv_match_explanation && (
             <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <FileText className="w-3.5 h-3.5 text-violet-600" />
-                <span className="font-semibold text-violet-600">Análisis del CV</span>
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <FileText className="w-3.5 h-3.5 text-primary" />
+                <span className="font-bold text-primary text-[11px] uppercase tracking-wider">Análisis del CV</span>
               </div>
-              <p className="mb-2 text-slate-500">{pc.cv_match_explanation.summary}</p>
+              <p className="mb-3 text-text font-medium leading-relaxed">{pc.cv_match_explanation.summary}</p>
               {pc.cv_match_explanation.strengths?.length > 0 && (
-                <div className="mb-2">
-                  <p className="font-semibold mb-1 text-emerald-700">Fortalezas</p>
-                  <ul className="space-y-0.5">
+                <div className="mb-3">
+                  <p className="font-bold mb-1.5 text-mint-dark text-[10px] uppercase tracking-wider">Fortalezas</p>
+                  <ul className="space-y-1">
                     {pc.cv_match_explanation.strengths.map((s, i) => (
-                      <li key={i} className="flex items-start gap-1.5 text-slate-700"><span className="text-emerald-600">+</span> {s}</li>
+                      <li key={i} className="flex items-start gap-2 text-text font-medium">
+                        <span className="text-mint-dark font-bold mt-0.5">+</span> {s}
+                      </li>
                     ))}
                   </ul>
                 </div>
               )}
               {pc.cv_match_explanation.gaps?.length > 0 && (
                 <div>
-                  <p className="font-semibold mb-1 text-red-700">Brechas</p>
-                  <ul className="space-y-0.5">
+                  <p className="font-bold mb-1.5 text-coral-dark text-[10px] uppercase tracking-wider">Brechas</p>
+                  <ul className="space-y-1">
                     {pc.cv_match_explanation.gaps.map((g, i) => (
-                      <li key={i} className="flex items-start gap-1.5 text-slate-700"><span className="text-red-600">-</span> {g}</li>
+                      <li key={i} className="flex items-start gap-2 text-text font-medium">
+                        <span className="text-coral-dark font-bold mt-0.5">-</span> {g}
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -194,7 +199,7 @@ function CandidateCard({ pc, selected, onToggle, viewMode }: {
   );
 }
 
-// ─── Kanban Column ────────────────────────────────────────────────────────────
+// --- Kanban Column ---
 function KanbanColumn({ category, candidates, selectedIds, onToggle, viewMode }: {
   category: MatchCategory; candidates: DualMatchCandidate[]; selectedIds: Set<string>; onToggle: (id: string) => void; viewMode: ViewMode;
 }) {
@@ -204,26 +209,26 @@ function KanbanColumn({ category, candidates, selectedIds, onToggle, viewMode }:
   };
 
   return (
-    <div className="flex flex-col flex-1 min-w-[300px] max-w-sm">
+    <div className="flex flex-col flex-1 min-w-[320px] max-w-sm">
       <div
-        className="px-4 py-3 rounded-t-lg border-t border-x flex items-center justify-between"
+        className="px-5 py-4 rounded-t-[var(--radius-xl)] border-t border-x flex items-center justify-between"
         style={{ background: s.headerBg, borderColor: s.headerBorder, color: s.color }}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <CategoryPill category={category} />
-          <span className="text-sm font-semibold">{labels[category]}</span>
+          <span className="text-[13px] font-bold uppercase tracking-wider">{labels[category]}</span>
         </div>
-        <span className="text-sm font-bold">{candidates.length}</span>
+        <span className="text-xs font-black bg-white/50 px-2 py-0.5 rounded-[var(--radius-full)] backdrop-blur-sm shadow-sm">{candidates.length}</span>
       </div>
 
       <div
-        className="flex-1 rounded-b-lg border border-t-0 p-3 space-y-3 min-h-[420px]"
-        style={{ background: `${s.bg}99`, borderColor: s.headerBorder }}
+        className="flex-1 rounded-b-[var(--radius-xl)] border border-t-0 p-4 space-y-4 min-h-[500px]"
+        style={{ background: `${s.bg}80`, borderColor: s.headerBorder }}
       >
         {candidates.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-2 text-slate-300">
-            <Users className="w-7 h-7 opacity-50" />
-            <p className="text-sm">Sin candidatos</p>
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-text-muted/60">
+            <Users className="w-10 h-10 opacity-40" />
+            <p className="text-sm font-semibold">Sin candidatos</p>
           </div>
         ) : (
           candidates.map((pc) => (
@@ -241,7 +246,7 @@ function KanbanColumn({ category, candidates, selectedIds, onToggle, viewMode }:
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// --- Main Page ---
 export default function CandidatesKanbanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const qc = useQueryClient();
@@ -289,17 +294,17 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
   ];
 
   return (
-    <div>
+    <div className="bg-bg min-h-screen py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       <Header title="Match & Ranking" subtitle="Candidatos evaluados por IA — visualización dual">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setIsUploadOpen(true)}>
-            <Upload className="w-3.5 h-3.5" />
+            <Upload className="w-3.5 h-3.5 mr-2" />
             Subir más CVs
           </Button>
           <Link href={`/hiring-processes/${id}`}>
             <Button variant="outline" size="sm">
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Proceso
+              <ArrowLeft className="w-3.5 h-3.5 mr-2" />
+              Volver al proceso
             </Button>
           </Link>
         </div>
@@ -309,56 +314,57 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
         const err = (profilingMutation.error as { response?: { data?: { detail?: string } } } | null)
           ?.response?.data?.detail;
         return err ? (
-          <div className="mb-3 px-4 py-2 rounded bg-red-50 border border-red-200 text-xs text-red-700">
+          <div className="mb-4 px-4 py-3 rounded-[var(--radius-md)] bg-coral-light border border-coral text-xs font-semibold text-coral-dark flex items-center gap-2 shadow-sm">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
             {err}
           </div>
         ) : null;
       })()}
 
       {/* Control bar */}
-      <div className="flex items-center justify-between mb-5 px-4 py-3 rounded bg-white border border-slate-200">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 px-5 py-4 rounded-[var(--radius-lg)] bg-surface border border-border shadow-sm gap-4">
         <div className="flex items-center gap-4">
-          <p className="text-sm text-slate-500">
-            <strong className="text-slate-900">{totalCandidates}</strong> candidatos evaluados
+          <p className="text-sm text-text-muted font-medium">
+            <strong className="text-ink text-base">{totalCandidates}</strong> candidatos evaluados
             {pendingCandidates > 0 && (
-              <span className="ml-2 text-amber-600">
-                <Loader2 className="inline w-3.5 h-3.5 animate-spin mr-1" />
+              <span className="ml-3 text-accent-dark inline-flex items-center bg-accent-light px-2 py-0.5 rounded-[var(--radius-full)] text-xs font-bold">
+                <Loader2 className="inline w-3.5 h-3.5 animate-spin mr-1.5" />
                 {pendingCandidates} procesando
               </span>
             )}
           </p>
           {selectedIds.size > 0 && (
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-violet-50 text-violet-700">
+            <span className="text-[11px] font-bold px-2.5 py-1.5 rounded-[var(--radius-md)] bg-primary-light text-primary-dark shadow-sm">
               {selectedIds.size} seleccionado(s)
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {/* View mode toggle */}
-          <div className="flex items-center rounded-md overflow-hidden border border-slate-200">
+          <div className="flex items-center rounded-[var(--radius-sm)] overflow-hidden border border-border bg-bg-subtle p-0.5">
             {VIEW_OPTIONS.map(({ mode, label }) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className="px-3 py-1.5 text-xs font-medium transition-colors"
-                style={{
-                  background: viewMode === mode ? '#7C3AED' : 'transparent',
-                  color:      viewMode === mode ? 'white' : '#94A3B8',
-                }}
+                className={`px-3.5 py-1.5 text-[11px] font-bold transition-all rounded-[var(--radius-sm)] ${
+                  viewMode === mode 
+                    ? 'bg-surface text-ink shadow-sm ring-1 ring-border' 
+                    : 'text-text-muted hover:text-text'
+                }`}
               >
                 {label}
               </button>
             ))}
           </div>
 
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="w-3.5 h-3.5" />
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="px-2">
+            <RefreshCw className="w-4 h-4" />
           </Button>
 
           {selectedIds.size > 0 && (
-            <Button size="sm" onClick={() => profilingMutation.mutate()} loading={profilingMutation.isPending}>
-              <Phone className="w-3.5 h-3.5" />
+            <Button size="sm" onClick={() => profilingMutation.mutate()} loading={profilingMutation.isPending} className="bg-primary text-white hover:bg-primary-dark shadow-md">
+              <Phone className="w-4 h-4 mr-2" />
               Iniciar profiling ({selectedIds.size})
             </Button>
           )}
@@ -367,19 +373,20 @@ export default function CandidatesKanbanPage({ params }: { params: Promise<{ id:
 
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <div className="w-7 h-7 rounded-full border-2 border-t-transparent border-violet-600 animate-spin" />
+          <div className="w-8 h-8 rounded-full border-2 border-t-transparent border-primary animate-spin" />
         </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-5 overflow-x-auto pb-6 snap-x">
           {(['HIGH', 'MEDIUM', 'LOW'] as MatchCategory[]).map((cat) => (
-            <KanbanColumn
-              key={cat}
-              category={cat}
-              candidates={(kanban?.[cat] ?? []) as DualMatchCandidate[]}
-              selectedIds={selectedIds}
-              onToggle={toggleSelect}
-              viewMode={viewMode}
-            />
+            <div key={cat} className="snap-start shrink-0">
+              <KanbanColumn
+                category={cat}
+                candidates={(kanban?.[cat] ?? []) as DualMatchCandidate[]}
+                selectedIds={selectedIds}
+                onToggle={toggleSelect}
+                viewMode={viewMode}
+              />
+            </div>
           ))}
         </div>
       )}

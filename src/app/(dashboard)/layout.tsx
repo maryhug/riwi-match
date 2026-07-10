@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import FloatingNav from '@/components/layout/FloatingNav';
 import { useAuth } from '@/contexts/AuthContext';
 import { NavbarPositionProvider, useNavbarPosition } from '@/contexts/NavbarPositionContext';
+import { Loader2 } from 'lucide-react';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -17,10 +18,10 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-bg">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin border-violet-600" />
-          <p className="text-xs text-slate-400">Cargando...</p>
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-xs text-text-muted font-medium">Cargando...</p>
         </div>
       </div>
     );
@@ -37,9 +38,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-bg">
       <FloatingNav />
-      <main className="min-h-screen bg-slate-50 transition-all duration-300" style={pad}>
+      <main className="min-h-screen transition-all duration-300" style={pad}>
         <div className="max-w-[1400px] mx-auto">
           {children}
         </div>

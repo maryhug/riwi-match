@@ -24,6 +24,21 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${montserrat.variable} ${jakarta.variable}`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                let theme = localStorage.getItem('theme');
+                if (!theme) {
+                  theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                document.documentElement.dataset.theme = theme;
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-screen antialiased">
         <AuthProvider>
           <Providers>{children}</Providers>

@@ -1,226 +1,169 @@
-'use client';
+﻿'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-  LayoutGrid, MessageSquareText, BarChart2, DollarSign,
-  Plus, Settings, LogOut, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
-  type LucideIcon,
-} from 'lucide-react';
+import { LayoutGrid, MessageSquare, Plus, BarChart2, DollarSign, Settings, LogOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavbarPosition, type NavPosition } from '@/contexts/NavbarPositionContext';
-
-// ─── Nav items config ─────────────────────────────────────────────────────────
+import { useNavbarPosition } from '@/contexts/NavbarPositionContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import clsx from 'clsx';
 
 const NAV_ITEMS = [
-  { id: '/hiring-processes', icon: LayoutGrid,        label: 'Procesos',       color: '#EDE9FE', iconColor: '#7C3AED' },
-  { id: '/question-sets',    icon: MessageSquareText, label: 'Preguntas',      color: '#D1FAE5', iconColor: '#059669' },
-  { id: '/hiring-processes/new', icon: Plus,          label: 'Nuevo',          color: '#DBEAFE', iconColor: '#2563EB' },
-  { id: '/dashboard',        icon: BarChart2,         label: 'Dashboard',      color: '#FEF3C7', iconColor: '#D97706' },
-  { id: '/metrics',          icon: DollarSign,        label: 'Costos',         color: '#FCE7F3', iconColor: '#DB2777' },
+  { path: '/hiring-processes', exact: false, ignore: '/hiring-processes/new', icon: LayoutGrid, label: 'Procesos', bg: 'var(--color-primary-xlight)', color: 'var(--color-primary)' },
+  { path: '/question-sets', exact: false, icon: MessageSquare, label: 'Preguntas', bg: 'var(--color-mint-light)', color: 'var(--color-mint-dark)' },
+  { path: '/hiring-processes/new', exact: true, icon: Plus, label: 'Nuevo', bg: 'var(--color-blue-light)', color: 'var(--color-blue)' },
+  { path: '/dashboard', exact: false, icon: BarChart2, label: 'Dashboard', bg: 'var(--color-accent-light)', color: 'var(--color-accent-dark)' },
+  { path: '/metrics', exact: false, icon: DollarSign, label: 'Costos', bg: 'var(--color-pink-light)', color: 'var(--color-pink)' },
 ];
 
-function getActiveId(pathname: string): string {
-  if (pathname === '/hiring-processes/new') return '/hiring-processes/new';
-  if (pathname.startsWith('/hiring-processes')) return '/hiring-processes';
-  if (pathname.startsWith('/question-sets')) return '/question-sets';
-  if (pathname === '/dashboard') return '/dashboard';
-  if (pathname.startsWith('/metrics')) return '/metrics';
-  if (pathname.startsWith('/settings')) return '/settings';
-  return pathname;
-}
-
-// ─── Position arrows ──────────────────────────────────────────────────────────
-
-const MOVE_TARGETS: Record<NavPosition, { icon: LucideIcon; pos: NavPosition }[]> = {
-  left:   [{ icon: ChevronRight, pos: 'right' }, { icon: ChevronUp, pos: 'top' }, { icon: ChevronDown, pos: 'bottom' }],
-  right:  [{ icon: ChevronLeft,  pos: 'left'  }, { icon: ChevronUp, pos: 'top' }, { icon: ChevronDown, pos: 'bottom' }],
-  top:    [{ icon: ChevronDown,  pos: 'bottom'}, { icon: ChevronLeft, pos: 'left' }, { icon: ChevronRight, pos: 'right' }],
-  bottom: [{ icon: ChevronUp,    pos: 'top'   }, { icon: ChevronLeft, pos: 'left' }, { icon: ChevronRight, pos: 'right' }],
-};
-
-// ─── Single nav item ─────────────────────────────────────────────────────────
-
-interface ItemProps {
-  id: string;
-  icon: LucideIcon;
-  label: string;
-  color: string;
-  iconColor: string;
-  lit: boolean;        // true = show expanded (colored bg + label)
-  isHorizontal: boolean;
-  onEnter: () => void;
-  onLeave: () => void;
-}
-
-function NavItem({ id, icon: Icon, label, color, iconColor, lit, isHorizontal, onEnter, onLeave }: ItemProps) {
-  return (
-    <Link href={id} title={label} onMouseEnter={onEnter} onMouseLeave={onLeave}>
-      <div
-        className="flex items-center cursor-pointer select-none overflow-hidden"
-        style={{
-          flexDirection: isHorizontal ? 'row' : 'column',
-          borderRadius: 999,
-          padding: '7px 8px',
-          background: lit ? color : 'transparent',
-          transition: 'background 500ms cubic-bezier(0.4,0,0.2,1)',
-        }}
-      >
-        <Icon
-          size={17}
-          strokeWidth={2}
-          style={{
-            color: lit ? iconColor : '#B0BCCC',
-            flexShrink: 0,
-            transition: 'color 400ms ease',
-          }}
-        />
-        {/* Label solo en horizontal (top/bottom) */}
-        {isHorizontal && (
-          <span
-            className="text-[11px] font-semibold whitespace-nowrap leading-none overflow-hidden"
-            style={{
-              color: iconColor,
-              marginLeft: lit ? 6 : 0,
-              maxWidth: lit ? 80 : 0,
-              maxHeight: 20,
-              opacity: lit ? 1 : 0,
-              transition: 'max-width 450ms cubic-bezier(0.4,0,0.2,1), opacity 350ms ease, margin 450ms cubic-bezier(0.4,0,0.2,1)',
-            }}
-          >
-            {label}
-          </span>
-        )}
-      </div>
-    </Link>
-  );
-}
-
-// ─── Main floating nav ────────────────────────────────────────────────────────
-
 export default function FloatingNav() {
-  const pathname                     = usePathname();
-  const router                       = useRouter();
-  const { role, logout }             = useAuth();
-  const { position, setPosition }    = useNavbarPosition();
-  const [showMover, setShowMover]    = useState(false);
-  const [hoveredId, setHoveredId]    = useState<string | null>(null);
+  const { position, setPosition } = useNavbarPosition();
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [isAvatarOpen, setIsAvatarOpen] = useState(false);
+  const { role, logout } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+  const avatarRef = useRef<HTMLDivElement>(null);
 
-  const activeId     = getActiveId(pathname);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setIsAvatarOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const items = [...NAV_ITEMS];
+  if (role === 'ADMIN') {
+    items.push({ path: '/settings', exact: false, icon: Settings, label: 'Config', bg: 'var(--color-bg-subtle)', color: 'var(--color-text)' });
+  }
+
   const isHorizontal = position === 'top' || position === 'bottom';
+  const roleInitial = role ? role.charAt(0).toUpperCase() : 'U';
 
-  // Si hay hover en otro item, el activo se apaga; si no hay hover, el activo brilla
-  const getLit = (id: string) => hoveredId ? hoveredId === id : activeId === id;
-
-  const handleLogout = () => { logout(); router.push('/login'); };
-
-  // Position of the pill on screen
-  const fixedStyle: React.CSSProperties = {
-    position: 'fixed',
-    zIndex: 50,
-    ...(position === 'left'   && { left: 12,   top: '50%',  transform: 'translateY(-50%)' }),
-    ...(position === 'right'  && { right: 12,  top: '50%',  transform: 'translateY(-50%)' }),
-    ...(position === 'top'    && { top: 12,    left: '50%', transform: 'translateX(-50%)' }),
-    ...(position === 'bottom' && { bottom: 12, left: '50%', transform: 'translateX(-50%)' }),
+  const positionClasses = {
+    left: 'left-3 top-1/2 -translate-y-1/2 flex-col',
+    right: 'right-3 top-1/2 -translate-y-1/2 flex-col',
+    top: 'top-3 left-1/2 -translate-x-1/2 flex-row',
+    bottom: 'bottom-3 left-1/2 -translate-x-1/2 flex-row'
   };
 
-  const items = role === 'ADMIN'
-    ? [...NAV_ITEMS, { id: '/settings', icon: Settings, label: 'Config', color: '#F1F5F9', iconColor: '#475569' }]
-    : NAV_ITEMS;
+  const updatePosition = (pos: 'left'|'right'|'top'|'bottom') => {
+    setPosition(pos);
+    setIsAvatarOpen(false);
+  };
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
 
   return (
-    <div style={fixedStyle}>
-      {/* Pill */}
-      <div
-        className="flex items-center gap-1 bg-white"
-        style={{
-          flexDirection: isHorizontal ? 'row' : 'column',
-          padding: 6,
-          borderRadius: 999,
-          boxShadow: '0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)',
-        }}
-      >
-        {/* Nav items */}
-        {items.map((item) => (
-          <NavItem
-            key={item.id}
-            {...item}
-            lit={getLit(item.id)}
-            isHorizontal={isHorizontal}
-            onEnter={() => setHoveredId(item.id)}
-            onLeave={() => setHoveredId(null)}
-          />
-        ))}
+    <motion.div
+      layout
+      className={clsx(
+        "fixed z-50 flex items-center bg-surface-raised border border-border rounded-full shadow-lg p-2 gap-2",
+        positionClasses[position]
+      )}
+    >
+      {items.map((item, idx) => {
+        const isActive = item.exact
+          ? pathname === item.path
+          : pathname.startsWith(item.path) && (!item.ignore || !pathname.startsWith(item.ignore));
+        
+        const isHovered = hoveredIndex === idx;
+        const showLabel = isHorizontal && (isActive || isHovered);
 
-        {/* Divider */}
-        <div style={{
-          [isHorizontal ? 'width' : 'height']: 1,
-          [isHorizontal ? 'height' : 'width']: 16,
-          background: '#E2E8F0',
-          margin: isHorizontal ? '0 2px' : '2px 0',
-          flexShrink: 0,
-          borderRadius: 1,
-        }} />
+        return (
+          <button
+            key={item.path}
+            onClick={() => router.push(item.path)}
+            onMouseEnter={() => setHoveredIndex(idx)}
+            onMouseLeave={() => setHoveredIndex(null)}
+            className="group relative flex items-center justify-center rounded-full transition-all focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary overflow-hidden"
+            style={{ 
+              backgroundColor: isActive || isHovered ? item.bg : 'transparent',
+              minWidth: '40px',
+              height: '40px',
+              padding: showLabel ? '0 16px 0 12px' : '0'
+            }}
+            aria-label={item.label}
+          >
+            <item.icon 
+              size={20} 
+              style={{ color: isActive || isHovered ? item.color : 'var(--color-text-muted)' }} 
+              className="shrink-0"
+            />
+            {isHorizontal && (
+              <AnimatePresence>
+                {showLabel && (
+                  <motion.span
+                    initial={{ width: 0, opacity: 0, marginLeft: 0 }}
+                    animate={{ width: 'auto', opacity: 1, marginLeft: 8 }}
+                    exit={{ width: 0, opacity: 0, marginLeft: 0 }}
+                    className="font-medium text-[13px] whitespace-nowrap"
+                    style={{ color: item.color }}
+                  >
+                    {item.label}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            )}
+          </button>
+        );
+      })}
 
-        {/* User avatar + mover */}
-        <div
-          className="relative flex items-center justify-center w-8 h-8 rounded-full cursor-pointer select-none"
-          style={{ background: 'linear-gradient(135deg,#7C3AED,#DC2626)', flexShrink: 0 }}
-          onClick={() => setShowMover((v) => !v)}
-          title="Mover navbar / Opciones"
+      <div className={clsx("bg-border shrink-0", isHorizontal ? "w-[1px] h-8" : "h-[1px] w-8")} />
+
+      <div className="relative" ref={avatarRef}>
+        <button
+          onClick={() => setIsAvatarOpen(!isAvatarOpen)}
+          className="w-10 h-10 rounded-full bg-primary text-white font-bold flex items-center justify-center hover:bg-primary-dark transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary"
+          aria-label="Menú de usuario"
         >
-          <span className="text-white text-[10px] font-bold">{role?.[0]?.toUpperCase() ?? 'U'}</span>
+          {roleInitial}
+        </button>
 
-          {/* Move popover */}
-          {showMover && (
-            <div
-              className="absolute bg-white rounded-xl shadow-xl border border-slate-100 p-2 flex flex-col gap-1"
-              style={{
-                ...(position === 'left'   && { left: 40,   top: '50%', transform: 'translateY(-50%)' }),
-                ...(position === 'right'  && { right: 40,  top: '50%', transform: 'translateY(-50%)' }),
-                ...(position === 'top'    && { top: 44,    left: '50%', transform: 'translateX(-50%)' }),
-                ...(position === 'bottom' && { bottom: 44, left: '50%', transform: 'translateX(-50%)' }),
-                minWidth: 120,
-                zIndex: 60,
-              }}
-              onClick={(e) => e.stopPropagation()}
+        <AnimatePresence>
+          {isAvatarOpen && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={clsx(
+                "absolute bg-surface-raised border border-border shadow-xl rounded-[var(--radius-md)] p-2 w-48 flex flex-col gap-1 z-50",
+                position === 'left' ? 'left-full ml-4 top-0' :
+                position === 'right' ? 'right-full mr-4 top-0' :
+                position === 'top' ? 'top-full mt-4 right-0' :
+                'bottom-full mb-4 right-0'
+              )}
             >
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide px-2 py-1">Mover a</p>
-              {MOVE_TARGETS[position].map(({ icon: Icon, pos }) => (
-                <button
-                  key={pos}
-                  onClick={() => { setPosition(pos); setShowMover(false); }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 text-xs text-slate-600 font-medium transition-colors capitalize"
-                >
-                  <Icon size={13} className="text-slate-400" />
-                  {pos === 'left' ? 'Izquierda' : pos === 'right' ? 'Derecha' : pos === 'top' ? 'Arriba' : 'Abajo'}
-                </button>
-              ))}
-              <div className="h-px bg-slate-100 my-1" />
-              <button
-                onClick={() => { setShowMover(false); handleLogout(); }}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-red-50 text-xs text-red-500 font-medium transition-colors"
+              <div className="text-xs font-semibold text-text-muted px-2 py-1 uppercase tracking-wide">Posición</div>
+              <div className="grid grid-cols-3 gap-1 px-2 mb-2">
+                <div />
+                <button onClick={() => updatePosition('top')} className="p-1.5 flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-bg-subtle text-text" aria-label="Arriba"><ChevronUp size={16} /></button>
+                <div />
+                <button onClick={() => updatePosition('left')} className="p-1.5 flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-bg-subtle text-text" aria-label="Izquierda"><ChevronLeft size={16} /></button>
+                <div />
+                <button onClick={() => updatePosition('right')} className="p-1.5 flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-bg-subtle text-text" aria-label="Derecha"><ChevronRight size={16} /></button>
+                <div />
+                <button onClick={() => updatePosition('bottom')} className="p-1.5 flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-bg-subtle text-text" aria-label="Abajo"><ChevronDown size={16} /></button>
+                <div />
+              </div>
+              <div className="h-[1px] bg-border my-1" />
+              <button 
+                onClick={handleLogout}
+                className="w-full text-left px-3 py-2 text-sm text-coral hover:bg-coral-light hover:text-coral-dark rounded-[var(--radius-sm)] font-medium transition-colors flex items-center gap-2"
               >
-                <LogOut size={13} />
+                <LogOut size={16} />
                 Cerrar sesión
               </button>
-            </div>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
-}
-
-// ─── Layout offset helper ─────────────────────────────────────────────────────
-// Call this in layout to add correct padding based on nav position
-export function useNavOffset() {
-  const { position } = useNavbarPosition();
-  return {
-    left:   position === 'left'   ? 88  : 0,
-    right:  position === 'right'  ? 88  : 0,
-    top:    position === 'top'    ? 72  : 0,
-    bottom: position === 'bottom' ? 72  : 0,
-  };
 }

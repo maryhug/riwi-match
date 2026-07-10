@@ -8,15 +8,15 @@ interface MatchBadgeProps {
 }
 
 const categoryStyles: Record<MatchCategory, string> = {
-  HIGH:   'bg-emerald-50 text-emerald-700',
-  MEDIUM: 'bg-amber-50 text-amber-700',
-  LOW:    'bg-red-50 text-red-700',
+  HIGH:   'bg-mint-light text-mint-dark',
+  MEDIUM: 'bg-accent-light text-accent-dark',
+  LOW:    'bg-coral-light text-coral-dark',
 };
 
 const categoryDotStyles: Record<MatchCategory, string> = {
-  HIGH:   'bg-emerald-500',
-  MEDIUM: 'bg-amber-500',
-  LOW:    'bg-red-500',
+  HIGH:   'bg-mint',
+  MEDIUM: 'bg-accent',
+  LOW:    'bg-coral',
 };
 
 export function MatchBadge({ category, percentage }: MatchBadgeProps) {
@@ -37,12 +37,12 @@ export function MatchBadge({ category, percentage }: MatchBadgeProps) {
 }
 
 const statusStyles: Record<ProcessStatus, string> = {
-  DRAFT:                 'bg-slate-100 text-slate-600',
-  READY_FOR_MATCH:       'bg-violet-50 text-violet-700',
-  CVS_UPLOADED:          'bg-violet-50 text-violet-700',
-  MATCHING:              'bg-amber-50 text-amber-700',
-  PROFILING_CONFIGURED:  'bg-emerald-50 text-emerald-700',
-  COMPLETED:             'bg-emerald-50 text-emerald-700',
+  DRAFT:                 'bg-bg-subtle text-text',
+  READY_FOR_MATCH:       'bg-blue-light text-blue',
+  CVS_UPLOADED:          'bg-primary-light text-primary',
+  MATCHING:              'bg-accent-light text-accent-dark',
+  PROFILING_CONFIGURED:  'bg-mint-light text-mint-dark',
+  COMPLETED:             'bg-mint-light text-mint-dark',
 };
 
 export function StatusBadge({ status }: { status: ProcessStatus }) {

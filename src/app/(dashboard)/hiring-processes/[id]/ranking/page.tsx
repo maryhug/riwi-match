@@ -24,10 +24,10 @@ import type { CandidateListItem, CandidateDetail, MatchBreakdown } from '@/lib/t
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const CATEGORY_CFG = {
-  HIGH:            { label: 'Alto',           color: '#059669', bg: '#ECFDF5' },
-  MEDIUM:          { label: 'Medio',          color: '#D97706', bg: '#FFFBEB' },
-  LOW:             { label: 'Bajo',           color: '#DC2626', bg: '#FEF2F2' },
-  NOT_RECOMMENDED: { label: 'No recomendado', color: '#94A3B8', bg: '#F8FAFC' },
+  HIGH:            { label: 'Alto',           color: 'var(--color-mint-dark)', bg: 'var(--color-mint-light)' },
+  MEDIUM:          { label: 'Medio',          color: 'var(--color-accent-dark)', bg: 'var(--color-accent-light)' },
+  LOW:             { label: 'Bajo',           color: 'var(--color-coral-dark)', bg: 'var(--color-coral-light)' },
+  NOT_RECOMMENDED: { label: 'No recomendado', color: 'var(--color-text-muted)', bg: 'var(--color-bg-subtle)' },
 } as const;
 
 const BREAKDOWN_META: Record<string, { label: string; defaultWeight: number }> = {
@@ -128,11 +128,11 @@ function MatchRing({ pct, category, size = 50 }: { pct: number; category: string
 }
 
 function CategoryChip({ category }: { category: string | null | undefined }) {
-  if (!category) return <span className="text-slate-300">—</span>;
+  if (!category) return <span className="text-border-strong">—</span>;
   const cfg = catCfg(category);
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold"
-      style={{ background: cfg.bg, color: cfg.color }}>
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-sm)] text-[11px] font-bold uppercase tracking-wide border"
+      style={{ background: cfg.bg, color: cfg.color, borderColor: `${cfg.color}30` }}>
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.color }} />
       {cfg.label}
     </span>
@@ -140,11 +140,11 @@ function CategoryChip({ category }: { category: string | null | undefined }) {
 }
 
 function SkillChips({ skills }: { skills: string[] }) {
-  if (!skills.length) return <span className="text-slate-300 text-xs">—</span>;
+  if (!skills.length) return <span className="text-text-muted text-xs">—</span>;
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-1.5">
       {skills.slice(0, 3).map((s, i) => (
-        <span key={i} className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 whitespace-nowrap">
+        <span key={i} className="px-2 py-0.5 rounded-[var(--radius-sm)] text-[10px] font-bold bg-bg-subtle text-text-muted whitespace-nowrap border border-border">
           {s.length > 18 ? s.slice(0, 18) + '…' : s}
         </span>
       ))}
@@ -154,14 +154,14 @@ function SkillChips({ skills }: { skills: string[] }) {
 
 function ProfilingStatusCell({ status }: { status: string }) {
   const cfg = PROFILING_MAP[status];
-  if (!cfg) return <span className="text-xs text-slate-400">Sin iniciar</span>;
+  if (!cfg) return <span className="text-xs text-text-muted font-medium">Sin iniciar</span>;
   const colorMap = {
-    active: 'text-violet-600', done: 'text-emerald-600',
-    queued: 'text-amber-600', failed: 'text-slate-400', idle: 'text-slate-400',
+    active: 'text-primary-dark', done: 'text-mint-dark',
+    queued: 'text-accent-dark', failed: 'text-text-muted', idle: 'text-text-muted',
   };
   return (
-    <span className={`text-xs font-medium flex items-center gap-1 ${colorMap[cfg.variant]}`}>
-      {cfg.variant === 'active' && <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse shrink-0" />}
+    <span className={`text-[11px] font-bold flex items-center gap-1.5 uppercase tracking-wide ${colorMap[cfg.variant]}`}>
+      {cfg.variant === 'active' && <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
       {cfg.label}
     </span>
   );
@@ -197,7 +197,7 @@ function BreakdownBars({ breakdown }: { breakdown: MatchBreakdown | Record<strin
   );
 }
 
-// ─── Expandable row ───────────────────────────────────────────────────────────
+// --- Expandable row ---
 
 function ExpandedRow({ candidate, onOpenDetail }: { candidate: CandidateListItem; onOpenDetail: () => void }) {
   const hasBreakdown = candidate.breakdown && Object.keys(candidate.breakdown).length > 0;
@@ -206,48 +206,48 @@ function ExpandedRow({ candidate, onOpenDetail }: { candidate: CandidateListItem
 
   return (
     <tr>
-      <td colSpan={9} className="bg-slate-50 border-b border-slate-100 px-0">
-        <div className="px-5 py-4 grid grid-cols-3 gap-6">
+      <td colSpan={9} className="bg-bg-subtle/30 border-b border-border px-0">
+        <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Breakdown</p>
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-4 flex items-center gap-1.5"><BarChart2 className="w-3.5 h-3.5" /> Breakdown</p>
             {hasBreakdown
               ? <BreakdownBars breakdown={candidate.breakdown!} />
-              : <p className="text-xs text-slate-400">Sin datos aún</p>}
+              : <p className="text-xs text-text-muted font-medium bg-bg-subtle p-3 rounded-[var(--radius-sm)]">Sin datos aún</p>}
           </div>
 
           <div>
-            <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider mb-3">Fortalezas</p>
+            <p className="text-[10px] font-bold text-mint-dark uppercase tracking-wider mb-4 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> Fortalezas</p>
             {strengths.length > 0 ? (
-              <ul className="space-y-1.5">
+              <ul className="space-y-2">
                 {strengths.map((s, i) => (
-                  <li key={i} className="flex gap-2 text-xs text-slate-700">
-                    <span className="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  <li key={i} className="flex gap-2 text-xs text-text font-medium leading-relaxed">
+                    <span className="mt-0.5 w-4 h-4 rounded-full bg-mint-light text-mint-dark flex items-center justify-center shrink-0 font-bold text-[10px]">+</span>
                     {s}
                   </li>
                 ))}
               </ul>
-            ) : <p className="text-xs text-slate-400">—</p>}
+            ) : <p className="text-xs text-text-muted">—</p>}
           </div>
 
           <div>
-            <p className="text-[10px] font-semibold text-rose-500 uppercase tracking-wider mb-3">Brechas</p>
+            <p className="text-[10px] font-bold text-coral-dark uppercase tracking-wider mb-4 flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5" /> Brechas</p>
             {gaps.length > 0 ? (
-              <ul className="space-y-1.5">
+              <ul className="space-y-2">
                 {gaps.map((g, i) => (
-                  <li key={i} className="flex gap-2 text-xs text-slate-700">
-                    <span className="mt-1 w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />
+                  <li key={i} className="flex gap-2 text-xs text-text font-medium leading-relaxed">
+                    <span className="mt-0.5 w-4 h-4 rounded-full bg-coral-light text-coral-dark flex items-center justify-center shrink-0 font-bold text-[10px]">-</span>
                     {g}
                   </li>
                 ))}
               </ul>
-            ) : <p className="text-xs text-slate-400">—</p>}
+            ) : <p className="text-xs text-text-muted">—</p>}
           </div>
         </div>
 
-        <div className="border-t border-slate-100 px-5 py-2.5 flex justify-end">
+        <div className="border-t border-border px-6 py-3 flex justify-end bg-surface">
           <button onClick={onOpenDetail}
-            className="flex items-center gap-1.5 text-xs font-semibold text-violet-600 hover:text-violet-800 transition-colors">
-            <Sparkles className="w-3 h-3" />
+            className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-dark transition-colors px-3 py-1.5 rounded-[var(--radius-sm)] hover:bg-primary-xlight">
+            <Sparkles className="w-3.5 h-3.5" />
             Ver análisis completo de IA
           </button>
         </div>
@@ -517,7 +517,7 @@ function OverrideSection({
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// --- Main page ---
 
 export default function RankingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -571,20 +571,17 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
   };
 
   return (
-    <div>
+    <div className="bg-bg min-h-screen py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       <Header title="Ranking de candidatos" subtitle="Resultados del match de IA ordenados por puntuación">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setIsUploadOpen(true)}>
-            <Upload className="w-3.5 h-3.5" />
+            <Upload className="w-3.5 h-3.5 mr-2" />
             Subir más CVs
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="w-3.5 h-3.5" />
           </Button>
           <Link href={`/hiring-processes/${id}`}>
             <Button variant="outline" size="sm">
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Proceso
+              <ArrowLeft className="w-3.5 h-3.5 mr-2" />
+              Volver al proceso
             </Button>
           </Link>
         </div>
@@ -594,187 +591,199 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
         const err = (profilingMutation.error as { response?: { data?: { detail?: string } } } | null)
           ?.response?.data?.detail;
         return err ? (
-          <div className="mb-3 px-4 py-2 rounded bg-red-50 border border-red-200 text-xs text-red-700">
+          <div className="mb-4 px-4 py-3 rounded-[var(--radius-md)] bg-coral-light border border-coral text-xs font-semibold text-coral-dark flex items-center gap-2 shadow-sm">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
             {err}
           </div>
         ) : null;
       })()}
 
       {/* Filter bar */}
-      <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <div className="relative min-w-[200px] max-w-xs flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" strokeWidth={1.8} />
+      <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6 px-5 py-4 rounded-[var(--radius-lg)] bg-surface border border-border shadow-sm">
+        <div className="relative min-w-[240px] flex-1 md:flex-none">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" strokeWidth={1.8} />
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar candidato..."
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 transition-colors" />
+            placeholder="Buscar por nombre o email..."
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-[var(--radius-md)] border border-border bg-bg-subtle focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium text-ink placeholder:text-text-muted" />
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {FILTER_OPTIONS.map(({ key, label }) => (
             <button key={key} onClick={() => setActiveFilter(activeFilter === key ? 'ALL' : key)}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-all ${
-                activeFilter === key ? 'bg-violet-600 text-white border-violet-600' : 'bg-white border-slate-200 text-slate-600 hover:border-violet-200'
+              className={`px-3.5 py-1.5 rounded-[var(--radius-sm)] text-[11px] font-bold transition-all uppercase tracking-wide ${
+                activeFilter === key 
+                  ? 'bg-primary text-white shadow-md' 
+                  : 'bg-surface border border-border text-text-muted hover:border-border-strong hover:text-ink'
               }`}>
               {label}
             </button>
           ))}
         </div>
 
-        <button
-          className={`ml-auto flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold text-white transition-opacity ${
-            selected.size === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
-          } bg-violet-600`}
-          disabled={selected.size === 0 || profilingMutation.isPending}
-          onClick={() => profilingMutation.mutate()}
-        >
-          <Phone className="w-3.5 h-3.5" />
-          Activar profiling
-          <span className="rounded bg-white/20 text-[10px] font-bold px-1">
-            {selected.size}
-          </span>
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="px-3">
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+
+          <Button
+            className={`flex items-center gap-2 px-4 shadow-md ${selected.size === 0 ? 'opacity-50 grayscale' : ''}`}
+            disabled={selected.size === 0 || profilingMutation.isPending}
+            onClick={() => profilingMutation.mutate()}
+            loading={profilingMutation.isPending}
+          >
+            <Phone className="w-4 h-4" />
+            Activar profiling
+            {selected.size > 0 && (
+              <span className="ml-1 rounded bg-white/20 text-[10px] font-bold px-1.5 py-0.5">
+                {selected.size}
+              </span>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Content */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <div className="w-7 h-7 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : allCandidates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-          <div className="w-14 h-14 rounded bg-slate-100 flex items-center justify-center">
-            <Users className="w-7 h-7 text-slate-300" />
+        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center bg-surface border border-border rounded-[var(--radius-lg)]">
+          <div className="w-16 h-16 rounded-[var(--radius-xl)] bg-bg-subtle flex items-center justify-center shadow-inner">
+            <Users className="w-8 h-8 text-border-strong" />
           </div>
           <div>
-            <p className="font-semibold text-slate-700 text-sm">Sin candidatos aún</p>
-            <p className="text-xs text-slate-400 mt-1">Sube CVs y ejecuta el match para ver el ranking</p>
+            <p className="font-bold text-ink text-base">Sin candidatos aún</p>
+            <p className="text-sm text-text-muted mt-1 font-medium max-w-sm mx-auto">Sube CVs y ejecuta el match para ver el ranking de los mejores perfiles</p>
           </div>
-          <Link href={`/hiring-processes/${id}`}>
-            <Button size="sm" variant="outline">Ir al proceso</Button>
+          <Link href={`/hiring-processes/${id}`} className="mt-2">
+            <Button variant="outline">Volver al proceso</Button>
           </Link>
         </div>
       ) : (
-        <div className="bg-white border-y border-slate-200 overflow-hidden">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="border-b border-slate-100">
-                <th className="pl-4 pr-3 py-3 w-9">
-                  <input type="checkbox"
-                    checked={selected.size === filtered.length && filtered.length > 0}
-                    onChange={toggleAll}
-                    className="w-3.5 h-3.5 rounded border-slate-300 accent-violet-600 cursor-pointer" />
-                </th>
-                {['#', 'Candidato', 'Match', 'Categoría', 'Top Skills', 'Ciudad', 'Profiling', ''].map((th) => (
-                  <th key={th} className="px-3 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{th}</th>
-                ))}
-              </tr>
-            </thead>
+        <div className="bg-surface border border-border rounded-[var(--radius-lg)] shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left whitespace-nowrap">
+              <thead className="bg-bg-subtle">
+                <tr className="border-b border-border">
+                  <th className="pl-5 pr-3 py-4 w-10">
+                    <input type="checkbox"
+                      checked={selected.size === filtered.length && filtered.length > 0}
+                      onChange={toggleAll}
+                      className="w-4 h-4 rounded border-border-strong text-primary focus:ring-primary/20 cursor-pointer" />
+                  </th>
+                  {['#', 'Candidato', 'Match', 'Categoría', 'Top Skills', 'Ciudad', 'Profiling', ''].map((th) => (
+                    <th key={th} className="px-4 py-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">{th}</th>
+                  ))}
+                </tr>
+              </thead>
 
-            <tbody>
-              {filtered.map((c) => {
-                const isMatched  = c.match_percentage > 0;
-                const isExpanded = expandedId === c.process_candidate_id;
-                const criticalGap = c.gaps?.find(
-                  (g) => g.toLowerCase().includes('requerido') || g.toLowerCase().includes('excluyente') || g.toLowerCase().includes('no cumplido'),
-                );
+              <tbody className="divide-y divide-border">
+                {filtered.map((c) => {
+                  const isMatched  = c.match_percentage > 0;
+                  const isExpanded = expandedId === c.process_candidate_id;
+                  const criticalGap = c.gaps?.find(
+                    (g) => g.toLowerCase().includes('requerido') || g.toLowerCase().includes('excluyente') || g.toLowerCase().includes('no cumplido'),
+                  );
 
-                return (
-                  <Fragment key={c.process_candidate_id}>
-                    <tr
-                      className={`border-b border-slate-100 transition-colors group ${isExpanded ? 'bg-slate-50' : 'hover:bg-slate-50'}`}>
+                  return (
+                    <Fragment key={c.process_candidate_id}>
+                      <tr
+                        className={`transition-colors group ${isExpanded ? 'bg-primary-xlight/20' : 'hover:bg-bg-subtle/50'}`}>
 
-                      <td className="pl-4 pr-3 py-3.5">
-                        <input type="checkbox" checked={selected.has(c.process_candidate_id)}
-                          onChange={() => toggleSelect(c.process_candidate_id)}
-                          className="w-3.5 h-3.5 rounded border-slate-300 accent-violet-600 cursor-pointer" />
-                      </td>
+                        <td className="pl-5 pr-3 py-4">
+                          <input type="checkbox" checked={selected.has(c.process_candidate_id)}
+                            onChange={() => toggleSelect(c.process_candidate_id)}
+                            className="w-4 h-4 rounded border-border-strong text-primary focus:ring-primary/20 cursor-pointer" />
+                        </td>
 
-                      <td className="px-3 py-3.5 text-xs font-semibold text-slate-400 tabular-nums">#{c.rank}</td>
+                        <td className="px-4 py-4 text-xs font-bold text-text-muted tabular-nums">#{c.rank}</td>
 
-                      <td className="px-3 py-3.5 min-w-[200px]">
-                        <div className="flex items-center gap-2.5">
-                          <Avatar name={c.name} />
-                          <div className="min-w-0">
-                            <p className="font-semibold text-slate-900 text-sm leading-tight truncate">{c.name}</p>
-                            <p className="text-xs text-slate-400 mt-0.5 truncate">{c.email}</p>
-                            {criticalGap && (
-                              <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded bg-amber-50 text-amber-600 text-[10px] font-medium max-w-[220px]">
-                                <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
-                                <span className="truncate">{criticalGap}</span>
-                              </div>
-                            )}
+                        <td className="px-4 py-4 min-w-[240px]">
+                          <div className="flex items-center gap-3">
+                            <Avatar name={c.name} size={36} />
+                            <div className="min-w-0">
+                              <p className="font-bold text-ink text-sm leading-tight truncate">{c.name}</p>
+                              <p className="text-[11px] font-medium text-text-muted mt-0.5 truncate">{c.email}</p>
+                              {criticalGap && (
+                                <div className="inline-flex items-center gap-1.5 mt-1.5 px-2 py-0.5 rounded-[var(--radius-sm)] bg-amber-100/50 text-amber-700 text-[10px] font-bold max-w-[220px] border border-amber-200">
+                                  <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
+                                  <span className="truncate">{criticalGap}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-3 py-3.5">
-                        {isMatched
-                          ? <MatchRing pct={c.match_percentage} category={c.match_category} />
-                          : <span className="text-slate-300 text-sm">—</span>}
-                      </td>
+                        <td className="px-4 py-4">
+                          {isMatched
+                            ? <MatchRing pct={c.match_percentage} category={c.match_category} />
+                            : <span className="text-text-muted text-sm font-medium">—</span>}
+                        </td>
 
-                      <td className="px-3 py-3.5">
-                        <CategoryChip category={isMatched ? c.match_category : null} />
-                      </td>
+                        <td className="px-4 py-4">
+                          <CategoryChip category={isMatched ? c.match_category : null} />
+                        </td>
 
-                      <td className="px-3 py-3.5 min-w-[140px]">
-                        <SkillChips skills={c.strengths ?? []} />
-                      </td>
+                        <td className="px-4 py-4 min-w-[160px]">
+                          <SkillChips skills={c.strengths ?? []} />
+                        </td>
 
-                      <td className="px-3 py-3.5">
-                        {c.city
-                          ? <span className="flex items-center gap-1 text-xs text-slate-500">
-                              <MapPin className="w-3 h-3 shrink-0 text-slate-300" />{c.city}
-                            </span>
-                          : <span className="text-slate-300 text-xs">—</span>}
-                      </td>
+                        <td className="px-4 py-4">
+                          {c.city
+                            ? <span className="flex items-center gap-1.5 text-[11px] font-bold text-text">
+                                <MapPin className="w-3.5 h-3.5 shrink-0 text-text-muted" />{c.city}
+                              </span>
+                            : <span className="text-text-muted text-[11px] font-bold">—</span>}
+                        </td>
 
-                      <td className="px-3 py-3.5">
-                        <ProfilingStatusCell status={c.status} />
-                      </td>
+                        <td className="px-4 py-4">
+                          <ProfilingStatusCell status={c.status} />
+                        </td>
 
-                      <td className="px-3 py-3.5">
-                        <div className="flex items-center gap-1">
-                          {c.normalized_cv_url && (
-                            <button onClick={() => {
-                              setPreviewData({ title: c.name, url: withToken(processesApi.getNormalizedCvFileUrl(id, c.process_candidate_id)) });
-                            }}
-                              className="p-1.5 rounded text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                              title="Ver CV normalizado (PDF)">
-                              <FileText className="w-3.5 h-3.5" />
+                        <td className="px-4 py-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {c.normalized_cv_url && (
+                              <button onClick={() => {
+                                setPreviewData({ title: c.name, url: withToken(processesApi.getNormalizedCvFileUrl(id, c.process_candidate_id)) });
+                              }}
+                                className="p-2 rounded-[var(--radius-sm)] text-text-muted hover:text-primary hover:bg-primary-xlight transition-colors"
+                                title="Ver CV normalizado (PDF)">
+                                <FileText className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button onClick={() => setDrawerCandidate(c)}
+                              className="p-2 rounded-[var(--radius-sm)] text-text-muted hover:text-primary hover:bg-primary-xlight transition-colors"
+                              title="Ver análisis completo">
+                              <Sparkles className="w-4 h-4" />
                             </button>
-                          )}
-                          <button onClick={() => setDrawerCandidate(c)}
-                            className="p-1.5 rounded text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                            title="Ver análisis completo">
-                            <Sparkles className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => toggleExpand(c.process_candidate_id)}
-                            className={`p-1.5 rounded transition-colors ${
-                              isExpanded ? 'text-violet-600 bg-violet-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-                            }`}
-                            title="Breakdown">
-                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                            <button onClick={() => toggleExpand(c.process_candidate_id)}
+                              className={`p-2 rounded-[var(--radius-sm)] transition-colors ${
+                                isExpanded ? 'text-primary bg-primary-xlight' : 'text-text-muted hover:text-ink hover:bg-bg-subtle'
+                              }`}
+                              title="Breakdown">
+                              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
 
-                    {isExpanded && (
-                      <ExpandedRow
-                        key={`${c.process_candidate_id}-exp`}
-                        candidate={c}
-                        onOpenDetail={() => setDrawerCandidate(c)}
-                      />
-                    )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                      {isExpanded && (
+                        <ExpandedRow
+                          key={`${c.process_candidate_id}-exp`}
+                          candidate={c}
+                          onOpenDetail={() => setDrawerCandidate(c)}
+                        />
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
           {filtered.length === 0 && (
-            <div className="py-10 text-center text-xs text-slate-400">
+            <div className="py-12 text-center text-sm font-medium text-text-muted bg-surface">
               No hay candidatos que coincidan con los filtros aplicados.
             </div>
           )}
