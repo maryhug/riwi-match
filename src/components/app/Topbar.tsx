@@ -40,7 +40,7 @@ export function Topbar() {
               <span key={i} className="flex items-center gap-2">
                 {i > 0 && <span className="text-muted-foreground/40">/</span>}
                 <Link
-                  to={href as string}
+                  to={href as never}
                   className={cn(
                     "rounded-md px-1.5 py-0.5 transition hover:bg-muted hover:text-foreground",
                     isLast ? "font-semibold text-foreground" : "text-muted-foreground",
