@@ -8,6 +8,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const breadcrumbMap: Record<string, string> = {
   app: "Inicio",
@@ -27,19 +28,26 @@ export function Topbar() {
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-30 glass-strong border-b border-border/40">
+    <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/40">
       <div className="flex items-center gap-4 px-6 h-16">
-        {/* Breadcrumbs */}
+        {/* Breadcrumbs — every segment is clickable */}
         <nav className="flex items-center gap-2 text-sm">
           {segments.map((seg, i) => {
             const label = breadcrumbMap[seg] || decodeURIComponent(seg);
             const isLast = i === segments.length - 1;
+            const href = "/" + segments.slice(0, i + 1).join("/");
             return (
               <span key={i} className="flex items-center gap-2">
                 {i > 0 && <span className="text-muted-foreground/40">/</span>}
-                <span className={isLast ? "font-semibold text-foreground" : "text-muted-foreground"}>
+                <Link
+                  to={href as never}
+                  className={cn(
+                    "rounded-md px-1.5 py-0.5 transition hover:bg-muted hover:text-foreground",
+                    isLast ? "font-semibold text-foreground" : "text-muted-foreground",
+                  )}
+                >
                   {label}
-                </span>
+                </Link>
               </span>
             );
           })}

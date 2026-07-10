@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Plus, FileText, PhoneCall, CheckCircle2, DollarSign, Filter, MoreHorizontal, TrendingUp } from "lucide-react";
 import { procesos, type ProcesoEstado } from "@/lib/mock-data";
 import { GlassCard } from "@/components/app/GlassCard";
@@ -49,6 +49,7 @@ function KPI({ icon: Icon, label, value, sub, accent, sparkline }: any) {
 }
 
 function Inicio() {
+  const navigate = useNavigate();
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
@@ -59,17 +60,17 @@ function Inicio() {
         </div>
         <Link
           to="/app/procesos/nuevo"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary to-info text-white font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50 transition"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold shadow-sm hover:bg-primary/90 transition"
         >
           <Plus className="h-4 w-4" /> Crear proceso
         </Link>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI icon={FileText} label="Procesos activos" value="6" sub="+2 vs mes pasado" accent="bg-gradient-to-br from-primary to-info" />
-        <KPI icon={CheckCircle2} label="CVs procesados (mes)" value="221" sub="+18%" accent="bg-gradient-to-br from-success to-info" />
-        <KPI icon={PhoneCall} label="Profilings completados" value="47" sub="+12%" accent="bg-gradient-to-br from-info to-primary" />
-        <KPI icon={DollarSign} label="Costo del mes" value="$777.20" sub="dentro de presupuesto" accent="bg-gradient-to-br from-warning to-destructive" sparkline />
+        <KPI icon={FileText} label="Procesos activos" value="6" sub="+2 vs mes pasado" accent="bg-primary" />
+        <KPI icon={CheckCircle2} label="CVs procesados (mes)" value="221" sub="+18%" accent="bg-success" />
+        <KPI icon={PhoneCall} label="Profilings completados" value="47" sub="+12%" accent="bg-info text-info-foreground" />
+        <KPI icon={DollarSign} label="Costo del mes" value="$777.20" sub="dentro de presupuesto" accent="bg-warning text-warning-foreground" sparkline />
       </div>
 
       <GlassCard className="p-0 overflow-hidden">
@@ -103,17 +104,19 @@ function Inicio() {
             </thead>
             <tbody>
               {procesos.map((p) => (
-                <tr key={p.id} className="border-t border-border/30 hover:bg-accent/30 transition">
+                <tr
+                  key={p.id}
+                  onClick={() => navigate({ to: "/app/procesos/$id", params: { id: p.id } })}
+                  className="cursor-pointer border-t border-border/30 hover:bg-accent/30 transition"
+                >
                   <td className="px-5 py-3">
-                    <Link to="/app/procesos/$id" params={{ id: p.id }} className="font-medium hover:text-primary transition">
-                      {p.nombre}
-                    </Link>
+                    <div className="font-medium hover:text-primary transition">{p.nombre}</div>
                     <div className="text-xs text-muted-foreground">{p.cargo} · {p.seniority}</div>
                   </td>
                   <td className="px-3 py-3 text-muted-foreground">{p.area}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary to-info grid place-items-center text-[10px] font-bold text-white">
+                      <div className="h-7 w-7 rounded-full bg-muted grid place-items-center text-[10px] font-bold text-foreground">
                         {p.reclutador.split(" ").map(n => n[0]).slice(0,2).join("")}
                       </div>
                       <span className="text-xs">{p.reclutador}</span>
@@ -134,7 +137,10 @@ function Inicio() {
                   </td>
                   <td className="px-3 py-3 text-xs text-muted-foreground">{p.fecha}</td>
                   <td className="px-3 py-3">
-                    <button className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition">
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition"
+                    >
                       <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                     </button>
                   </td>
