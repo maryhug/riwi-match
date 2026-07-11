@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, ArrowRight, Sparkles, Upload, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { GlassCard } from "@/components/app/GlassCard";
-import { useFeedback } from "@/components/app/FeedbackMagnet";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/procesos/nuevo")({
@@ -39,12 +38,6 @@ function Wizard() {
   const [showWeights, setShowWeights] = useState(false);
   const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
   const nav = useNavigate();
-  const { setMagnetId } = useFeedback();
-
-  useEffect(() => {
-    setMagnetId(`proceso-nuevo-step-${step}`);
-    return () => setMagnetId(null);
-  }, [step, setMagnetId]);
 
   const totalWeights = Object.values(weights).reduce((a, b) => a + b, 0);
   const hasNegativeWeight = Object.values(weights).some((w) => w < 0);

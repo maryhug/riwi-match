@@ -1,7 +1,6 @@
-import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { FloatingNav } from "@/components/app/FloatingNav";
 import { Topbar } from "@/components/app/Topbar";
-import { FeedbackMagnet } from "@/components/app/FeedbackMagnet";
 import { AppProvider, useApp } from "@/lib/app-context";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
@@ -20,7 +19,6 @@ function AppLayout() {
 
 function LayoutInner() {
   const { navPosition } = useApp();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const topOffset = navPosition === "top";
   return (
     <div
@@ -33,11 +31,9 @@ function LayoutInner() {
       )}
     >
       <Topbar />
-      <FeedbackMagnet key={pathname}>
-        <main className="p-6 lg:p-8">
-          <Outlet />
-        </main>
-      </FeedbackMagnet>
+      <main className="flex-1 p-6 lg:p-8">
+        <Outlet />
+      </main>
       <FloatingNav />
       <Toaster richColors position="top-right" />
     </div>

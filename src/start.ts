@@ -17,7 +17,7 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
   }
 });
 
-// Los server functions (ej. src/lib/api/feedback.functions.ts) ahora escriben en Postgres real;
+// Los server functions (ej. src/lib/api/auth.functions.ts) llaman al backend real;
 // protegerlos de peticiones cross-site.
 const csrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === "serverFn",

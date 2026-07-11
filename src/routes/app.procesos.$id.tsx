@@ -1,9 +1,8 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, PlayCircle, Upload, Archive, AlertTriangle, ChevronDown, CheckCircle2, Loader2, AlertCircle, Eye } from "lucide-react";
 import { procesos, candidatos, type Candidato } from "@/lib/mock-data";
 import { GlassCard } from "@/components/app/GlassCard";
-import { useFeedback } from "@/components/app/FeedbackMagnet";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend,
 } from "recharts";
@@ -24,12 +23,6 @@ function Detalle() {
   const [selected, setSelected] = useState<string[]>([]);
   const [drawer, setDrawer] = useState<Candidato | null>(null);
   const presupuestoPct = Math.min(100, (proc.costo / proc.presupuesto) * 100);
-  const { setMagnetId } = useFeedback();
-
-  useEffect(() => {
-    setMagnetId(`proceso-${id}-tab-${tab}`);
-    return () => setMagnetId(null);
-  }, [id, tab, setMagnetId]);
 
   return (
     <div className="space-y-6">
