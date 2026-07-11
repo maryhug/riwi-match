@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -14,7 +15,24 @@ export const Route = createFileRoute("/")({
 
 function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    const result = await login(email, password);
+    setLoading(false);
+    if (result.ok) {
+      navigate({ to: "/app" });
+    } else {
+      setError(result.error);
+    }
+  };
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 relative overflow-hidden">
@@ -43,32 +61,36 @@ function Login() {
             Inicia sesión con tu cuenta corporativa de Riwi para continuar.
           </p>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setLoading(true);
-              setTimeout(() => navigate({ to: "/app" }), 700);
-            }}
-            className="mt-8 glass rounded-2xl p-6 space-y-4"
-          >
+          <form onSubmit={handleSubmit} className="mt-8 glass rounded-2xl p-6 space-y-4">
+            {error && (
+              <div className="rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
+                {error}
+              </div>
+            )}
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</label>
               <input
                 type="email"
-                defaultValue="camila@riwi.io"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="username"
                 className="mt-1.5 w-full px-3 py-2.5 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
             <div>
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Contraseña</label>
-                <a href="#" className="text-xs text-primary hover:underline">Recuperar contraseña</a>
-              </div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Contraseña</label>
               <input
                 type="password"
-                defaultValue="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
                 className="mt-1.5 w-full px-3 py-2.5 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                ¿Olvidaste tu contraseña? Contacta a un administrador para restablecerla.
+              </p>
             </div>
             <button
               type="submit"
@@ -77,9 +99,6 @@ function Login() {
             >
               {loading ? "Ingresando…" : "Iniciar sesión"}
             </button>
-            <p className="text-[11px] text-center text-muted-foreground">
-              Mock demo · cualquier credencial te permite ingresar.
-            </p>
           </form>
         </div>
       </div>

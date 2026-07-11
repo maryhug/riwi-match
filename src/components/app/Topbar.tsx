@@ -1,12 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, Search, Sun, Moon, ChevronDown, AlertTriangle, DollarSign, CheckCircle2 } from "lucide-react";
+import { Bell, Search, Sun, Moon, AlertTriangle, DollarSign, CheckCircle2 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
-import { roleLabels, type Role } from "@/lib/mock-data";
+import { useAuth } from "@/lib/auth-context";
+import { USER_ROLE_LABEL } from "@/lib/types/enums";
 import { useState } from "react";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +19,8 @@ const breadcrumbMap: Record<string, string> = {
 };
 
 export function Topbar() {
-  const { role, setRole, theme, toggleTheme } = useApp();
+  const { theme, toggleTheme } = useApp();
+  const { user } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const segments = path.split("/").filter(Boolean);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -55,46 +53,41 @@ export function Topbar() {
 
         {/* Search */}
         <div className="flex-1 min-w-0 max-w-md">
-          <div className="relative">
+          <div className="relative" title="Próximamente">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
-              placeholder="Buscar procesos, candidatos, sets…"
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-full bg-muted/60 border border-transparent focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-background placeholder:text-muted-foreground"
+              placeholder="Buscar procesos, candidatos, sets… (próximamente)"
+              disabled
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-full bg-muted/60 border border-transparent focus:outline-none placeholder:text-muted-foreground cursor-not-allowed opacity-70"
             />
           </div>
         </div>
 
         <div className="flex items-center gap-1.5 ml-auto">
-          {/* Role switcher */}
-          <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium hover:bg-primary/15 transition">
-              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-              <span className="hidden sm:inline">Rol: {roleLabels[role]}</span>
-              <ChevronDown className="h-3.5 w-3.5" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="text-xs uppercase tracking-widest text-muted-foreground">
-                Demo · cambiar rol
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {(Object.keys(roleLabels) as Role[]).map((r) => (
-                <DropdownMenuItem key={r} onClick={() => setRole(r)} className="cursor-pointer">
-                  <span className={role === r ? "font-semibold text-primary" : ""}>{roleLabels[r]}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Usuario y rol */}
+          <div
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium"
+            title={user ? `${user.name} ${user.last_name} (${user.email})` : undefined}
+          >
+            <span className="h-2 w-2 rounded-full bg-primary" />
+            <span className="hidden sm:inline">
+              {user ? `${user.name} · ${USER_ROLE_LABEL[user.role]}` : "…"}
+            </span>
+          </div>
 
           {/* Notifications */}
           <Popover open={notifOpen} onOpenChange={setNotifOpen}>
-            <PopoverTrigger className="relative h-9 w-9 grid place-items-center rounded-full hover:bg-muted transition">
+            <PopoverTrigger
+              className="relative h-9 w-9 grid place-items-center rounded-full hover:bg-muted transition"
+              title="Próximamente"
+            >
               <Bell className="h-4 w-4" />
               <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
             </PopoverTrigger>
             <PopoverContent align="end" className="w-80 p-0 overflow-hidden">
               <div className="px-4 py-3 border-b border-border/50">
                 <div className="text-sm font-semibold">Notificaciones</div>
-                <div className="text-xs text-muted-foreground">3 alertas recientes</div>
+                <div className="text-xs text-muted-foreground">Próximamente — ejemplo de cómo se verán</div>
               </div>
               <div className="max-h-80 overflow-auto">
                 {[

@@ -1,11 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Role } from "./mock-data";
 
 export type NavPosition = "top" | "bottom" | "left" | "right";
 
 interface AppCtx {
-  role: Role;
-  setRole: (r: Role) => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
   sidebarCollapsed: boolean;
@@ -17,7 +14,6 @@ interface AppCtx {
 const Ctx = createContext<AppCtx | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<Role>("admin");
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [navPosition, setNavPositionState] = useState<NavPosition>("top");
@@ -43,8 +39,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider
       value={{
-        role,
-        setRole,
         theme,
         toggleTheme: () => setTheme((t) => (t === "light" ? "dark" : "light")),
         sidebarCollapsed,

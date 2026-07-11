@@ -1,24 +1,25 @@
 import { useState } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Briefcase, ListChecks, PhoneCall, Users, DollarSign, Settings,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, LogOut, Plus,
 } from "lucide-react";
 import { useApp, type NavPosition } from "@/lib/app-context";
-import { roleLabels, type Role } from "@/lib/mock-data";
+import { useAuth } from "@/lib/auth-context";
+import { USER_ROLE_LABEL, type UserRole } from "@/lib/types/enums";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const items: { to: string; label: string; icon: typeof Briefcase; roles: Role[] }[] = [
-  { to: "/app", label: "Inicio", icon: Briefcase, roles: ["admin", "recruiter", "lider"] },
-  { to: "/app/sets", label: "Sets", icon: ListChecks, roles: ["admin", "recruiter"] },
-  { to: "/app/profiling", label: "Profiling", icon: PhoneCall, roles: ["admin", "recruiter"] },
-  { to: "/app/equipo", label: "Equipo", icon: Users, roles: ["admin", "lider"] },
-  { to: "/app/costos", label: "Costos", icon: DollarSign, roles: ["admin", "recruiter", "lider"] },
-  { to: "/app/admin", label: "Admin", icon: Settings, roles: ["admin"] },
+const items: { to: string; label: string; icon: typeof Briefcase; roles: UserRole[] }[] = [
+  { to: "/app", label: "Inicio", icon: Briefcase, roles: ["ADMIN", "RECRUITER", "TA_LEADER"] },
+  { to: "/app/sets", label: "Sets", icon: ListChecks, roles: ["ADMIN", "RECRUITER"] },
+  { to: "/app/profiling", label: "Profiling", icon: PhoneCall, roles: ["ADMIN", "RECRUITER"] },
+  { to: "/app/equipo", label: "Equipo", icon: Users, roles: ["ADMIN", "TA_LEADER"] },
+  { to: "/app/costos", label: "Costos", icon: DollarSign, roles: ["ADMIN", "RECRUITER", "TA_LEADER"] },
+  { to: "/app/admin", label: "Admin", icon: Settings, roles: ["ADMIN"] },
 ];
 
 const wrapperPos: Record<NavPosition, string> = {
@@ -36,8 +37,11 @@ const moveOptions: { pos: NavPosition; label: string; icon: typeof ChevronUp }[]
 ];
 
 export function FloatingNav() {
-  const { role, navPosition, setNavPosition } = useApp();
+  const { navPosition, setNavPosition } = useApp();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const role = user?.role ?? "RECRUITER";
   const visible = items.filter((i) => i.roles.includes(role));
   const isVertical = navPosition === "left" || navPosition === "right";
 
@@ -153,9 +157,9 @@ export function FloatingNav() {
         <DropdownMenu>
           <DropdownMenuTrigger
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground cursor-pointer hover:opacity-90 transition shadow-sm focus:outline-none"
-            title={roleLabels[role]}
+            title={user ? `${user.name} ${user.last_name} · ${USER_ROLE_LABEL[role]}` : USER_ROLE_LABEL[role]}
           >
-            {role === "admin" ? "MV" : role === "recruiter" ? "CR" : "SH"}
+            {user ? `${user.name[0] ?? ""}${user.last_name[0] ?? ""}`.toUpperCase() : "?"}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
             <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -175,7 +179,12 @@ export function FloatingNav() {
               );
             })}
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer gap-2 text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+              onClick={() => {
+                void logout().then(() => navigate({ to: "/" }));
+              }}
+            >
               <LogOut className="h-4 w-4" /> Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>
