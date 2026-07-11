@@ -1,11 +1,19 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { FloatingNav } from "@/components/app/FloatingNav";
 import { Topbar } from "@/components/app/Topbar";
 import { AppProvider, useApp } from "@/lib/app-context";
+import { getSession } from "@/lib/api/auth.functions";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app")({
+  beforeLoad: async () => {
+    const session = await getSession();
+    if (!session.isAuthenticated) {
+      throw redirect({ to: "/" });
+    }
+    return { user: session.user };
+  },
   component: AppLayout,
 });
 
