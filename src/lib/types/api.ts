@@ -248,7 +248,8 @@ export interface CandidateDetailResponse {
     phone: string | null;
     cv_url: string | null;
     normalized_cv_url: string | null;
-    profile: Record<string, unknown> | null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    profile: Record<string, any> | null;
   };
   status: CandidateStatus;
   whatsapp_consent: WhatsAppConsentStatus;
@@ -449,7 +450,7 @@ export interface AIPromptOut {
 export interface GlobalSettingOut {
   id: string;
   setting_key: string;
-  setting_value: Record<string, unknown>;
+  setting_value: Record<string, any>;
   updated_by: string | null;
   updated_at: string;
 }
@@ -462,8 +463,8 @@ export interface AuditLogOut {
   action: string;
   entity_type: string;
   entity_id: string | null;
-  old_value: Record<string, unknown> | null;
-  new_value: Record<string, unknown> | null;
+  old_value: Record<string, any> | null;
+  new_value: Record<string, any> | null;
   ip_address: string | null;
   created_at: string;
 }

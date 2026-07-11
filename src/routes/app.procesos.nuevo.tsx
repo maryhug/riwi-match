@@ -1,8 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, ArrowRight, Sparkles, Upload, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, Sparkles, Upload, Check, ChevronDown, ChevronUp, X, FileText } from "lucide-react";
 import { GlassCard } from "@/components/app/GlassCard";
 import { toast } from "sonner";
+import {
+  createProcess, updateProcess, createJobDescription, parseJobDescription,
+  enhanceJobDescription, getProcess, assignQuestionSet,
+} from "@/lib/api/processes.functions";
+import { uploadCVs } from "@/lib/api/candidates.functions";
+import { getQuestionSets } from "@/lib/api/question-sets.functions";
+import { useAuth } from "@/lib/auth-context";
+import type { ParseJDResponse } from "@/lib/types/api";
 
 export const Route = createFileRoute("/app/procesos/nuevo")({
   head: () => ({ meta: [{ title: "Crear proceso · RIWI MATCH" }] }),
@@ -10,6 +19,12 @@ export const Route = createFileRoute("/app/procesos/nuevo")({
 });
 
 const steps = ["Datos básicos", "Job Description", "CVs y profiling"];
+
+const AREAS = ["Tecnología", "Producto", "Diseño", "Datos", "Ventas", "Marketing", "Personas", "Comercial"];
+const SENIORITIES = ["Jr", "Ssr", "Sr", "Lead", "Manager"];
+const ACCEPTED_CV_TYPES = ".pdf,.docx,.doc,.jpg,.jpeg,.png,.webp";
+const MAX_CV_FILES = 50;
+const MAX_CV_SIZE_MB = 10;
 
 const DEFAULT_WEIGHTS = {
   technical_skills: 45,
@@ -30,25 +45,156 @@ const WEIGHT_FIELDS: { key: keyof typeof DEFAULT_WEIGHTS; label: string }[] = [
 ];
 
 function Wizard() {
+  const nav = useNavigate();
+  const qc = useQueryClient();
+  const { user } = useAuth();
+
   const [step, setStep] = useState(0);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [analyzed, setAnalyzed] = useState(false);
-  const [status, setStatus] = useState("Extrayendo criterios…");
+  const [processId, setProcessId] = useState<string | null>(null);
+
+  // Paso 0
+  const [name, setName] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [area, setArea] = useState(AREAS[0]);
+  const [seniority, setSeniority] = useState(SENIORITIES[0]);
   const [budget, setBudget] = useState("");
   const [showWeights, setShowWeights] = useState(false);
   const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
-  const nav = useNavigate();
+
+  // Paso 1
+  const [jdTab, setJdTab] = useState<"text" | "file">("text");
+  const [jdText, setJdText] = useState("");
+  const [jdSaved, setJdSaved] = useState(false);
+  const [parseResult, setParseResult] = useState<ParseJDResponse | null>(null);
+
+  // Paso 2
+  const [files, setFiles] = useState<File[]>([]);
+  const [dragging, setDragging] = useState(false);
+  const [selectedQuestionSetId, setSelectedQuestionSetId] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const totalWeights = Object.values(weights).reduce((a, b) => a + b, 0);
   const hasNegativeWeight = Object.values(weights).some((w) => w < 0);
   const weightsValid = !showWeights || (totalWeights === 100 && !hasNegativeWeight);
+  const step0Valid = name.trim().length > 0 && jobTitle.trim().length > 0 && weightsValid;
 
-  const analizar = () => {
-    setAnalyzing(true);
-    setStatus("Leyendo JD…");
-    setTimeout(() => setStatus("Identificando skills obligatorios…"), 700);
-    setTimeout(() => setStatus("Calculando pesos sugeridos…"), 1400);
-    setTimeout(() => { setAnalyzing(false); setAnalyzed(true); toast.success("JD analizado por IA"); }, 2100);
+  const createProcessMutation = useMutation({
+    mutationFn: () =>
+      processId
+        ? updateProcess({
+            data: {
+              processId,
+              name,
+              job_title: jobTitle,
+              area,
+              seniority,
+              budget_max_usd: budget ? Number(budget) : undefined,
+            },
+          })
+        : createProcess({
+            data: {
+              name,
+              job_title: jobTitle,
+              area,
+              seniority,
+              budget_max_usd: budget ? Number(budget) : undefined,
+              match_weights_override: showWeights ? weights : undefined,
+            },
+          }),
+    onSuccess: (res) => {
+      setProcessId(res.process_id);
+      setStep(1);
+      qc.invalidateQueries({ queryKey: ["processes"] });
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "No se pudo guardar el proceso");
+    },
+  });
+
+  const saveJDMutation = useMutation({
+    mutationFn: () => createJobDescription({ data: { processId: processId!, jdRawText: jdText } }),
+    onSuccess: () => {
+      setJdSaved(true);
+      toast.success("Job Description guardada");
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "No se pudo guardar la JD");
+    },
+  });
+
+  const parseJDMutation = useMutation({
+    mutationFn: () => parseJobDescription({ data: { processId: processId!, jdRawText: jdText } }),
+    onSuccess: (res) => {
+      setParseResult(res);
+      toast.success("JD analizada por IA");
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "No se pudo analizar la JD");
+    },
+  });
+
+  const enhanceJDMutation = useMutation({
+    mutationFn: () => enhanceJobDescription({ data: { processId: processId! } }),
+    onSuccess: async (res) => {
+      const process = await getProcess({ data: { processId: processId! } });
+      if (process.job_description) setJdText(process.job_description.jd_raw_text);
+      toast.success("JD mejorada por IA", {
+        description: res.recommendations.slice(0, 2).join(" · "),
+      });
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "No se pudo mejorar la JD");
+    },
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: () => {
+      const form = new FormData();
+      form.append("processId", processId!);
+      files.forEach((f) => form.append("files", f));
+      return uploadCVs({ data: form });
+    },
+    onSuccess: (res) => {
+      toast.success(`${res.uploaded} CV(s) cargado(s) — se están procesando`);
+      setFiles([]);
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "No se pudieron subir los CVs");
+    },
+  });
+
+  const { data: questionSets } = useQuery({
+    queryKey: ["question-sets"],
+    queryFn: () => getQuestionSets(),
+    enabled: step === 2,
+  });
+
+  const assignSetMutation = useMutation({
+    mutationFn: (questionSetId: string) =>
+      assignQuestionSet({ data: { processId: processId!, questionSetId } }),
+    onSuccess: () => toast.success("Set de preguntas asignado"),
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "No se pudo asignar el set");
+    },
+  });
+
+  const addFiles = (incoming: FileList | File[]) => {
+    const valid: File[] = [];
+    for (const f of Array.from(incoming)) {
+      if (f.size > MAX_CV_SIZE_MB * 1024 * 1024) {
+        toast.error(`${f.name} supera ${MAX_CV_SIZE_MB}MB`);
+        continue;
+      }
+      valid.push(f);
+    }
+    setFiles((prev) => {
+      const next = [...prev, ...valid];
+      if (next.length > MAX_CV_FILES) {
+        toast.error(`Máximo ${MAX_CV_FILES} archivos por lote`);
+        return next.slice(0, MAX_CV_FILES);
+      }
+      return next;
+    });
   };
 
   return (
@@ -78,11 +224,50 @@ function Wizard() {
         {step === 0 && (
           <div className="space-y-5">
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Nombre del proceso" placeholder="Ej. Backend Node Sr" />
-              <Field label="Cargo" placeholder="Ej. Desarrollador Backend" />
-              <Select label="Área" options={["Tecnología", "Producto", "Diseño", "Datos", "Ventas", "Marketing", "Personas", "Comercial"]} />
-              <Select label="Seniority" options={["Jr", "Ssr", "Sr", "Lead", "Manager"]} />
-              <Select label="Reclutador responsable" options={["Camila Restrepo", "Julián Marín", "Andrés López", "Laura Vélez"]} />
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nombre del proceso</label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ej. Backend Node Sr"
+                  className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cargo</label>
+                <input
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  placeholder="Ej. Desarrollador Backend"
+                  className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Área</label>
+                <select
+                  value={area}
+                  onChange={(e) => setArea(e.target.value)}
+                  className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+                >
+                  {AREAS.map((a) => <option key={a}>{a}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Seniority</label>
+                <select
+                  value={seniority}
+                  onChange={(e) => setSeniority(e.target.value)}
+                  className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+                >
+                  {SENIORITIES.map((s) => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Reclutador responsable</label>
+                <div className="mt-1.5 w-full px-3 py-2 rounded-xl bg-muted/50 border border-border text-sm text-muted-foreground">
+                  {user ? `${user.name} ${user.last_name} (tú)` : "…"}
+                </div>
+              </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Presupuesto máximo USD (opcional)</label>
                 <input
@@ -158,97 +343,172 @@ function Wizard() {
           </div>
         )}
 
-        {step === 1 && (
+        {step === 1 && processId && (
           <div className="space-y-5">
             <div className="flex gap-2 border-b border-border/40">
-              <button className="px-4 py-2 text-sm font-medium border-b-2 border-primary">Escribir JD</button>
-              <button className="px-4 py-2 text-sm font-medium text-muted-foreground">Cargar archivo</button>
+              <button
+                onClick={() => setJdTab("text")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 ${jdTab === "text" ? "border-primary" : "border-transparent text-muted-foreground"}`}
+              >
+                Escribir JD
+              </button>
+              <button
+                onClick={() => setJdTab("file")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 ${jdTab === "file" ? "border-primary" : "border-transparent text-muted-foreground"}`}
+              >
+                Cargar archivo
+              </button>
             </div>
-            <textarea
-              placeholder="Pega aquí la descripción del cargo…"
-              className="w-full min-h-[140px] rounded-xl bg-background/70 border border-border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              defaultValue="Buscamos Desarrollador Backend Sr con experiencia en Node.js, PostgreSQL y arquitectura de microservicios. Liderazgo técnico, inglés B2, disponibilidad híbrida Medellín."
-            />
+
+            {jdTab === "text" ? (
+              <>
+                <textarea
+                  value={jdText}
+                  onChange={(e) => { setJdText(e.target.value); setJdSaved(false); }}
+                  placeholder="Pega aquí la descripción del cargo…"
+                  className="w-full min-h-[140px] rounded-xl bg-background/70 border border-border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => saveJDMutation.mutate()}
+                    disabled={jdText.trim().length < 10 || saveJDMutation.isPending}
+                    className="px-4 py-2 rounded-xl border border-border bg-background/60 text-sm font-medium disabled:opacity-40"
+                  >
+                    {saveJDMutation.isPending ? "Guardando…" : jdSaved ? "JD guardada ✓" : "Guardar JD"}
+                  </button>
+                  {jdSaved && (
+                    <button
+                      onClick={() => enhanceJDMutation.mutate()}
+                      disabled={enhanceJDMutation.isPending}
+                      className="px-4 py-2 rounded-xl border border-primary/40 text-primary bg-primary/5 text-sm font-medium disabled:opacity-40"
+                    >
+                      {enhanceJDMutation.isPending ? "Mejorando…" : "Mejorar JD con IA"}
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <UploadJDFile processId={processId} onUploaded={(text) => { setJdText(text); setJdSaved(true); setJdTab("text"); }} />
+            )}
 
             <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/5 to-info/5 p-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-sm font-semibold flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary" />
-                    Estructuración por IA
+                    Análisis por IA
                   </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Extrae automáticamente criterios, skills y pesos sugeridos.</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Extrae requisitos obligatorios, deseables y excluyentes (no persiste nada).</div>
                 </div>
                 <button
-                  onClick={analizar}
-                  disabled={analyzing}
+                  onClick={() => parseJDMutation.mutate()}
+                  disabled={jdText.trim().length < 10 || parseJDMutation.isPending}
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30 disabled:opacity-60"
                 >
-                  {analyzing ? "Analizando…" : analyzed ? "Re-analizar" : "Analizar JD con IA"}
+                  {parseJDMutation.isPending ? "Analizando…" : parseResult ? "Re-analizar" : "Analizar JD con IA"}
                 </button>
               </div>
 
-              {analyzing && (
-                <div className="mt-4">
-                  <div className="h-2 rounded-full bg-muted overflow-hidden shimmer" />
-                  <div className="mt-2 text-xs text-muted-foreground">{status}</div>
-                </div>
-              )}
-
-              {analyzed && (
+              {parseResult && (
                 <div className="mt-5 space-y-4">
                   {[
-                    { l: "Requisitos obligatorios", c: ["Node.js 5+ años", "PostgreSQL", "Microservicios", "Liderazgo técnico"], color: "bg-primary/15 text-primary" },
-                    { l: "Deseables", c: ["Kafka", "AWS", "GraphQL"], color: "bg-info/30 text-info-foreground" },
-                    { l: "Criterios excluyentes", c: ["Inglés B2", "Disponibilidad Medellín"], color: "bg-destructive/15 text-destructive" },
-                    { l: "Skills técnicos", c: ["Node.js", "TS", "PostgreSQL", "Docker", "Redis"], color: "bg-accent text-accent-foreground" },
+                    { l: "Requisitos obligatorios", c: parseResult.must_have, color: "bg-primary/15 text-primary" },
+                    { l: "Deseables", c: parseResult.nice_to_have, color: "bg-info/30 text-info-foreground" },
+                    { l: "Criterios excluyentes", c: parseResult.deal_breakers, color: "bg-destructive/15 text-destructive" },
                   ].map((g) => (
                     <div key={g.l}>
                       <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">{g.l}</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {g.c.map((x) => (
-                          <span key={x} className={`px-2.5 py-1 rounded-md text-xs font-medium ${g.color}`}>{x}</span>
-                        ))}
-                      </div>
+                      {g.c.length === 0 ? (
+                        <div className="text-xs text-muted-foreground">—</div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {g.c.map((x) => (
+                            <span key={x} className={`px-2.5 py-1 rounded-md text-xs font-medium ${g.color}`}>{x}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
-
-                  <div>
-                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Pesos sugeridos</div>
-                    <div className="space-y-2">
-                      {[
-                        { n: "Skills técnicos obligatorios", v: 45 },
-                        { n: "Experiencia relevante", v: 25 },
-                        { n: "Seniority", v: 15 },
-                        { n: "Industria/dominio", v: 7 },
-                        { n: "Idiomas", v: 5 },
-                        { n: "Educación/certificaciones", v: 3 },
-                      ].map((w) => (
-                        <div key={w.n} className="flex items-center gap-3 text-xs">
-                          <span className="w-56 text-muted-foreground">{w.n}</span>
-                          <div className="flex-1 h-1.5 rounded-full bg-muted"><div className="h-full rounded-full bg-gradient-to-r from-primary to-info" style={{ width: `${w.v}%` }} /></div>
-                          <span className="w-10 text-right font-semibold">{w.v}%</span>
-                        </div>
-                      ))}
+                  {parseResult.summary && (
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Resumen</div>
+                      <p className="text-xs text-foreground/80">{parseResult.summary}</p>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {step === 2 && (
+        {step === 2 && processId && (
           <div className="space-y-4">
-            <div className="rounded-2xl border-2 border-dashed border-border bg-background/40 p-10 text-center">
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
+              className={`rounded-2xl border-2 border-dashed p-10 text-center transition-colors ${dragging ? "border-primary bg-primary/5" : "border-border bg-background/40"}`}
+            >
               <div className="grid h-12 w-12 mx-auto place-items-center rounded-xl bg-primary/15 text-primary mb-3">
                 <Upload className="h-5 w-5" />
               </div>
               <div className="font-semibold">Arrastra los CVs aquí</div>
-              <div className="text-xs text-muted-foreground mt-1">PDF, DOCX, JPG, PNG · máx. 50 por lote · 10 MB c/u</div>
-              <button className="mt-4 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium">Seleccionar archivos</button>
+              <div className="text-xs text-muted-foreground mt-1">PDF, DOCX, JPG, PNG · máx. {MAX_CV_FILES} por lote · {MAX_CV_SIZE_MB} MB c/u</div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-4 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
+              >
+                Seleccionar archivos
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept={ACCEPTED_CV_TYPES}
+                className="hidden"
+                onChange={(e) => e.target.files && addFiles(e.target.files)}
+              />
             </div>
-            <Select label="Set de preguntas (opcional)" options={["—", "Profiling Backend Sr v2", "Profiling Diseño v1"]} />
+
+            {files.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-muted-foreground">{files.length} archivo(s) seleccionado(s)</div>
+                <div className="max-h-40 overflow-y-auto space-y-1.5">
+                  {files.map((f, i) => (
+                    <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-background/60 border border-border text-xs">
+                      <span className="flex items-center gap-2 truncate"><FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />{f.name}</span>
+                      <button onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => uploadMutation.mutate()}
+                  disabled={uploadMutation.isPending}
+                  className="w-full px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60"
+                >
+                  {uploadMutation.isPending ? "Subiendo…" : `Subir ${files.length} CV(s)`}
+                </button>
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Set de preguntas (opcional)</label>
+              <select
+                value={selectedQuestionSetId}
+                onChange={(e) => {
+                  setSelectedQuestionSetId(e.target.value);
+                  if (e.target.value) assignSetMutation.mutate(e.target.value);
+                }}
+                className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+              >
+                <option value="">— Asignar después —</option>
+                {(questionSets?.question_sets ?? [])
+                  .filter((qs) => qs.status === "ACTIVE")
+                  .map((qs) => <option key={qs.id} value={qs.id}>{qs.name}</option>)}
+              </select>
+            </div>
           </div>
         )}
       </GlassCard>
@@ -263,18 +523,24 @@ function Wizard() {
         </button>
         {step < steps.length - 1 ? (
           <button
-            disabled={step === 0 && !weightsValid}
-            onClick={() => setStep(step + 1)}
+            disabled={
+              (step === 0 && (!step0Valid || createProcessMutation.isPending)) ||
+              (step === 1 && !jdSaved)
+            }
+            onClick={() => (step === 0 ? createProcessMutation.mutate() : setStep(step + 1))}
             className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30 disabled:opacity-40 disabled:shadow-none"
           >
-            Siguiente <ArrowRight className="h-4 w-4" />
+            {createProcessMutation.isPending ? "Guardando…" : "Siguiente"} <ArrowRight className="h-4 w-4" />
           </button>
         ) : (
           <button
-            onClick={() => { toast.success("Proceso creado"); nav({ to: "/app" }); }}
+            onClick={() => {
+              toast.success("Proceso creado exitosamente");
+              nav({ to: "/app/procesos/$id", params: { id: processId! } });
+            }}
             className="px-5 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30"
           >
-            Crear proceso
+            Finalizar
           </button>
         )}
       </div>
@@ -282,22 +548,46 @@ function Wizard() {
   );
 }
 
-function Field({ label, placeholder }: { label: string; placeholder?: string }) {
-  return (
-    <div>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</label>
-      <input placeholder={placeholder} className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm" />
-    </div>
-  );
-}
+function UploadJDFile({ processId, onUploaded }: { processId: string; onUploaded: (text: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-function Select({ label, options }: { label: string; options: string[] }) {
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const { uploadJobDescription } = await import("@/lib/api/processes.functions");
+      const form = new FormData();
+      form.append("processId", processId);
+      form.append("file", file);
+      const res = await uploadJobDescription({ data: form });
+      toast.success(`JD cargada desde ${res.original_filename}`);
+      onUploaded(`[Archivo: ${res.original_filename}]`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo cargar el archivo");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
-    <div>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</label>
-      <select className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm">
-        {options.map((o) => <option key={o}>{o}</option>)}
-      </select>
+    <div className="rounded-2xl border-2 border-dashed border-border bg-background/40 p-8 text-center">
+      <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+      <div className="text-sm font-medium">Sube un archivo PDF, DOCX o TXT</div>
+      <div className="text-xs text-muted-foreground mt-1">máx. 10 MB</div>
+      <button
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        className="mt-4 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-60"
+      >
+        {uploading ? "Subiendo…" : "Seleccionar archivo"}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".pdf,.docx,.doc,.txt"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+      />
     </div>
   );
 }
