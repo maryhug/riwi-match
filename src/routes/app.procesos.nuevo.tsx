@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, ArrowRight, Sparkles, Upload, Check } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, ArrowRight, Sparkles, Upload, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { GlassCard } from "@/components/app/GlassCard";
+import { useFeedback } from "@/components/app/FeedbackMagnet";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/procesos/nuevo")({
@@ -11,12 +12,43 @@ export const Route = createFileRoute("/app/procesos/nuevo")({
 
 const steps = ["Datos básicos", "Job Description", "CVs y profiling"];
 
+const DEFAULT_WEIGHTS = {
+  technical_skills: 45,
+  relevant_experience: 25,
+  seniority: 15,
+  industry_domain: 7,
+  languages: 5,
+  education_certifications: 3,
+};
+
+const WEIGHT_FIELDS: { key: keyof typeof DEFAULT_WEIGHTS; label: string }[] = [
+  { key: "technical_skills", label: "Habilidades técnicas (%)" },
+  { key: "relevant_experience", label: "Experiencia relevante (%)" },
+  { key: "seniority", label: "Seniority (%)" },
+  { key: "industry_domain", label: "Dominio de industria (%)" },
+  { key: "languages", label: "Idiomas (%)" },
+  { key: "education_certifications", label: "Educación y cert. (%)" },
+];
+
 function Wizard() {
   const [step, setStep] = useState(0);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
   const [status, setStatus] = useState("Extrayendo criterios…");
+  const [budget, setBudget] = useState("");
+  const [showWeights, setShowWeights] = useState(false);
+  const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
   const nav = useNavigate();
+  const { setMagnetId } = useFeedback();
+
+  useEffect(() => {
+    setMagnetId(`proceso-nuevo-step-${step}`);
+    return () => setMagnetId(null);
+  }, [step, setMagnetId]);
+
+  const totalWeights = Object.values(weights).reduce((a, b) => a + b, 0);
+  const hasNegativeWeight = Object.values(weights).some((w) => w < 0);
+  const weightsValid = !showWeights || (totalWeights === 100 && !hasNegativeWeight);
 
   const analizar = () => {
     setAnalyzing(true);
@@ -51,12 +83,85 @@ function Wizard() {
 
       <GlassCard className="p-6">
         {step === 0 && (
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="Nombre del proceso" placeholder="Ej. Backend Node Sr" />
-            <Field label="Cargo" placeholder="Ej. Desarrollador Backend" />
-            <Select label="Área" options={["Tecnología", "Datos", "Diseño", "Comercial", "Personas"]} />
-            <Select label="Seniority" options={["Jr", "Ssr", "Sr", "Lead"]} />
-            <Select label="Reclutador responsable" options={["Camila Restrepo", "Julián Marín", "Andrés López", "Laura Vélez"]} />
+          <div className="space-y-5">
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label="Nombre del proceso" placeholder="Ej. Backend Node Sr" />
+              <Field label="Cargo" placeholder="Ej. Desarrollador Backend" />
+              <Select label="Área" options={["Tecnología", "Producto", "Diseño", "Datos", "Ventas", "Marketing", "Personas", "Comercial"]} />
+              <Select label="Seniority" options={["Jr", "Ssr", "Sr", "Lead", "Manager"]} />
+              <Select label="Reclutador responsable" options={["Camila Restrepo", "Julián Marín", "Andrés López", "Laura Vélez"]} />
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Presupuesto máximo USD (opcional)</label>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="Ej. 500"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowWeights(!showWeights)}
+                className="w-full px-4 py-3 flex items-center justify-between bg-background/40 hover:bg-background/70 transition-colors text-xs font-semibold"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  Configuración avanzada de pesos de match (Opcional)
+                </span>
+                {showWeights ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+
+              {showWeights && (
+                <div className="p-4 border-t border-border space-y-4">
+                  <p className="text-xs text-muted-foreground leading-normal">
+                    Ajusta los porcentajes para dar más peso a dimensiones específicas durante el análisis y ranking automatizado por IA. La suma total debe ser exactamente 100%.
+                  </p>
+                  <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {WEIGHT_FIELDS.map(({ key, label }) => (
+                      <div key={key}>
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={weights[key]}
+                          onChange={(e) => setWeights({ ...weights, [key]: parseInt(e.target.value) || 0 })}
+                          className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between pt-2 border-t border-border/50 gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-md ${
+                        totalWeights === 100 && !hasNegativeWeight ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
+                      }`}>
+                        Suma total: {totalWeights}%
+                      </span>
+                      {totalWeights !== 100 && (
+                        <span className="text-[11px] text-destructive font-medium">Debe ser exactamente 100%</span>
+                      )}
+                      {hasNegativeWeight && (
+                        <span className="text-[11px] text-destructive font-medium">No se permiten valores negativos</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setWeights(DEFAULT_WEIGHTS)}
+                      className="text-xs text-primary hover:underline font-semibold"
+                    >
+                      Restablecer valores por defecto
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -164,7 +269,11 @@ function Wizard() {
           Atrás
         </button>
         {step < steps.length - 1 ? (
-          <button onClick={() => setStep(step + 1)} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30">
+          <button
+            disabled={step === 0 && !weightsValid}
+            onClick={() => setStep(step + 1)}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30 disabled:opacity-40 disabled:shadow-none"
+          >
             Siguiente <ArrowRight className="h-4 w-4" />
           </button>
         ) : (

@@ -93,6 +93,15 @@ export interface QuestionSet {
   enUso?: boolean;
 }
 
+export interface SetQuestion {
+  texto: string;
+  tipo: "Sí/No" | "Abierta" | "Numérica";
+  critica: boolean;
+  peso: number;
+  keywordsPositivas: string[];
+  keywordsNegativas: string[];
+}
+
 export const sets: QuestionSet[] = [
   { id: "s1", nombre: "Profiling Backend Sr v2", descripcion: "Set estándar para perfiles backend senior — incluye disponibilidad híbrida y motivaciones.", cargo: "Backend Sr", idioma: "Español", preguntas: 6, estado: "Activo", version: "v2", creador: "Camila Restrepo", fecha: "2026-05-18", enUso: true },
   { id: "s2", nombre: "Profiling Diseño v1", descripcion: "Profiling para roles de Product Design — afinidad con producto y proceso.", cargo: "Product Designer", idioma: "Español", preguntas: 5, estado: "Activo", version: "v1", creador: "Andrés López", fecha: "2026-04-22", enUso: true },

@@ -20,6 +20,9 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Env (secretos locales — usa .env.example como referencia)
+.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

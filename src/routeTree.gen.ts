@@ -14,9 +14,13 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppSetsRouteImport } from './routes/app.sets'
 import { Route as AppProfilingRouteImport } from './routes/app.profiling'
+import { Route as AppFeedbackAdminRouteImport } from './routes/app.feedback-admin'
 import { Route as AppEquipoRouteImport } from './routes/app.equipo'
 import { Route as AppCostosRouteImport } from './routes/app.costos'
 import { Route as AppAdminRouteImport } from './routes/app.admin'
+import { Route as AppSetsIndexRouteImport } from './routes/app.sets.index'
+import { Route as AppSetsNuevoRouteImport } from './routes/app.sets.nuevo'
+import { Route as AppSetsIdRouteImport } from './routes/app.sets.$id'
 import { Route as AppProcesosNuevoRouteImport } from './routes/app.procesos.nuevo'
 import { Route as AppProcesosIdRouteImport } from './routes/app.procesos.$id'
 
@@ -45,6 +49,11 @@ const AppProfilingRoute = AppProfilingRouteImport.update({
   path: '/profiling',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFeedbackAdminRoute = AppFeedbackAdminRouteImport.update({
+  id: '/feedback-admin',
+  path: '/feedback-admin',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppEquipoRoute = AppEquipoRouteImport.update({
   id: '/equipo',
   path: '/equipo',
@@ -59,6 +68,21 @@ const AppAdminRoute = AppAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => AppRoute,
+} as any)
+const AppSetsIndexRoute = AppSetsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppSetsRoute,
+} as any)
+const AppSetsNuevoRoute = AppSetsNuevoRouteImport.update({
+  id: '/nuevo',
+  path: '/nuevo',
+  getParentRoute: () => AppSetsRoute,
+} as any)
+const AppSetsIdRoute = AppSetsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppSetsRoute,
 } as any)
 const AppProcesosNuevoRoute = AppProcesosNuevoRouteImport.update({
   id: '/procesos/nuevo',
@@ -77,22 +101,29 @@ export interface FileRoutesByFullPath {
   '/app/admin': typeof AppAdminRoute
   '/app/costos': typeof AppCostosRoute
   '/app/equipo': typeof AppEquipoRoute
+  '/app/feedback-admin': typeof AppFeedbackAdminRoute
   '/app/profiling': typeof AppProfilingRoute
-  '/app/sets': typeof AppSetsRoute
+  '/app/sets': typeof AppSetsRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/app/procesos/$id': typeof AppProcesosIdRoute
   '/app/procesos/nuevo': typeof AppProcesosNuevoRoute
+  '/app/sets/$id': typeof AppSetsIdRoute
+  '/app/sets/nuevo': typeof AppSetsNuevoRoute
+  '/app/sets/': typeof AppSetsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app/admin': typeof AppAdminRoute
   '/app/costos': typeof AppCostosRoute
   '/app/equipo': typeof AppEquipoRoute
+  '/app/feedback-admin': typeof AppFeedbackAdminRoute
   '/app/profiling': typeof AppProfilingRoute
-  '/app/sets': typeof AppSetsRoute
   '/app': typeof AppIndexRoute
   '/app/procesos/$id': typeof AppProcesosIdRoute
   '/app/procesos/nuevo': typeof AppProcesosNuevoRoute
+  '/app/sets/$id': typeof AppSetsIdRoute
+  '/app/sets/nuevo': typeof AppSetsNuevoRoute
+  '/app/sets': typeof AppSetsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -101,11 +132,15 @@ export interface FileRoutesById {
   '/app/admin': typeof AppAdminRoute
   '/app/costos': typeof AppCostosRoute
   '/app/equipo': typeof AppEquipoRoute
+  '/app/feedback-admin': typeof AppFeedbackAdminRoute
   '/app/profiling': typeof AppProfilingRoute
-  '/app/sets': typeof AppSetsRoute
+  '/app/sets': typeof AppSetsRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/app/procesos/$id': typeof AppProcesosIdRoute
   '/app/procesos/nuevo': typeof AppProcesosNuevoRoute
+  '/app/sets/$id': typeof AppSetsIdRoute
+  '/app/sets/nuevo': typeof AppSetsNuevoRoute
+  '/app/sets/': typeof AppSetsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -115,22 +150,29 @@ export interface FileRouteTypes {
     | '/app/admin'
     | '/app/costos'
     | '/app/equipo'
+    | '/app/feedback-admin'
     | '/app/profiling'
     | '/app/sets'
     | '/app/'
     | '/app/procesos/$id'
     | '/app/procesos/nuevo'
+    | '/app/sets/$id'
+    | '/app/sets/nuevo'
+    | '/app/sets/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/app/admin'
     | '/app/costos'
     | '/app/equipo'
+    | '/app/feedback-admin'
     | '/app/profiling'
-    | '/app/sets'
     | '/app'
     | '/app/procesos/$id'
     | '/app/procesos/nuevo'
+    | '/app/sets/$id'
+    | '/app/sets/nuevo'
+    | '/app/sets'
   id:
     | '__root__'
     | '/'
@@ -138,11 +180,15 @@ export interface FileRouteTypes {
     | '/app/admin'
     | '/app/costos'
     | '/app/equipo'
+    | '/app/feedback-admin'
     | '/app/profiling'
     | '/app/sets'
     | '/app/'
     | '/app/procesos/$id'
     | '/app/procesos/nuevo'
+    | '/app/sets/$id'
+    | '/app/sets/nuevo'
+    | '/app/sets/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -187,6 +233,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfilingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/feedback-admin': {
+      id: '/app/feedback-admin'
+      path: '/feedback-admin'
+      fullPath: '/app/feedback-admin'
+      preLoaderRoute: typeof AppFeedbackAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/equipo': {
       id: '/app/equipo'
       path: '/equipo'
@@ -208,6 +261,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/sets/': {
+      id: '/app/sets/'
+      path: '/'
+      fullPath: '/app/sets/'
+      preLoaderRoute: typeof AppSetsIndexRouteImport
+      parentRoute: typeof AppSetsRoute
+    }
+    '/app/sets/nuevo': {
+      id: '/app/sets/nuevo'
+      path: '/nuevo'
+      fullPath: '/app/sets/nuevo'
+      preLoaderRoute: typeof AppSetsNuevoRouteImport
+      parentRoute: typeof AppSetsRoute
+    }
+    '/app/sets/$id': {
+      id: '/app/sets/$id'
+      path: '/$id'
+      fullPath: '/app/sets/$id'
+      preLoaderRoute: typeof AppSetsIdRouteImport
+      parentRoute: typeof AppSetsRoute
+    }
     '/app/procesos/nuevo': {
       id: '/app/procesos/nuevo'
       path: '/procesos/nuevo'
@@ -225,12 +299,28 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppSetsRouteChildren {
+  AppSetsIdRoute: typeof AppSetsIdRoute
+  AppSetsNuevoRoute: typeof AppSetsNuevoRoute
+  AppSetsIndexRoute: typeof AppSetsIndexRoute
+}
+
+const AppSetsRouteChildren: AppSetsRouteChildren = {
+  AppSetsIdRoute: AppSetsIdRoute,
+  AppSetsNuevoRoute: AppSetsNuevoRoute,
+  AppSetsIndexRoute: AppSetsIndexRoute,
+}
+
+const AppSetsRouteWithChildren =
+  AppSetsRoute._addFileChildren(AppSetsRouteChildren)
+
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
   AppCostosRoute: typeof AppCostosRoute
   AppEquipoRoute: typeof AppEquipoRoute
+  AppFeedbackAdminRoute: typeof AppFeedbackAdminRoute
   AppProfilingRoute: typeof AppProfilingRoute
-  AppSetsRoute: typeof AppSetsRoute
+  AppSetsRoute: typeof AppSetsRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
   AppProcesosIdRoute: typeof AppProcesosIdRoute
   AppProcesosNuevoRoute: typeof AppProcesosNuevoRoute
@@ -240,8 +330,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
   AppCostosRoute: AppCostosRoute,
   AppEquipoRoute: AppEquipoRoute,
+  AppFeedbackAdminRoute: AppFeedbackAdminRoute,
   AppProfilingRoute: AppProfilingRoute,
-  AppSetsRoute: AppSetsRoute,
+  AppSetsRoute: AppSetsRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
   AppProcesosIdRoute: AppProcesosIdRoute,
   AppProcesosNuevoRoute: AppProcesosNuevoRoute,

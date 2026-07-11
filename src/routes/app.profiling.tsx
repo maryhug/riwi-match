@@ -58,27 +58,29 @@ function Profiling() {
         {/* En cola */}
         <Column title="En cola" count={cola.length} accent="info">
           {cola.map((c) => (
-            <GlassCard key={c.id} className="p-3 border border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/10 transition-colors duration-250">
-              <div className="flex items-center gap-2.5">
-                <div className="h-7 w-7 rounded-md bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 grid place-items-center text-xs font-bold shrink-0">
-                  #{c.posicion}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold truncate">{c.candidato}</div>
-                  <div className="text-[10px] text-muted-foreground">{c.cargo}</div>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {c.respondioWhatsapp ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold border border-emerald-500/30">
-                        WhatsApp OK
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-bold border border-amber-500/30">
-                        Sin responder WA
-                      </span>
-                    )}
+            <GlassCard key={c.id} className="p-3 border border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/10 transition-colors duration-250 h-[90px] flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="h-7 w-7 rounded-md bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 grid place-items-center text-xs font-bold shrink-0">
+                    #{c.posicion}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold truncate">{c.candidato}</div>
+                    <div className="text-[10px] text-muted-foreground">{c.cargo}</div>
                   </div>
                 </div>
                 <button className="text-muted-foreground hover:text-destructive shrink-0"><X className="h-3.5 w-3.5" /></button>
+              </div>
+              <div className="flex flex-wrap gap-1.5 mt-auto">
+                {c.respondioWhatsapp ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold border border-emerald-500/30">
+                    WhatsApp OK
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-bold border border-amber-500/30">
+                    Sin responder WA
+                  </span>
+                )}
               </div>
             </GlassCard>
           ))}
@@ -87,27 +89,27 @@ function Profiling() {
         {/* En llamada */}
         <Column title="En llamada" sub="máx. 4" count={activas.length} accent="primary">
           {activas.map((c, i) => (
-            <GlassCard key={c.id} className="p-4 relative overflow-hidden border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors duration-250">
-              <div className="relative">
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className="relative">
-                    <div className="h-10 w-10 rounded-full bg-primary text-white grid place-items-center text-xs font-bold pulse-ring">
+            <GlassCard key={c.id} className="p-3 relative overflow-hidden border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors duration-250 h-[130px] flex flex-col justify-between">
+              <div className="relative flex-1 flex flex-col justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="relative shrink-0">
+                    <div className="h-8 w-8 rounded-full bg-primary text-white grid place-items-center text-xs font-bold pulse-ring">
                       {c.candidato.split(" ").map(n=>n[0]).slice(0,2).join("")}
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold truncate">{c.candidato}</div>
-                    <div className="text-[10px] text-muted-foreground">{c.cargo}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">{c.cargo}</div>
                   </div>
                 </div>
                 
-                {/* Dynamic Voice Visualizer */}
-                <VoiceVisualizer id={c.id} index={i} />
-
-                <div className="flex items-center justify-between text-xs mt-2">
-                  <span className="text-muted-foreground inline-flex items-center gap-1 font-medium">
-                    <Clock className="h-3.5 w-3.5 text-primary shrink-0" /> {c.duracion}
-                  </span>
+                {/* Dynamic Voice Visualizer debajo de nuevo */}
+                <div className="my-1">
+                  <VoiceVisualizer id={c.id} index={i} />
+                </div>
+                
+                <div className="flex items-center text-[10px] text-muted-foreground">
+                  <Clock className="h-3 w-3 text-primary shrink-0 mr-1" /> {c.duracion}
                 </div>
               </div>
             </GlassCard>
@@ -117,13 +119,15 @@ function Profiling() {
         {/* Completadas */}
         <Column title="Completadas" count={completadas.length} accent="success">
           {completadas.map((c) => (
-            <GlassCard key={c.id} className="p-3 border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors duration-250">
+            <GlassCard key={c.id} className="p-3 border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors duration-250 h-[90px] flex flex-col justify-between">
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold truncate">{c.candidato}</div>
                   <div className="text-[10px] text-muted-foreground">{c.cargo}</div>
                 </div>
+              </div>
+              <div className="mt-auto text-left">
                 <button className="text-[10px] font-semibold text-primary hover:underline shrink-0">Respuestas</button>
               </div>
             </GlassCard>
@@ -133,15 +137,15 @@ function Profiling() {
         {/* No contestadas */}
         <Column title="No contestadas" count={fallidas.length} accent="destructive">
           {fallidas.map((c) => (
-            <GlassCard key={c.id} className="p-3 border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 transition-colors duration-250">
-              <div className="flex items-center gap-2.5 mb-2">
+            <GlassCard key={c.id} className="p-3 border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 transition-colors duration-250 h-[90px] flex flex-col justify-between">
+              <div className="flex items-center gap-2.5">
                 <XCircle className="h-5 w-5 text-rose-500 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold truncate">{c.candidato}</div>
                   <div className="text-[10px] text-muted-foreground">{c.cargo}</div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-[10px]">
+              <div className="flex items-center gap-2 text-[10px] mt-auto">
                 <span className="px-2 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold inline-flex items-center gap-1 shrink-0">
                   <RefreshCw className="h-3 w-3" /> Reintento {c.intento}/3
                 </span>
@@ -180,7 +184,7 @@ function VoiceVisualizer({ id, index }: { id: string; index: number }) {
   const bars = Array.from({ length: 32 });
   
   return (
-    <div className="relative h-16 w-full my-3 flex items-center justify-center gap-1 rounded-xl bg-background/40 shadow-inner overflow-hidden px-2 border border-primary/10">
+    <div className="relative h-10 w-full flex items-center justify-center gap-1 rounded-xl bg-background/40 shadow-inner overflow-hidden px-2 border border-primary/10">
       <style>{`
         @keyframes eq-pulse-${id} {
           0% { height: 15%; opacity: 0.3; }
@@ -202,8 +206,8 @@ function VoiceVisualizer({ id, index }: { id: string; index: number }) {
       {bars.map((_, i) => {
         // Deterministic pseudo-random values
         const h = 30 + (Math.sin(i * 1.3 + index) * Math.cos(i * 0.7 - index) * 0.5 + 0.5) * 70;
-        const dur = 0.4 + (Math.sin(i * 3 + index) * 0.5 + 0.5) * 0.6;
-        const del = (Math.cos(i * 2 - index) * 0.5 + 0.5) * -1.5;
+        const dur = 2.0 + (Math.sin(i * 3 + index) * 0.5 + 0.5) * 3.0;
+        const del = (Math.cos(i * 2 - index) * 0.5 + 0.5) * -6.0;
         
         return (
           <div

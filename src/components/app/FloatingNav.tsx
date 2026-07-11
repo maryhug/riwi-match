@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Briefcase, ListChecks, PhoneCall, Users, DollarSign, Settings,
@@ -40,8 +41,10 @@ export function FloatingNav() {
   const visible = items.filter((i) => i.roles.includes(role));
   const isVertical = navPosition === "left" || navPosition === "right";
 
+  const [navExpanded, setNavExpanded] = useState(false);
+
   const isSets = path === "/app/sets" || path.startsWith("/app/sets/");
-  const buttonText = isSets ? "Nuevo set" : "Nuevo proceso";
+  const buttonText = isSets ? "Nuevo set" : "Crear proceso";
 
   const pillClass = cn(
     "flex items-center gap-1 rounded-full border border-border/60 bg-card/85 p-1.5 shadow-sm backdrop-blur-xl",
@@ -54,89 +57,96 @@ export function FloatingNav() {
   return (
     <div
       className={cn(
-        "fixed z-40 flex gap-3 group/nav items-center",
+        "fixed z-40 flex gap-3 items-center",
         "transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
         wrapperPos[navPosition],
       )}
       style={{ willChange: "transform" }}
     >
-      {/* Separated "add" / brand button */}
-      <button
-        className={cn(
-          "flex shrink-0 items-center justify-center rounded-full border border-border/60 bg-primary text-primary-foreground shadow-sm hover:scale-105 transition-all duration-300",
-          isVertical
-            ? "h-12 w-12"
-            : "h-12 w-12 hover:w-auto hover:px-4 hover:gap-2 group/btn"
-        )}
-        aria-label={buttonText}
+      <div 
+        className={cn("flex gap-3 items-center", isVertical ? "flex-col" : "flex-row")}
+        onMouseLeave={() => setNavExpanded(false)}
       >
-        <Plus className="h-5 w-5 shrink-0" />
-        {!isVertical && (
-          <span
-            className="overflow-hidden whitespace-nowrap transition-all duration-300 text-sm font-medium max-w-0 opacity-0 group-hover/btn:max-w-[180px] group-hover/btn:opacity-100"
-          >
-            {buttonText}
-          </span>
-        )}
-      </button>
-
-      {/* Main nav pill */}
-      <nav className={pillClass}>
-
-        {visible.map((item) => {
-          const Icon = item.icon;
-          const active = path === item.to || (item.to !== "/app" && path.startsWith(item.to));
-
-          const isLeft = navPosition === "left";
-          const isRight = navPosition === "right";
-
-          return (
-            <div 
-              key={item.to} 
-              className={cn(
-                "relative group/item flex items-center justify-center h-9 shrink-0 z-10",
-                "transition-all duration-300 ease-in-out",
-                isVertical ? "w-9" : "w-auto"
-              )}
+        {/* Separated "add" / brand button */}
+        <Link
+          to={isSets ? "/app/sets/nuevo" : "/app/procesos/nuevo"}
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-full border border-border/60 bg-primary text-primary-foreground shadow-sm hover:scale-105 transition-all duration-300",
+            isVertical ? "h-12 w-12" : "h-12 px-3.5 group/btn"
+          )}
+          aria-label={buttonText}
+        >
+          <Plus className="h-5 w-5 shrink-0" />
+          {!isVertical && (
+            <span
+              className="overflow-hidden whitespace-nowrap transition-all duration-300 text-sm font-medium max-w-0 opacity-0 ml-0 group-hover/btn:max-w-28 group-hover/btn:opacity-100 group-hover/btn:ml-2"
             >
-              <Link
-                to={item.to}
+              {buttonText}
+            </span>
+          )}
+        </Link>
+
+        {/* Main nav pill */}
+        <nav 
+          onMouseEnter={() => setNavExpanded(true)}
+          className={pillClass}
+        >
+
+          {visible.map((item) => {
+            const Icon = item.icon;
+            const active = path === item.to || (item.to !== "/app" && path.startsWith(item.to));
+
+            const isLeft = navPosition === "left";
+            const isRight = navPosition === "right";
+
+            return (
+              <div 
+                key={item.to} 
                 className={cn(
-                  "flex items-center h-9 rounded-full overflow-hidden transition-all duration-300 ease-in-out",
-                  active
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  isVertical ? "absolute" : "relative px-2",
-                  isLeft && isVertical ? "left-0" : "",
-                  isRight && isVertical ? "right-0" : ""
+                  "relative group/item flex items-center justify-center h-9 shrink-0 z-10",
+                  "transition-all duration-300 ease-in-out",
+                  isVertical ? "w-9" : "w-auto"
                 )}
-                aria-label={item.label}
               >
-                <div className={cn(
-                  "grid h-9 shrink-0 place-items-center transition-all duration-300 ease-in-out",
-                  isVertical ? "w-9" : "w-5 mr-2",
-                  isLeft && isVertical ? "order-1" : (isRight && isVertical ? "order-2" : "order-1")
-                )}>
-                  <Icon className="h-4 w-4" />
-                </div>
-                <span 
+                <Link
+                  to={item.to}
                   className={cn(
-                    "whitespace-nowrap font-medium text-sm transition-all duration-300 ease-in-out",
-                    !isVertical && (active 
-                      ? "max-w-[160px] opacity-100 pr-1.5" 
-                      : "max-w-0 opacity-0 group-hover/nav:max-w-[160px] group-hover/nav:opacity-100 group-hover/nav:pr-1.5"),
-                    isVertical && "max-w-0 opacity-0 group-hover/item:max-w-[160px] group-hover/item:opacity-100",
-                    isLeft && isVertical ? "order-2 group-hover/item:pr-3" : "",
-                    isRight && isVertical ? "order-1 group-hover/item:pl-3" : ""
+                    "flex items-center h-9 rounded-full overflow-hidden transition-all duration-300 ease-in-out",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    isVertical ? "absolute" : "relative px-2",
+                    isLeft && isVertical ? "left-0" : "",
+                    isRight && isVertical ? "right-0" : ""
                   )}
+                  aria-label={item.label}
                 >
-                  {item.label}
-                </span>
-              </Link>
-            </div>
-          );
-        })}
-      </nav>
+                  <div className={cn(
+                    "grid h-9 shrink-0 place-items-center transition-all duration-300 ease-in-out",
+                    isVertical ? "w-9" : "w-5 mr-2",
+                    isLeft && isVertical ? "order-1" : (isRight && isVertical ? "order-2" : "order-1")
+                  )}>
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <span 
+                    className={cn(
+                      "whitespace-nowrap font-medium text-sm transition-all duration-300 ease-in-out",
+                      !isVertical && (active
+                        ? "max-w-24 opacity-100 pr-1.5"
+                        : cn("max-w-0 opacity-0", navExpanded && "max-w-24 opacity-100 pr-1.5")),
+                      isVertical && "max-w-0 opacity-0 group-hover/item:max-w-24 group-hover/item:opacity-100",
+                      isLeft && isVertical ? "order-2 group-hover/item:pr-3" : "",
+                      isRight && isVertical ? "order-1 group-hover/item:pl-3" : ""
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                </Link>
+              </div>
+            );
+          })}
+        </nav>
+      </div>
 
       {/* Separated utility pill (avatar with options) */}
       <div className={pillClass}>

@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, PlayCircle, Upload, Archive, AlertTriangle, ChevronDown, CheckCircle2, Loader2, AlertCircle, Eye } from "lucide-react";
 import { procesos, candidatos, type Candidato } from "@/lib/mock-data";
 import { GlassCard } from "@/components/app/GlassCard";
+import { useFeedback } from "@/components/app/FeedbackMagnet";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend,
 } from "recharts";
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/app/procesos/$id")({
   component: Detalle,
 });
 
-const tabs = ["Dashboard", "CVs", "Ranking de candidatos", "Configuración"];
+const tabs = ["Dashboard", "Ranking de candidatos", "Kanban", "Configuración"];
 
 function Detalle() {
   const { id } = useParams({ from: "/app/procesos/$id" });
@@ -23,6 +24,12 @@ function Detalle() {
   const [selected, setSelected] = useState<string[]>([]);
   const [drawer, setDrawer] = useState<Candidato | null>(null);
   const presupuestoPct = Math.min(100, (proc.costo / proc.presupuesto) * 100);
+  const { setMagnetId } = useFeedback();
+
+  useEffect(() => {
+    setMagnetId(`proceso-${id}-tab-${tab}`);
+    return () => setMagnetId(null);
+  }, [id, tab, setMagnetId]);
 
   return (
     <div className="space-y-6">
@@ -175,7 +182,6 @@ function Detalle() {
         </div>
       )}
 
-      {tab === "CVs" && <CVsTab />}
       {tab === "Ranking de candidatos" && (
         <RankingTab
           procSet={proc.setPreguntas}
@@ -184,6 +190,7 @@ function Detalle() {
           onOpen={(c: Candidato) => setDrawer(c)}
         />
       )}
+      {tab === "Kanban" && <KanbanTab onOpen={(c: Candidato) => setDrawer(c)} />}
       {tab === "Configuración" && (
         <GlassCard>
           <div className="text-sm font-semibold mb-3">Configuración del proceso</div>
@@ -196,66 +203,58 @@ function Detalle() {
   );
 }
 
-function CVsTab() {
-  const files = [
-    { name: "mariana_ospina_cv.pdf", cand: "Mariana Ospina", estado: "Procesado" },
-    { name: "daniel_cardenas_cv.pdf", cand: "Daniel Cárdenas", estado: "Procesado" },
-    { name: "valentina_rojas_cv.pdf", cand: "Valentina Rojas", estado: "Procesado" },
-    { name: "esteban_q_cv.docx", cand: "Esteban Quintero", estado: "Procesado" },
-    { name: "laura_mendoza.pdf", cand: "Laura Mendoza", estado: "Procesando" },
-    { name: "cv_escaneado_023.jpg", cand: "—", estado: "Requiere revisión" },
-    { name: "perfil_corrupto.pdf", cand: "—", estado: "Error de lectura" },
-  ];
 
+function KanbanTab({ onOpen }: { onOpen: (c: any) => void }) {
+  const columns = ["Match", "Pre-entrevista", "Entrevista", "Completado"];
+  
   return (
-    <GlassCard className="p-0 overflow-hidden">
-      <div className="p-4 border-b border-border/40 text-sm font-semibold">Procesamiento de CVs</div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
-            <th className="text-left px-5 py-3 font-medium">Archivo</th>
-            <th className="text-left px-3 py-3 font-medium">Candidato detectado</th>
-            <th className="text-left px-3 py-3 font-medium">Estado</th>
-            <th className="px-3 py-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {files.map((f, i) => (
-            <tr key={i} className="border-t border-border/30">
-              <td className="px-5 py-3 font-medium">{f.name}</td>
-              <td className="px-3 py-3 text-muted-foreground">{f.cand}</td>
-              <td className="px-3 py-3">
-                {f.estado === "Procesado" && (
-                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-success/15 text-success text-xs font-medium">
-                    <CheckCircle2 className="h-3 w-3" /> Procesado
-                  </span>
-                )}
-                {f.estado === "Procesando" && (
-                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/15 text-primary text-xs font-medium">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Procesando…
-                  </span>
-                )}
-                {f.estado === "Requiere revisión" && (
-                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-warning/20 text-warning-foreground text-xs font-medium">
-                    <AlertCircle className="h-3 w-3" /> Requiere revisión
-                  </span>
-                )}
-                {f.estado === "Error de lectura" && (
-                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-destructive/15 text-destructive text-xs font-medium">
-                    <AlertCircle className="h-3 w-3" /> Error de lectura
-                  </span>
-                )}
-              </td>
-              <td className="px-3 py-3 text-right">
-                {f.estado === "Error de lectura" && (
-                  <button className="text-xs text-primary hover:underline">Reintentar</button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </GlassCard>
+    <div className="flex gap-4 overflow-x-auto pb-4 min-h-[60vh] items-start">
+      {columns.map(col => {
+        const columnCands = candidatos.filter(c => c.avance === col).sort((a,b) => b.match - a.match);
+        return (
+          <div key={col} className="flex-1 min-w-[280px] bg-background/30 rounded-3xl border border-border/40 p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <h3 className="font-semibold text-sm text-foreground/90">{col}</h3>
+              <span className="text-xs bg-muted/60 px-2.5 py-1 rounded-full text-muted-foreground font-medium">{columnCands.length}</span>
+            </div>
+            {columnCands.map(c => (
+              <GlassCard 
+                key={c.id} 
+                className="p-3 cursor-pointer hover:border-primary/40 transition-all hover:shadow-md hover:-translate-y-0.5 group"
+              >
+                <div onClick={() => onOpen(c)}>
+                  <div className="flex items-start justify-between mb-1.5">
+                    <div className="font-semibold text-sm group-hover:text-primary transition-colors">{c.nombre}</div>
+                    <div className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold border border-primary/20">{c.match}%</div>
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate mb-3">{c.categoria}</div>
+                  
+                  <div className="flex items-center justify-between border-t border-border/40 pt-2 text-[10px]">
+                    <div className="text-muted-foreground">
+                      {c.profiling === "Completado" ? (
+                        <span className="flex items-center gap-1 text-success"><CheckCircle2 className="h-3 w-3" /> IA Profiling</span>
+                      ) : c.profiling === "En curso" ? (
+                        <span className="flex items-center gap-1 text-primary"><Loader2 className="h-3 w-3 animate-spin" /> Llamando...</span>
+                      ) : (
+                        <span className="flex items-center gap-1 opacity-60"><AlertCircle className="h-3 w-3" /> Sin perfilar</span>
+                      )}
+                    </div>
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity text-primary font-medium flex items-center gap-1">
+                      Ver <Eye className="h-3 w-3" />
+                    </div>
+                  </div>
+                </div>
+              </GlassCard>
+            ))}
+            {columnCands.length === 0 && (
+              <div className="text-center py-6 text-xs text-muted-foreground italic border-2 border-dashed border-border/50 rounded-xl bg-background/20">
+                Vacio
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -278,7 +277,6 @@ function MatchRing({ value, size = 56 }: { value: number; size?: number }) {
 
 function RankingTab({ procSet, selected, setSelected, onOpen }: any) {
   const [viewMode, setViewMode] = useState<"match" | "profiling">("match");
-  const [expanded, setExpanded] = useState<string | null>(null);
   const sorted = [...candidatos].sort((a, b) => b.match - a.match);
   const noSet = !procSet;
   const overFour = selected.length > 4;
@@ -347,8 +345,10 @@ function RankingTab({ procSet, selected, setSelected, onOpen }: any) {
               <tbody>
                 {sorted.map((c) => (
                   <FragmentRow key={c.id}>
-                    <tr className={`border-t border-border/30 hover:bg-accent/30 transition ${selected.includes(c.id) ? "bg-primary/5" : ""}`}>
-                      <td className="px-4 py-3"><input type="checkbox" checked={selected.includes(c.id)} onChange={() => toggle(c.id)} className="accent-primary"/></td>
+                    <tr onClick={() => onOpen(c)} className={`cursor-pointer border-t border-border/30 hover:bg-accent/30 transition ${selected.includes(c.id) ? "bg-primary/5" : ""}`}>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox" checked={selected.includes(c.id)} onChange={() => toggle(c.id)} className="accent-primary"/>
+                      </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className="h-9 w-9 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-bold">
@@ -382,47 +382,12 @@ function RankingTab({ procSet, selected, setSelected, onOpen }: any) {
                       <td className="px-3 py-3 text-xs">{c.ciudad}</td>
                       <td className="px-3 py-3 text-xs">{c.profiling}</td>
                       <td className="px-3 py-3"><AvanceBadge a={c.avance} /></td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => onOpen(c)} className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent" title="Ver detalle">
-                            <Eye className="h-3.5 w-3.5" />
-                          </button>
-                          <button onClick={() => setExpanded(expanded === c.id ? null : c.id)} className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent">
-                            <ChevronDown className={`h-3.5 w-3.5 transition ${expanded===c.id?"rotate-180":""}`} />
-                          </button>
-                        </div>
+                      <td className="px-3 py-3 text-right">
+                        <button onClick={() => onOpen(c)} className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent inline-flex" title="Ver detalle">
+                          <Eye className="h-3.5 w-3.5" />
+                        </button>
                       </td>
                     </tr>
-                    {expanded === c.id && (
-                      <tr className="bg-accent/20 border-t border-border/30">
-                        <td colSpan={9} className="px-6 py-4">
-                          <div className="grid lg:grid-cols-3 gap-4">
-                            <div className="lg:col-span-1">
-                              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Breakdown</div>
-                              <div className="space-y-1.5">
-                                {c.breakdown.map(b => (
-                                  <div key={b.categoria}>
-                                    <div className="flex justify-between text-[11px] mb-0.5">
-                                      <span className="text-muted-foreground">{b.categoria} <span className="text-[9px]">({b.peso}%)</span></span>
-                                      <span className="font-semibold">{b.puntaje}</span>
-                                    </div>
-                                    <div className="h-1.5 rounded-full bg-muted"><div className="h-full rounded-full bg-gradient-to-r from-primary to-info" style={{width:`${b.puntaje}%`}}/></div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-xs uppercase tracking-wider text-success mb-2">Fortalezas</div>
-                              <ul className="space-y-1 text-sm">{c.fortalezas.map(f=><li key={f}>• {f}</li>)}</ul>
-                            </div>
-                            <div>
-                              <div className="text-xs uppercase tracking-wider text-destructive mb-2">Brechas</div>
-                              <ul className="space-y-1 text-sm">{c.brechas.map(f=><li key={f}>• {f}</li>)}</ul>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
                   </FragmentRow>
                 ))}
               </tbody>
@@ -453,7 +418,7 @@ function RankingTab({ procSet, selected, setSelected, onOpen }: any) {
               </thead>
               <tbody>
                 {sorted.filter(c => c.profiling !== "Sin iniciar").map((c) => (
-                  <tr key={c.id} className="border-t border-border/30 hover:bg-accent/30 transition">
+                  <tr key={c.id} onClick={() => onOpen(c)} className="cursor-pointer border-t border-border/30 hover:bg-accent/30 transition">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className="h-9 w-9 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-bold">
@@ -526,12 +491,12 @@ function AvanceBadge({ a }: { a: string }) {
 
 function CandidatoDrawer({ candidato, onClose }: { candidato: Candidato; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-2xl glass-strong h-full overflow-y-auto p-6 space-y-5">
-        <div className="flex items-start justify-between">
+      <div className="relative w-full max-w-5xl glass-strong max-h-full overflow-y-auto p-6 rounded-3xl flex flex-col">
+        <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="h-14 w-14 rounded-full bg-primary text-white grid place-items-center font-bold text-lg">
+            <div className="h-14 w-14 rounded-full bg-primary text-white grid place-items-center font-bold text-lg shadow-lg">
               {candidato.nombre.split(" ").map(n=>n[0]).slice(0,2).join("")}
             </div>
             <div>
@@ -540,63 +505,99 @@ function CandidatoDrawer({ candidato, onClose }: { candidato: Candidato; onClose
               <div className="mt-1 flex gap-2"><CategoriaBadge cat={candidato.categoria} /><AvanceBadge a={candidato.avance} /></div>
             </div>
           </div>
-          <button onClick={onClose} className="text-2xl text-muted-foreground hover:text-foreground">×</button>
+          <button onClick={onClose} className="text-2xl text-muted-foreground hover:text-foreground h-10 w-10 grid place-items-center rounded-full hover:bg-background/50 transition">×</button>
         </div>
 
-        <GlassCard>
-          <div className="flex items-start justify-between mb-3">
-            <div className="text-sm font-semibold">Análisis de match (IA)</div>
-            <MatchRing value={candidato.match} size={64} />
-          </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Perfil con alta afinidad técnica frente al JD; cumple la mayoría de requisitos obligatorios y presenta
-            fortalezas sólidas en el stack solicitado. Se identifican brechas menores que pueden validarse en
-            entrevista humana.
-          </p>
-          <div className="mt-3 text-[10px] text-muted-foreground italic">
-            Generado por IA — modelo gpt-X · prompt v3 · 2,431 tokens · $0.04
-          </div>
-        </GlassCard>
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Columna Izquierda: Análisis de Match */}
+          <div className="space-y-6">
+            <GlassCard>
+              <div className="flex items-start justify-between mb-3">
+                <div className="text-sm font-semibold">Análisis de match (IA)</div>
+                <MatchRing value={candidato.match} size={64} />
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                Perfil con alta afinidad técnica frente al JD; cumple la mayoría de requisitos obligatorios y presenta
+                fortalezas sólidas en el stack solicitado. Se identifican brechas menores que pueden validarse en
+                entrevista humana.
+              </p>
 
-        <GlassCard>
-          <div className="text-sm font-semibold mb-3">Profiling</div>
-          <div className="space-y-2">
-            {[
-              { q: "¿Tienes disponibilidad para modalidad híbrida en Medellín?", a: "Sí, sin problema.", ev: "✓", conf: 96 },
-              { q: "Cuéntanos por qué saliste de tu último empleo.", a: "Buscaba un reto técnico mayor y mejores condiciones.", ev: "parcial", conf: 64 },
-              { q: "¿Cuál es tu expectativa salarial?", a: "Entre 9 y 11 M COP.", ev: "✓", conf: 92 },
-            ].map((p, i) => (
-              <details key={i} className="rounded-xl bg-background/40 border border-border/40 p-3">
-                <summary className="cursor-pointer text-sm font-medium flex items-center justify-between">
-                  <span>{p.q}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded ${p.ev === "✓" ? "bg-success/15 text-success" : "bg-warning/20 text-warning-foreground"}`}>{p.ev}</span>
-                </summary>
-                <div className="mt-3 text-sm text-muted-foreground">{p.a}</div>
-                <div className="mt-2 flex items-center gap-2 text-[11px]">
-                  <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div className={`h-full ${p.conf < 70 ? "bg-warning" : "bg-success"}`} style={{ width: `${p.conf}%` }} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border/40 pt-4">
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-success mb-2">Fortalezas</div>
+                    <ul className="space-y-1 text-sm">{candidato.fortalezas.map(f=><li key={f}>• {f}</li>)}</ul>
                   </div>
-                  <span className="text-muted-foreground">Confianza {p.conf}%</span>
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-destructive mb-2">Brechas</div>
+                    <ul className="space-y-1 text-sm">{candidato.brechas.map(f=><li key={f}>• {f}</li>)}</ul>
+                  </div>
                 </div>
-                {p.conf < 70 && <div className="mt-1 text-[10px] text-warning">Requiere revisión humana</div>}
-              </details>
-            ))}
-          </div>
-        </GlassCard>
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Breakdown</div>
+                  <div className="space-y-1.5">
+                    {candidato.breakdown.map(b => (
+                      <div key={b.categoria}>
+                        <div className="flex justify-between text-[11px] mb-0.5">
+                          <span className="text-muted-foreground">{b.categoria} <span className="text-[9px]">({b.peso}%)</span></span>
+                          <span className="font-semibold">{b.puntaje}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-muted"><div className="h-full rounded-full bg-gradient-to-r from-primary to-info" style={{width:`${b.puntaje}%`}}/></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
-        <GlassCard>
-          <div className="text-sm font-semibold mb-2">Override del recruiter</div>
-          <textarea
-            placeholder="Observaciones del recruiter…"
-            className="w-full text-sm rounded-xl bg-background/70 border border-border p-3 min-h-[80px] focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
-          <div className="mt-3 flex gap-2 text-xs">
-            <div className="text-muted-foreground">¿El análisis de IA fue…?</div>
-            {["Correcto", "Parcial", "Incorrecto"].map((o) => (
-              <button key={o} className="px-2.5 py-1 rounded-md border border-border hover:bg-accent transition">{o}</button>
-            ))}
+              <div className="mt-4 text-[10px] text-muted-foreground italic">
+                Generado por IA — modelo gpt-X · prompt v3 · 2,431 tokens · $0.04
+              </div>
+            </GlassCard>
           </div>
-        </GlassCard>
+
+          {/* Columna Derecha: Profiling y Override */}
+          <div className="space-y-6">
+            <GlassCard>
+              <div className="text-sm font-semibold mb-3">Profiling</div>
+              <div className="space-y-2">
+                {[
+                  { q: "¿Tienes disponibilidad para modalidad híbrida en Medellín?", a: "Sí, sin problema.", ev: "✓", conf: 96 },
+                  { q: "Cuéntanos por qué saliste de tu último empleo.", a: "Buscaba un reto técnico mayor y mejores condiciones.", ev: "parcial", conf: 64 },
+                  { q: "¿Cuál es tu expectativa salarial?", a: "Entre 9 y 11 M COP.", ev: "✓", conf: 92 },
+                ].map((p, i) => (
+                  <details key={i} className="rounded-xl bg-background/40 border border-border/40 p-3">
+                    <summary className="cursor-pointer text-sm font-medium flex items-center justify-between">
+                      <span>{p.q}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded ${p.ev === "✓" ? "bg-success/15 text-success" : "bg-warning/20 text-warning-foreground"}`}>{p.ev}</span>
+                    </summary>
+                    <div className="mt-3 text-sm text-muted-foreground">{p.a}</div>
+                    <div className="mt-2 flex items-center gap-2 text-[11px]">
+                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className={`h-full ${p.conf < 70 ? "bg-warning" : "bg-success"}`} style={{ width: `${p.conf}%` }} />
+                      </div>
+                      <span className="text-muted-foreground">Confianza {p.conf}%</span>
+                    </div>
+                    {p.conf < 70 && <div className="mt-1 text-[10px] text-warning">Requiere revisión humana</div>}
+                  </details>
+                ))}
+              </div>
+            </GlassCard>
+
+            <GlassCard>
+              <div className="text-sm font-semibold mb-2">Override del recruiter</div>
+              <textarea
+                placeholder="Observaciones del recruiter…"
+                className="w-full text-sm rounded-xl bg-background/70 border border-border p-3 min-h-[80px] focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              <div className="mt-3 flex gap-2 text-xs">
+                <div className="text-muted-foreground">¿El análisis de IA fue…?</div>
+                {["Correcto", "Parcial", "Incorrecto"].map((o) => (
+                  <button key={o} className="px-2.5 py-1 rounded-md border border-border hover:bg-accent transition">{o}</button>
+                ))}
+              </div>
+            </GlassCard>
+          </div>
+        </div>
       </div>
     </div>
   );
