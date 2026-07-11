@@ -1,28 +1,164 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, PlayCircle, Upload, Archive, AlertTriangle, ChevronDown, CheckCircle2, Loader2, AlertCircle, Eye } from "lucide-react";
-import { procesos, candidatos, type Candidato } from "@/lib/mock-data";
-import { GlassCard } from "@/components/app/GlassCard";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import {
-  PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend,
-} from "recharts";
-import { matchDistribution, avanceData, funnelData } from "@/lib/mock-data";
+  ArrowLeft, PlayCircle, Upload, Archive, XCircle, AlertTriangle, ChevronDown, ChevronUp,
+  Search, Phone, Eye, Download, Sparkles, PhoneCall, Users, Settings2, FileDown,
+} from "lucide-react";
 import { toast } from "sonner";
+import { GlassCard } from "@/components/app/GlassCard";
+import { UploadCvsModal } from "@/components/app/UploadCvsModal";
+import { ProfilingResultModal } from "@/components/app/ProfilingResultModal";
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip,
+} from "recharts";
+import {
+  getProcess, getProcessMetrics, updateProcessStatus, updateProcess,
+  assignQuestionSet, updateVoiceConfig, enhanceJobDescription, getJobDescriptions,
+} from "@/lib/api/processes.functions";
+import { getCandidates, getCandidateDetail, overrideCandidate } from "@/lib/api/candidates.functions";
+import { triggerMatch, getMatchStatus } from "@/lib/api/match.functions";
+import { triggerProfiling, getProcessProfilingRuns } from "@/lib/api/profiling.functions";
+import { submitFeedback } from "@/lib/api/ai-feedback.functions";
+import { getQuestionSets } from "@/lib/api/question-sets.functions";
+import { candidateStatusesRefetchInterval, profilingRunsRefetchInterval } from "@/lib/polling";
+import {
+  PROCESS_STATUS_LABEL, CANDIDATE_STATUS_LABEL, MATCH_CATEGORY_LABEL,
+  ADVANCEMENT_PROBABILITY_LABEL, type ProcessStatus, type MatchCategory,
+  type CandidateStatus, type AdvancementProbability,
+} from "@/lib/types/enums";
+import type { CandidateListItem, ProfilingRunOut } from "@/lib/types/api";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/procesos/$id")({
   head: () => ({ meta: [{ title: "Detalle de proceso · RIWI MATCH" }] }),
   component: Detalle,
 });
 
-const tabs = ["Dashboard", "Ranking de candidatos", "Kanban", "Configuración"];
+const tabs = ["Dashboard", "Ranking de candidatos", "Kanban", "Configuración"] as const;
+type TabName = (typeof tabs)[number];
+
+const CATEGORY_COLOR: Record<MatchCategory, { text: string; bg: string; ring: string }> = {
+  HIGH: { text: "text-success", bg: "bg-success/15", ring: "#22c55e" },
+  MEDIUM: { text: "text-warning-foreground", bg: "bg-warning/15", ring: "#eab308" },
+  LOW: { text: "text-destructive", bg: "bg-destructive/15", ring: "#ef4444" },
+  NOT_RECOMMENDED: { text: "text-muted-foreground", bg: "bg-muted", ring: "#94a3b8" },
+};
+
+function MatchRing({ pct, category, size = 44 }: { pct: number; category: MatchCategory | null; size?: number }) {
+  const color = category ? CATEGORY_COLOR[category].ring : "#94a3b8";
+  const r = size * 0.4;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (Math.min(pct, 100) / 100) * circ;
+  const c = size / 2;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
+      <circle cx={c} cy={c} r={r} fill="none" stroke="currentColor" className="text-muted/30" strokeWidth={size * 0.1} />
+      <circle cx={c} cy={c} r={r} fill="none" stroke={color} strokeWidth={size * 0.1}
+        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
+        transform={`rotate(-90 ${c} ${c})`} style={{ transition: "stroke-dashoffset .5s" }} />
+      <text x={c} y={c} dy=".32em" textAnchor="middle" fontSize={size * 0.26} fontWeight={700} fill={color}>
+        {Math.round(pct)}%
+      </text>
+    </svg>
+  );
+}
+
+function initials(name: string) {
+  return name.split(" ").filter(Boolean).slice(0, 2).map((n) => n[0]).join("").toUpperCase();
+}
 
 function Detalle() {
   const { id } = useParams({ from: "/app/procesos/$id" });
-  const proc = procesos.find((p) => p.id === id) ?? procesos[0];
-  const [tab, setTab] = useState("Dashboard");
-  const [selected, setSelected] = useState<string[]>([]);
-  const [drawer, setDrawer] = useState<Candidato | null>(null);
-  const presupuestoPct = Math.min(100, (proc.costo / proc.presupuesto) * 100);
+  const qc = useQueryClient();
+  const [tab, setTab] = useState<TabName>("Dashboard");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [drawerCandidate, setDrawerCandidate] = useState<CandidateListItem | null>(null);
+  const [profilingModalRun, setProfilingModalRun] = useState<ProfilingRunOut | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [pollStart] = useState(() => Date.now());
+
+  const { data: process, isLoading: processLoading } = useQuery({
+    queryKey: ["process", id],
+    queryFn: () => getProcess({ data: { processId: id } }),
+  });
+
+  const { data: candidatesData } = useQuery({
+    queryKey: ["candidates", id],
+    queryFn: () => getCandidates({ data: { processId: id } }),
+    refetchInterval: (q) => candidateStatusesRefetchInterval(q.state.data?.candidates.map((c) => c.status), pollStart),
+  });
+
+  const { data: profilingRunsData } = useQuery({
+    queryKey: ["profiling-runs", id],
+    queryFn: () => getProcessProfilingRuns({ data: { processId: id } }),
+    refetchInterval: (q) => profilingRunsRefetchInterval(q.state.data?.profiling_runs.map((r) => r.status), pollStart),
+  });
+
+  const { data: matchStatus } = useQuery({
+    queryKey: ["match-status", id],
+    queryFn: () => getMatchStatus({ data: { processId: id } }),
+    enabled: process?.status === "MATCH_PROCESSING",
+    refetchInterval: (q) => (q.state.data?.is_complete ? false : 3000),
+  });
+
+  const candidates = candidatesData?.candidates ?? [];
+  const profilingRuns = profilingRunsData?.profiling_runs ?? [];
+
+  const latestRunByPc = useMemo(() => {
+    const map = new Map<string, ProfilingRunOut>();
+    for (const r of profilingRuns) {
+      const existing = map.get(r.process_candidate_id);
+      if (!existing || new Date(r.created_at) > new Date(existing.created_at)) {
+        map.set(r.process_candidate_id, r);
+      }
+    }
+    return map;
+  }, [profilingRuns]);
+
+  const matchMutation = useMutation({
+    mutationFn: () => triggerMatch({ data: { processId: id } }),
+    onSuccess: (res) => {
+      if ("tasks" in res) toast.success(`Match iniciado — ${res.queued} candidato(s) en cola`);
+      else toast.info(res.message);
+      qc.invalidateQueries({ queryKey: ["process", id] });
+      qc.invalidateQueries({ queryKey: ["candidates", id] });
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo iniciar el match"),
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: (status: string) => updateProcessStatus({ data: { processId: id, status } }),
+    onSuccess: () => {
+      toast.success("Estado actualizado");
+      qc.invalidateQueries({ queryKey: ["process", id] });
+      qc.invalidateQueries({ queryKey: ["processes"] });
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo actualizar"),
+  });
+
+  const profilingMutation = useMutation({
+    mutationFn: (ids: string[]) => triggerProfiling({ data: { processId: id, processCandidateIds: ids } }),
+    onSuccess: (res) => {
+      toast.success(`${res.queued} llamada(s) encolada(s)`, {
+        description: res.skipped.length > 0 ? `${res.skipped.length} omitido(s)` : undefined,
+      });
+      setSelected(new Set());
+      qc.invalidateQueries({ queryKey: ["candidates", id] });
+      qc.invalidateQueries({ queryKey: ["profiling-runs", id] });
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo activar profiling"),
+  });
+
+  if (processLoading) {
+    return <div className="py-20 text-center text-sm text-muted-foreground">Cargando proceso…</div>;
+  }
+  if (!process) {
+    return <div className="py-20 text-center text-sm text-muted-foreground">Proceso no encontrado.</div>;
+  }
+
+  const isActive = process.status !== "CLOSED" && process.status !== "ARCHIVED";
+  const canRunMatch = !!process.job_description && isActive;
 
   return (
     <div className="space-y-6">
@@ -31,567 +167,872 @@ function Detalle() {
       </Link>
 
       <GlassCard className="p-6">
-        <div className="flex flex-wrap gap-4 items-start justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold tracking-tight">{proc.nombre}</h1>
-              <span className="px-2 py-1 rounded-md bg-primary/15 text-primary text-[10px] font-semibold">{proc.estado}</span>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">{process.name}</h1>
+              <span className="px-2 py-1 rounded-md text-[10px] font-semibold bg-primary/15 text-primary">
+                {PROCESS_STATUS_LABEL[process.status]}
+              </span>
             </div>
-            <div className="mt-1 text-sm text-muted-foreground">
-              {proc.cargo} · {proc.area} · {proc.seniority} · Reclutador: <span className="text-foreground">{proc.reclutador}</span>
-            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {process.job_title} · {process.area} · {process.seniority} · Reclutador: {process.recruiter_name}
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => toast.success("Análisis de match iniciado", { description: "Procesando 18 CVs contra el JD…" })}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30"
+              onClick={() => matchMutation.mutate()}
+              disabled={!canRunMatch || matchMutation.isPending}
+              title={!process.job_description ? "El proceso necesita una Job Description" : undefined}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
             >
-              <PlayCircle className="h-4 w-4" /> Ejecutar análisis de match
+              <PlayCircle className="h-4 w-4" /> {matchMutation.isPending ? "Iniciando…" : "Ejecutar análisis de match"}
             </button>
-            <button className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-background/60 text-sm hover:bg-background transition">
-              <Upload className="h-4 w-4" /> Cargar más CVs
+            <button
+              onClick={() => setUploadOpen(true)}
+              disabled={!isActive}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-background/60 text-sm disabled:opacity-40"
+            >
+              <Upload className="h-3.5 w-3.5" /> Cargar más CVs
             </button>
-            <button className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-background/60 text-sm hover:bg-background transition">
-              <Archive className="h-4 w-4" /> Archivar
-            </button>
+            {isActive ? (
+              <button
+                onClick={() => statusMutation.mutate("CLOSED")}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-background/60 text-sm"
+              >
+                <XCircle className="h-3.5 w-3.5" /> Cerrar proceso
+              </button>
+            ) : process.status === "CLOSED" ? (
+              <button
+                onClick={() => statusMutation.mutate("ARCHIVED")}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-background/60 text-sm"
+              >
+                <Archive className="h-3.5 w-3.5" /> Archivar
+              </button>
+            ) : null}
           </div>
         </div>
+
+        {matchStatus && !matchStatus.is_complete && (
+          <div className="mt-4">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-primary font-medium">Procesando match… {matchStatus.matched}/{matchStatus.total_candidates}</span>
+              <span className="text-muted-foreground">{matchStatus.progress_pct}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+              <div className="h-full bg-primary transition-all" style={{ width: `${matchStatus.progress_pct}%` }} />
+            </div>
+          </div>
+        )}
+
+        {process.budget_max_usd > 0 && (
+          <div className="mt-4 flex items-center gap-4">
+            <div className="flex-1 max-w-xs">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-muted-foreground">Presupuesto máximo</span>
+                <span className="font-medium">${process.budget_max_usd.toFixed(2)}</span>
+              </div>
+            </div>
+            <a href={`/dl/export/ranking/${id}`} className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+              <FileDown className="h-3.5 w-3.5" /> Exportar ranking
+            </a>
+            <a href={`/dl/export/costs/${id}`} className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+              <FileDown className="h-3.5 w-3.5" /> Exportar costos
+            </a>
+          </div>
+        )}
       </GlassCard>
 
-      {/* Tabs */}
-      <div className="glass rounded-2xl p-1.5 inline-flex gap-1">
+      <div className="flex items-center gap-1 border-b border-border/50">
         {tabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
-              tab === t ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground hover:text-foreground"
-            }`}
+            className={cn(
+              "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors",
+              tab === t ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
           >
             {t}
           </button>
         ))}
       </div>
 
-      {tab === "Dashboard" && (
-        <div className="space-y-6">
-          {presupuestoPct >= 80 && (
-            <div className="glass rounded-2xl p-4 border-l-4 border-destructive flex gap-3 items-start">
-              <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-              <div>
-                <div className="font-semibold text-sm">Presupuesto al {presupuestoPct.toFixed(0)}%</div>
-                <div className="text-xs text-muted-foreground">Nuevas ejecuciones podrían bloquearse al superar el 100%. Solicita aprobación si necesitas continuar.</div>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              ["Total CVs", proc.candidatos.toString()],
-              ["Procesados", "18"],
-              ["Con error", "2"],
-              ["Pendientes", "4"],
-              ["Match promedio", proc.promedioMatch + "%"],
-              ["Costo acumulado", "$" + proc.costo.toFixed(2)],
-              ["Costo prom. / CV", "$0.18"],
-              ["Costo prom. / profiling", "$0.47"],
-            ].map(([l, v]) => (
-              <GlassCard key={l} className="p-4">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{l}</div>
-                <div className="mt-2 text-2xl font-bold">{v}</div>
-              </GlassCard>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <GlassCard>
-              <div className="text-sm font-semibold mb-2">Distribución de match</div>
-              <div className="h-56">
-                <ResponsiveContainer>
-                  <PieChart>
-                    <Pie data={matchDistribution} dataKey="value" innerRadius={55} outerRadius={85} paddingAngle={2}>
-                      {matchDistribution.map((e, i) => <Cell key={i} fill={e.color} />)}
-                    </Pie>
-                    <Tooltip />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </GlassCard>
-
-            <GlassCard>
-              <div className="text-sm font-semibold mb-2">Posibilidad de avance</div>
-              <div className="h-56">
-                <ResponsiveContainer>
-                  <BarChart data={avanceData}>
-                    <XAxis dataKey="name" stroke="hsl(233 20% 46%)" fontSize={11} />
-                    <YAxis stroke="hsl(233 20% 46%)" fontSize={11} />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="hsl(248 100% 68%)" radius={[8,8,0,0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </GlassCard>
-
-            <GlassCard>
-              <div className="text-sm font-semibold mb-3">Embudo del proceso</div>
-              <div className="space-y-2.5">
-                {funnelData.map((f, i) => {
-                  const pct = (f.value / funnelData[0].value) * 100;
-                  return (
-                    <div key={f.etapa}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">{f.etapa}</span>
-                        <span className="font-semibold">{f.value}</span>
-                      </div>
-                      <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full rounded-full bg-gradient-to-r from-primary to-info" style={{ width: `${pct}%`, opacity: 1 - i*0.15 }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </GlassCard>
-          </div>
-
-          <GlassCard>
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-sm font-semibold">Consumo de presupuesto</div>
-              <div className="text-xs text-muted-foreground">${proc.costo.toFixed(2)} de ${proc.presupuesto}</div>
-            </div>
-            <div className="relative h-3 rounded-full bg-muted overflow-hidden">
-              <div
-                className={`h-full rounded-full ${presupuestoPct >= 100 ? "bg-destructive" : presupuestoPct >= 90 ? "bg-warning" : "bg-gradient-to-r from-primary to-info"}`}
-                style={{ width: `${presupuestoPct}%` }}
-              />
-              {[80, 90, 100].map((m) => (
-                <div key={m} className="absolute top-0 bottom-0 w-px bg-foreground/30" style={{ left: `${m}%` }} />
-              ))}
-            </div>
-            <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5">
-              <span>0%</span><span>80%</span><span>90%</span><span>100%</span>
-            </div>
-          </GlassCard>
-        </div>
-      )}
+      {tab === "Dashboard" && <DashboardTab processId={id} budgetMax={process.budget_max_usd} profilingRuns={profilingRuns} />}
 
       {tab === "Ranking de candidatos" && (
         <RankingTab
-          procSet={proc.setPreguntas}
+          processId={id}
+          candidates={candidates}
+          latestRunByPc={latestRunByPc}
+          hasQuestionSet={!!process.question_set_id}
           selected={selected}
           setSelected={setSelected}
-          onOpen={(c: Candidato) => setDrawer(c)}
+          onOpenDrawer={setDrawerCandidate}
+          onOpenProfilingModal={setProfilingModalRun}
+          onActivateProfiling={(ids) => profilingMutation.mutate(ids)}
+          activating={profilingMutation.isPending}
         />
       )}
-      {tab === "Kanban" && <KanbanTab onOpen={(c: Candidato) => setDrawer(c)} />}
-      {tab === "Configuración" && (
-        <GlassCard>
-          <div className="text-sm font-semibold mb-3">Configuración del proceso</div>
-          <p className="text-sm text-muted-foreground">Ajusta JD, criterios, pesos y set de profiling. (Mock)</p>
-        </GlassCard>
+
+      {tab === "Kanban" && (
+        <KanbanTab
+          candidates={candidates}
+          latestRunByPc={latestRunByPc}
+          onOpenDrawer={setDrawerCandidate}
+        />
       )}
 
-      {drawer && <CandidatoDrawer candidato={drawer} onClose={() => setDrawer(null)} />}
+      {tab === "Configuración" && <ConfigTab processId={id} process={process} />}
+
+      {drawerCandidate && (
+        <CandidatoDrawer
+          processId={id}
+          candidate={drawerCandidate}
+          latestRun={latestRunByPc.get(drawerCandidate.process_candidate_id) ?? null}
+          onClose={() => setDrawerCandidate(null)}
+          onOpenProfilingModal={setProfilingModalRun}
+        />
+      )}
+
+      <ProfilingResultModal
+        run={profilingModalRun}
+        open={!!profilingModalRun}
+        onClose={() => setProfilingModalRun(null)}
+      />
+
+      <UploadCvsModal processId={id} open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </div>
   );
 }
 
+// ─── Dashboard Tab ──────────────────────────────────────────────────────────
 
-function KanbanTab({ onOpen }: { onOpen: (c: any) => void }) {
-  const columns = ["Match", "Pre-entrevista", "Entrevista", "Completado"];
-  
+const PIE_COLORS: Record<string, string> = { HIGH: "#22c55e", MEDIUM: "#eab308", LOW: "#ef4444", NOT_RECOMMENDED: "#94a3b8" };
+
+function DashboardTab({ processId, budgetMax, profilingRuns }: {
+  processId: string; budgetMax: number; profilingRuns: ProfilingRunOut[];
+}) {
+  const { data: metrics, isLoading } = useQuery({
+    queryKey: ["process-metrics", processId],
+    queryFn: () => getProcessMetrics({ data: { processId } }),
+  });
+
+  if (isLoading || !metrics) {
+    return <div className="py-16 text-center text-sm text-muted-foreground">Cargando métricas…</div>;
+  }
+
+  const sd = metrics.status_distribution;
+  const procesados = (sd.MATCHED ?? 0) + (sd.SELECTED_FOR_PROFILING ?? 0) + (sd.PROFILING_QUEUED ?? 0) +
+    (sd.PROFILING_CALLING ?? 0) + (sd.PROFILING_COMPLETED ?? 0) + (sd.PROFILING_FAILED ?? 0) + (sd.DISCARDED ?? 0);
+  const conError = sd.CV_ERROR ?? 0;
+  const pendientes = (sd.LOADED ?? 0) + (sd.CV_PROCESSING ?? 0) + (sd.MATCH_PENDING ?? 0) + (sd.MATCH_PROCESSING ?? 0);
+
+  const pieData = Object.entries(metrics.match_distribution).map(([k, v]) => ({ name: MATCH_CATEGORY_LABEL[k as MatchCategory], value: v, key: k }));
+
+  const avanceCounts: Record<AdvancementProbability, number> = { HIGH: 0, MEDIUM: 0, LOW: 0 };
+  for (const r of profilingRuns) {
+    if (r.advancement_probability) avanceCounts[r.advancement_probability]++;
+  }
+  const avanceData = (Object.keys(avanceCounts) as AdvancementProbability[]).map((k) => ({
+    name: ADVANCEMENT_PROBABILITY_LABEL[k], value: avanceCounts[k],
+  }));
+
+  const budgetPct = budgetMax > 0 ? Math.min(100, (metrics.total_cost_usd / budgetMax) * 100) : 0;
+
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 min-h-[60vh] items-start">
-      {columns.map(col => {
-        const columnCands = candidatos.filter(c => c.avance === col).sort((a,b) => b.match - a.match);
-        return (
-          <div key={col} className="flex-1 min-w-[280px] bg-background/30 rounded-3xl border border-border/40 p-4 flex flex-col gap-3">
-            <div className="flex items-center justify-between mb-2 px-1">
-              <h3 className="font-semibold text-sm text-foreground/90">{col}</h3>
-              <span className="text-xs bg-muted/60 px-2.5 py-1 rounded-full text-muted-foreground font-medium">{columnCands.length}</span>
+    <div className="space-y-6">
+      {budgetMax > 0 && budgetPct >= 80 && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 text-sm text-warning-foreground">
+          <AlertTriangle className="h-4 w-4 shrink-0" /> Este proceso alcanzó el {budgetPct.toFixed(0)}% de su presupuesto.
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { label: "Total CVs", value: metrics.total_cvs },
+          { label: "Procesados", value: procesados },
+          { label: "Con error", value: conError },
+          { label: "Pendientes", value: pendientes },
+        ].map((k) => (
+          <GlassCard key={k.label} className="p-4">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">{k.label}</div>
+            <div className="mt-1 text-2xl font-bold">{k.value}</div>
+          </GlassCard>
+        ))}
+        {[
+          { label: "Costo acumulado", value: `$${metrics.total_cost_usd.toFixed(2)}` },
+          { label: "Costo prom./CV", value: metrics.total_cvs > 0 ? `$${(metrics.total_cost_usd / metrics.total_cvs).toFixed(3)}` : "—" },
+        ].map((k) => (
+          <GlassCard key={k.label} className="p-4">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">{k.label}</div>
+            <div className="mt-1 text-2xl font-bold">{k.value}</div>
+          </GlassCard>
+        ))}
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <GlassCard className="p-5">
+          <div className="text-sm font-semibold mb-3">Distribución de match</div>
+          {pieData.length === 0 ? (
+            <div className="text-xs text-muted-foreground py-8 text-center">Sin datos de match aún.</div>
+          ) : (
+            <div className="h-56">
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>
+                    {pieData.map((d) => <Cell key={d.key} fill={PIE_COLORS[d.key]} />)}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-            {columnCands.map(c => (
-              <GlassCard 
-                key={c.id} 
-                className="p-3 cursor-pointer hover:border-primary/40 transition-all hover:shadow-md hover:-translate-y-0.5 group"
-              >
-                <div onClick={() => onOpen(c)}>
-                  <div className="flex items-start justify-between mb-1.5">
-                    <div className="font-semibold text-sm group-hover:text-primary transition-colors">{c.nombre}</div>
-                    <div className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold border border-primary/20">{c.match}%</div>
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate mb-3">{c.categoria}</div>
-                  
-                  <div className="flex items-center justify-between border-t border-border/40 pt-2 text-[10px]">
-                    <div className="text-muted-foreground">
-                      {c.profiling === "Completado" ? (
-                        <span className="flex items-center gap-1 text-success"><CheckCircle2 className="h-3 w-3" /> IA Profiling</span>
-                      ) : c.profiling === "En curso" ? (
-                        <span className="flex items-center gap-1 text-primary"><Loader2 className="h-3 w-3 animate-spin" /> Llamando...</span>
-                      ) : (
-                        <span className="flex items-center gap-1 opacity-60"><AlertCircle className="h-3 w-3" /> Sin perfilar</span>
-                      )}
-                    </div>
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity text-primary font-medium flex items-center gap-1">
-                      Ver <Eye className="h-3 w-3" />
-                    </div>
-                  </div>
-                </div>
-              </GlassCard>
-            ))}
-            {columnCands.length === 0 && (
-              <div className="text-center py-6 text-xs text-muted-foreground italic border-2 border-dashed border-border/50 rounded-xl bg-background/20">
-                Vacio
-              </div>
-            )}
+          )}
+        </GlassCard>
+
+        <GlassCard className="p-5">
+          <div className="text-sm font-semibold mb-3">Posibilidad de avance (profiling)</div>
+          {profilingRuns.length === 0 ? (
+            <div className="text-xs text-muted-foreground py-8 text-center">Sin profiling iniciado.</div>
+          ) : (
+            <div className="h-56">
+              <ResponsiveContainer>
+                <BarChart data={avanceData}>
+                  <XAxis dataKey="name" fontSize={11} />
+                  <YAxis fontSize={11} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="hsl(248 100% 68%)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </GlassCard>
+      </div>
+
+      {budgetMax > 0 && (
+        <GlassCard className="p-5">
+          <div className="flex justify-between text-xs mb-2">
+            <span className="font-semibold">Consumo de presupuesto</span>
+            <span className="text-muted-foreground">${metrics.total_cost_usd.toFixed(2)} de ${budgetMax.toFixed(2)}</span>
           </div>
-        );
-      })}
+          <div className="h-2.5 rounded-full bg-muted overflow-hidden relative">
+            <div
+              className={cn("h-full rounded-full transition-all", budgetPct >= 100 ? "bg-destructive" : budgetPct >= 80 ? "bg-warning" : "bg-primary")}
+              style={{ width: `${budgetPct}%` }}
+            />
+          </div>
+        </GlassCard>
+      )}
     </div>
   );
 }
 
-function MatchRing({ value, size = 56 }: { value: number; size?: number }) {
-  const stroke = 6;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const color = value >= 80 ? "hsl(155 55% 58%)" : value >= 60 ? "hsl(45 75% 61%)" : value >= 40 ? "hsl(9 99% 65%)" : "hsl(233 20% 60%)";
-  return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size/2} cy={size/2} r={r} stroke="hsl(220 20% 90%)" strokeWidth={stroke} fill="none" />
-        <circle cx={size/2} cy={size/2} r={r} stroke={color} strokeWidth={stroke} fill="none"
-          strokeDasharray={c} strokeDashoffset={c - (c * value) / 100} strokeLinecap="round" />
-      </svg>
-      <div className="absolute inset-0 grid place-items-center text-xs font-bold">{value}%</div>
-    </div>
+// ─── Ranking Tab ────────────────────────────────────────────────────────────
+
+function RankingTab({
+  processId, candidates, latestRunByPc, hasQuestionSet, selected, setSelected,
+  onOpenDrawer, onOpenProfilingModal, onActivateProfiling, activating,
+}: {
+  processId: string;
+  candidates: CandidateListItem[];
+  latestRunByPc: Map<string, ProfilingRunOut>;
+  hasQuestionSet: boolean;
+  selected: Set<string>;
+  setSelected: (s: Set<string>) => void;
+  onOpenDrawer: (c: CandidateListItem) => void;
+  onOpenProfilingModal: (r: ProfilingRunOut) => void;
+  onActivateProfiling: (ids: string[]) => void;
+  activating: boolean;
+}) {
+  const [subView, setSubView] = useState<"match" | "profiling">("match");
+  const [search, setSearch] = useState("");
+  const [quickFilter, setQuickFilter] = useState<string | null>(null);
+
+  const toggleSelect = (pcId: string) => {
+    const next = new Set(selected);
+    next.has(pcId) ? next.delete(pcId) : next.add(pcId);
+    setSelected(next);
+  };
+
+  const matchFiltered = candidates.filter((c) => {
+    if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.email.toLowerCase().includes(search.toLowerCase())) return false;
+    if (quickFilter === "high" && c.match_category !== "HIGH") return false;
+    if (quickFilter === "medium" && c.match_category !== "MEDIUM") return false;
+    if (quickFilter === "calling" && !["PROFILING_CALLING", "PROFILING_QUEUED"].includes(c.status)) return false;
+    if (quickFilter === "completed" && c.status !== "PROFILING_COMPLETED") return false;
+    return true;
+  });
+
+  const profilingCandidates = candidates.filter((c) =>
+    ["SELECTED_FOR_PROFILING", "PROFILING_QUEUED", "PROFILING_CALLING", "PROFILING_COMPLETED", "PROFILING_FAILED"].includes(c.status),
   );
-}
-
-function RankingTab({ procSet, selected, setSelected, onOpen }: any) {
-  const [viewMode, setViewMode] = useState<"match" | "profiling">("match");
-  const sorted = [...candidatos].sort((a, b) => b.match - a.match);
-  const noSet = !procSet;
-  const overFour = selected.length > 4;
-
-  const toggle = (id: string) =>
-    setSelected((s: string[]) => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
   return (
     <div className="space-y-4">
-      {/* Toggles Match vs Profiling */}
       <div className="flex items-center gap-2">
-        <div className="glass rounded-xl p-1 inline-flex">
-          <button onClick={() => setViewMode("match")} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${viewMode === "match" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}>Match</button>
-          <button onClick={() => setViewMode("profiling")} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${viewMode === "profiling" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}>Profiling</button>
-        </div>
+        {(["match", "profiling"] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setSubView(v)}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs font-semibold transition",
+              subView === v ? "bg-primary text-primary-foreground" : "bg-background/60 border border-border text-muted-foreground",
+            )}
+          >
+            {v === "match" ? "Match" : "Profiling"}
+          </button>
+        ))}
       </div>
 
-      {viewMode === "match" ? (
+      {subView === "match" ? (
         <>
-          <GlassCard className="p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <input placeholder="Buscar candidato…" className="px-3 py-2 text-sm rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 w-56" />
-              {["Match alto", "Match medio", "En llamada", "Completado", "Avance Alta"].map((f) => (
-                <button key={f} className="px-3 py-1.5 text-xs rounded-lg bg-background/60 border border-border hover:bg-accent transition">
-                  {f}
-                </button>
-              ))}
-              <div className="flex-1" />
-              <div className="relative group">
-                <button
-                  disabled={noSet || selected.length === 0}
-                  onClick={() => toast.success(`Profiling activado para ${selected.length} candidatos`, { description: overFour ? "Máximo 4 llamadas simultáneas; el resto entra en cola." : "Las llamadas iniciarán en breve." })}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                >
-                  <PlayCircle className="h-4 w-4" /> Activar profiling ({selected.length})
-                </button>
-                {noSet && (
-                  <div className="absolute right-0 top-full mt-2 px-3 py-2 text-xs rounded-lg bg-foreground text-background shadow-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none">
-                    Asigna un set de preguntas al proceso para habilitar profiling
-                  </div>
-                )}
-              </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px] max-w-xs">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar candidato…"
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-background/60 border border-border focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
             </div>
-            {overFour && (
-              <div className="mt-3 text-xs text-warning-foreground bg-warning/15 border border-warning/30 rounded-lg px-3 py-2">
-                ⓘ Se ejecutarán máximo 4 llamadas simultáneas; el resto entra en cola.
+            {[
+              { k: "high", l: "Match alto" }, { k: "medium", l: "Match medio" },
+              { k: "calling", l: "En llamada" }, { k: "completed", l: "Completado" },
+            ].map((f) => (
+              <button
+                key={f.k}
+                onClick={() => setQuickFilter(quickFilter === f.k ? null : f.k)}
+                className={cn(
+                  "px-2.5 py-1.5 rounded-lg text-xs font-medium border transition",
+                  quickFilter === f.k ? "bg-primary/10 border-primary text-primary" : "bg-background/60 border-border text-muted-foreground",
+                )}
+              >
+                {f.l}
+              </button>
+            ))}
+            <div className="flex-1" />
+            <button
+              onClick={() => onActivateProfiling([...selected])}
+              disabled={!hasQuestionSet || selected.size === 0 || activating}
+              title={!hasQuestionSet ? "Asigna un set de preguntas al proceso para habilitar profiling" : undefined}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
+            >
+              <Phone className="h-3.5 w-3.5" /> Activar profiling ({selected.size})
+            </button>
+          </div>
+          {selected.size > 4 && (
+            <div className="text-xs text-warning-foreground bg-warning/10 border border-warning/30 rounded-lg px-3 py-2">
+              Las llamadas se encolarán — máximo 4 simultáneas.
+            </div>
+          )}
+
+          <GlassCard className="p-0 overflow-hidden">
+            {matchFiltered.length === 0 ? (
+              <div className="py-16 text-center text-sm text-muted-foreground">
+                {candidates.length === 0 ? "No hay candidatos. Sube CVs para comenzar." : "Sin resultados para los filtros aplicados."}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
+                      <th className="px-4 py-3"></th>
+                      <th className="text-left font-medium px-3 py-3">Candidato</th>
+                      <th className="text-left font-medium px-3 py-3">Match</th>
+                      <th className="text-left font-medium px-3 py-3">Categoría</th>
+                      <th className="text-left font-medium px-3 py-3">Ciudad</th>
+                      <th className="text-left font-medium px-3 py-3">Profiling</th>
+                      <th className="text-left font-medium px-3 py-3">Avance</th>
+                      <th className="px-3 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {matchFiltered.map((c) => {
+                      const run = latestRunByPc.get(c.process_candidate_id);
+                      return (
+                        <tr key={c.process_candidate_id} onClick={() => onOpenDrawer(c)} className="cursor-pointer border-t border-border/30 hover:bg-accent/30 transition">
+                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                            <input type="checkbox" checked={selected.has(c.process_candidate_id)} onChange={() => toggleSelect(c.process_candidate_id)} className="h-3.5 w-3.5" />
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-8 w-8 rounded-full bg-muted grid place-items-center text-[10px] font-bold">{initials(c.name)}</div>
+                              <div className="min-w-0">
+                                <div className="font-medium truncate">{c.name}</div>
+                                <div className="text-xs text-muted-foreground truncate">{c.email}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3"><MatchRing pct={c.match_percentage} category={c.match_category} /></td>
+                          <td className="px-3 py-3">
+                            {c.match_category ? (
+                              <span className={cn("px-2 py-1 rounded-md text-[10px] font-semibold", CATEGORY_COLOR[c.match_category].bg, CATEGORY_COLOR[c.match_category].text)}>
+                                {MATCH_CATEGORY_LABEL[c.match_category]}
+                              </span>
+                            ) : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="px-3 py-3 text-muted-foreground text-xs">{c.city ?? "—"}</td>
+                          <td className="px-3 py-3 text-xs">{CANDIDATE_STATUS_LABEL[c.status]}</td>
+                          <td className="px-3 py-3 text-xs">{run?.advancement_probability ? ADVANCEMENT_PROBABILITY_LABEL[run.advancement_probability] : "—"}</td>
+                          <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                            <button onClick={() => onOpenDrawer(c)} className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition">
+                              <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </GlassCard>
-
-          <GlassCard className="p-0 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
-                  <th className="px-4 py-3 w-10"></th>
-                  <th className="text-left px-3 py-3 font-medium">Candidato</th>
-                  <th className="text-center px-3 py-3 font-medium">Match</th>
-                  <th className="text-left px-3 py-3 font-medium">Categoría</th>
-                  <th className="text-left px-3 py-3 font-medium">Top skills</th>
-                  <th className="text-left px-3 py-3 font-medium">Ciudad</th>
-                  <th className="text-left px-3 py-3 font-medium">Profiling</th>
-                  <th className="text-left px-3 py-3 font-medium">Avance</th>
-                  <th className="px-3 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((c) => (
-                  <FragmentRow key={c.id}>
-                    <tr onClick={() => onOpen(c)} className={`cursor-pointer border-t border-border/30 hover:bg-accent/30 transition ${selected.includes(c.id) ? "bg-primary/5" : ""}`}>
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <input type="checkbox" checked={selected.includes(c.id)} onChange={() => toggle(c.id)} className="accent-primary"/>
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="h-9 w-9 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-bold">
-                            {c.nombre.split(" ").map(n=>n[0]).slice(0,2).join("")}
-                          </div>
-                          <div>
-                            <div className="font-medium">{c.nombre}</div>
-                            <div className="text-xs text-muted-foreground">{c.seniority} · {c.email}</div>
-                          </div>
-                        </div>
-                        {c.flagExcluyente && (
-                          <div className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded bg-destructive/10 text-destructive">
-                            ⚠ Criterio excluyente no cumplido: {c.flagExcluyente}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-3"><div className="flex justify-center"><MatchRing value={c.match} /></div></td>
-                      <td className="px-3 py-3">
-                        <CategoriaBadge cat={c.categoria} />
-                        {c.requiereRevision && (
-                          <div className="mt-1 text-[10px] text-warning">Requiere revisión</div>
-                        )}
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {c.topSkills.slice(0,3).map(s => (
-                            <span key={s} className="px-1.5 py-0.5 rounded text-[10px] bg-accent text-accent-foreground">{s}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-xs">{c.ciudad}</td>
-                      <td className="px-3 py-3 text-xs">{c.profiling}</td>
-                      <td className="px-3 py-3"><AvanceBadge a={c.avance} /></td>
-                      <td className="px-3 py-3 text-right">
-                        <button onClick={() => onOpen(c)} className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent inline-flex" title="Ver detalle">
-                          <Eye className="h-3.5 w-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  </FragmentRow>
-                ))}
-              </tbody>
-            </table>
-          </GlassCard>
         </>
       ) : (
-        <>
-          <GlassCard className="p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <input placeholder="Buscar en profiling…" className="px-3 py-2 text-sm rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 w-56" />
-              <button className="px-3 py-1.5 text-xs rounded-lg bg-background/60 border border-border hover:bg-accent transition">Completados</button>
-              <button className="px-3 py-1.5 text-xs rounded-lg bg-background/60 border border-border hover:bg-accent transition">En llamada</button>
-              <button className="px-3 py-1.5 text-xs rounded-lg bg-background/60 border border-border hover:bg-accent transition">En cola</button>
-            </div>
-          </GlassCard>
-          
-          <GlassCard className="p-0 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
-                  <th className="text-left px-5 py-3 font-medium">Candidato</th>
-                  <th className="text-left px-3 py-3 font-medium">Estado de la llamada</th>
-                  <th className="text-left px-3 py-3 font-medium">Insights clave</th>
-                  <th className="text-left px-3 py-3 font-medium">Puntaje IA</th>
-                  <th className="px-3 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.filter(c => c.profiling !== "Sin iniciar").map((c) => (
-                  <tr key={c.id} onClick={() => onOpen(c)} className="cursor-pointer border-t border-border/30 hover:bg-accent/30 transition">
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-9 w-9 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-bold">
-                          {c.nombre.split(" ").map(n=>n[0]).slice(0,2).join("")}
-                        </div>
-                        <div>
-                          <div className="font-medium">{c.nombre}</div>
-                          <div className="text-xs text-muted-foreground">{c.seniority}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${
-                        c.profiling === "Completado" ? "bg-success/15 text-success" : 
-                        c.profiling === "En llamada" ? "bg-primary/15 text-primary" : "bg-warning/20 text-warning-foreground"
-                      }`}>{c.profiling}</span>
-                    </td>
-                    <td className="px-3 py-3 text-xs max-w-xs truncate">
-                      {c.profiling === "Completado" ? "Excelente comunicación y validación técnica alineada." : "-"}
-                    </td>
-                    <td className="px-3 py-3">
-                      {c.profiling === "Completado" ? (
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden w-20">
-                            <div className="h-full bg-success" style={{width: '92%'}} />
-                          </div>
-                          <span className="text-xs font-bold">92%</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      <button onClick={() => onOpen(c)} className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent inline-flex" title="Ver detalle">
-                        <Eye className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
+        <GlassCard className="p-0 overflow-hidden">
+          {profilingCandidates.length === 0 ? (
+            <div className="py-16 text-center text-sm text-muted-foreground">Aún no hay candidatos en profiling.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
+                    <th className="text-left font-medium px-4 py-3">Candidato</th>
+                    <th className="text-left font-medium px-3 py-3">Estado de llamada</th>
+                    <th className="text-left font-medium px-3 py-3">Insights</th>
+                    <th className="text-left font-medium px-3 py-3">Avance</th>
+                    <th className="px-3 py-3"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </GlassCard>
-        </>
+                </thead>
+                <tbody>
+                  {profilingCandidates.map((c) => {
+                    const run = latestRunByPc.get(c.process_candidate_id);
+                    return (
+                      <tr key={c.process_candidate_id} onClick={() => onOpenDrawer(c)} className="cursor-pointer border-t border-border/30 hover:bg-accent/30 transition">
+                        <td className="px-4 py-3 font-medium">{c.name}</td>
+                        <td className="px-3 py-3 text-xs">{CANDIDATE_STATUS_LABEL[c.status]}</td>
+                        <td className="px-3 py-3 text-xs text-muted-foreground max-w-xs truncate">{run?.transcript_summary ?? "—"}</td>
+                        <td className="px-3 py-3 text-xs">{run?.advancement_probability ? ADVANCEMENT_PROBABILITY_LABEL[run.advancement_probability] : "—"}</td>
+                        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                          {run && run.status === "COMPLETED" && (
+                            <button onClick={() => onOpenProfilingModal(run)} className="text-xs text-primary hover:underline flex items-center gap-1">
+                              <Sparkles className="h-3 w-3" /> Ver resultado
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </GlassCard>
       )}
     </div>
   );
 }
 
-function FragmentRow({ children }: any) { return <>{children}</>; }
+// ─── Kanban Tab ─────────────────────────────────────────────────────────────
 
-function CategoriaBadge({ cat }: { cat: string }) {
-  const map: Record<string, string> = {
-    "Alto": "bg-success/15 text-success",
-    "Medio": "bg-warning/20 text-warning-foreground",
-    "Bajo": "bg-destructive/15 text-destructive",
-    "No recomendado": "bg-muted text-muted-foreground",
-  };
-  return <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${map[cat]}`}>{cat}</span>;
-}
+const PIPELINE_COLUMNS: { key: string; label: string; statuses: CandidateStatus[] }[] = [
+  { key: "cv", label: "CV Procesado", statuses: ["MATCHED"] },
+  { key: "selected", label: "Seleccionado", statuses: ["SELECTED_FOR_PROFILING", "PROFILING_QUEUED"] },
+  { key: "calling", label: "En Profiling", statuses: ["PROFILING_CALLING"] },
+  { key: "done", label: "Completado", statuses: ["PROFILING_COMPLETED"] },
+];
 
-function AvanceBadge({ a }: { a: string }) {
-  if (a === "—") return <span className="text-muted-foreground text-xs">—</span>;
-  const map: Record<string, string> = {
-    "Alta": "bg-success/15 text-success",
-    "Media": "bg-warning/20 text-warning-foreground",
-    "Baja": "bg-destructive/15 text-destructive",
-  };
-  return <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${map[a]}`}>{a}</span>;
-}
+const AVANCE_COLUMNS: { key: AdvancementProbability; label: string; color: string }[] = [
+  { key: "HIGH", label: "Alta", color: "border-success/40 bg-success/5" },
+  { key: "MEDIUM", label: "Media", color: "border-warning/40 bg-warning/5" },
+  { key: "LOW", label: "Baja", color: "border-destructive/40 bg-destructive/5" },
+];
 
-function CandidatoDrawer({ candidato, onClose }: { candidato: Candidato; onClose: () => void }) {
+function KanbanTab({ candidates, latestRunByPc, onOpenDrawer }: {
+  candidates: CandidateListItem[];
+  latestRunByPc: Map<string, ProfilingRunOut>;
+  onOpenDrawer: (c: CandidateListItem) => void;
+}) {
+  const [view, setView] = useState<"pipeline" | "avance">("pipeline");
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-5xl glass-strong max-h-full overflow-y-auto p-6 rounded-3xl flex flex-col">
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="h-14 w-14 rounded-full bg-primary text-white grid place-items-center font-bold text-lg shadow-lg">
-              {candidato.nombre.split(" ").map(n=>n[0]).slice(0,2).join("")}
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">{candidato.nombre}</h2>
-              <div className="text-xs text-muted-foreground">{candidato.email} · {candidato.telefono} · {candidato.ciudad}</div>
-              <div className="mt-1 flex gap-2"><CategoriaBadge cat={candidato.categoria} /><AvanceBadge a={candidato.avance} /></div>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-2xl text-muted-foreground hover:text-foreground h-10 w-10 grid place-items-center rounded-full hover:bg-background/50 transition">×</button>
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Columna Izquierda: Análisis de Match */}
-          <div className="space-y-6">
-            <GlassCard>
-              <div className="flex items-start justify-between mb-3">
-                <div className="text-sm font-semibold">Análisis de match (IA)</div>
-                <MatchRing value={candidato.match} size={64} />
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                Perfil con alta afinidad técnica frente al JD; cumple la mayoría de requisitos obligatorios y presenta
-                fortalezas sólidas en el stack solicitado. Se identifican brechas menores que pueden validarse en
-                entrevista humana.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border/40 pt-4">
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-xs uppercase tracking-wider text-success mb-2">Fortalezas</div>
-                    <ul className="space-y-1 text-sm">{candidato.fortalezas.map(f=><li key={f}>• {f}</li>)}</ul>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wider text-destructive mb-2">Brechas</div>
-                    <ul className="space-y-1 text-sm">{candidato.brechas.map(f=><li key={f}>• {f}</li>)}</ul>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Breakdown</div>
-                  <div className="space-y-1.5">
-                    {candidato.breakdown.map(b => (
-                      <div key={b.categoria}>
-                        <div className="flex justify-between text-[11px] mb-0.5">
-                          <span className="text-muted-foreground">{b.categoria} <span className="text-[9px]">({b.peso}%)</span></span>
-                          <span className="font-semibold">{b.puntaje}</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-muted"><div className="h-full rounded-full bg-gradient-to-r from-primary to-info" style={{width:`${b.puntaje}%`}}/></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 text-[10px] text-muted-foreground italic">
-                Generado por IA — modelo gpt-X · prompt v3 · 2,431 tokens · $0.04
-              </div>
-            </GlassCard>
-          </div>
-
-          {/* Columna Derecha: Profiling y Override */}
-          <div className="space-y-6">
-            <GlassCard>
-              <div className="text-sm font-semibold mb-3">Profiling</div>
-              <div className="space-y-2">
-                {[
-                  { q: "¿Tienes disponibilidad para modalidad híbrida en Medellín?", a: "Sí, sin problema.", ev: "✓", conf: 96 },
-                  { q: "Cuéntanos por qué saliste de tu último empleo.", a: "Buscaba un reto técnico mayor y mejores condiciones.", ev: "parcial", conf: 64 },
-                  { q: "¿Cuál es tu expectativa salarial?", a: "Entre 9 y 11 M COP.", ev: "✓", conf: 92 },
-                ].map((p, i) => (
-                  <details key={i} className="rounded-xl bg-background/40 border border-border/40 p-3">
-                    <summary className="cursor-pointer text-sm font-medium flex items-center justify-between">
-                      <span>{p.q}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded ${p.ev === "✓" ? "bg-success/15 text-success" : "bg-warning/20 text-warning-foreground"}`}>{p.ev}</span>
-                    </summary>
-                    <div className="mt-3 text-sm text-muted-foreground">{p.a}</div>
-                    <div className="mt-2 flex items-center gap-2 text-[11px]">
-                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className={`h-full ${p.conf < 70 ? "bg-warning" : "bg-success"}`} style={{ width: `${p.conf}%` }} />
-                      </div>
-                      <span className="text-muted-foreground">Confianza {p.conf}%</span>
-                    </div>
-                    {p.conf < 70 && <div className="mt-1 text-[10px] text-warning">Requiere revisión humana</div>}
-                  </details>
-                ))}
-              </div>
-            </GlassCard>
-
-            <GlassCard>
-              <div className="text-sm font-semibold mb-2">Override del recruiter</div>
-              <textarea
-                placeholder="Observaciones del recruiter…"
-                className="w-full text-sm rounded-xl bg-background/70 border border-border p-3 min-h-[80px] focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-              <div className="mt-3 flex gap-2 text-xs">
-                <div className="text-muted-foreground">¿El análisis de IA fue…?</div>
-                {["Correcto", "Parcial", "Incorrecto"].map((o) => (
-                  <button key={o} className="px-2.5 py-1 rounded-md border border-border hover:bg-accent transition">{o}</button>
-                ))}
-              </div>
-            </GlassCard>
-          </div>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        {(["pipeline", "avance"] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs font-semibold transition",
+              view === v ? "bg-primary text-primary-foreground" : "bg-background/60 border border-border text-muted-foreground",
+            )}
+          >
+            {v === "pipeline" ? "Pipeline" : "Avance"}
+          </button>
+        ))}
       </div>
+
+      {view === "pipeline" ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {PIPELINE_COLUMNS.map((col) => {
+            const items = candidates.filter((c) => col.statuses.includes(c.status));
+            return (
+              <div key={col.key} className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                  <span>{col.label}</span><span>{items.length}</span>
+                </div>
+                <div className="space-y-2 min-h-[100px]">
+                  {items.length === 0 ? (
+                    <div className="text-xs text-muted-foreground text-center py-8 rounded-xl border border-dashed border-border">Vacío</div>
+                  ) : (
+                    items.map((c) => (
+                      <GlassCard key={c.process_candidate_id} className="p-3 cursor-pointer" onClick={() => onOpenDrawer(c)}>
+                        <div className="font-medium text-sm truncate">{c.name}</div>
+                        <div className="flex items-center justify-between mt-1.5">
+                          <span className="text-xs text-muted-foreground">{c.email}</span>
+                          {c.match_category && (
+                            <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-semibold", CATEGORY_COLOR[c.match_category].bg, CATEGORY_COLOR[c.match_category].text)}>
+                              {Math.round(c.match_percentage)}%
+                            </span>
+                          )}
+                        </div>
+                      </GlassCard>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {AVANCE_COLUMNS.map((col) => {
+            const items = candidates.filter((c) => latestRunByPc.get(c.process_candidate_id)?.advancement_probability === col.key);
+            return (
+              <div key={col.key} className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                  <span>{col.label}</span><span>{items.length}</span>
+                </div>
+                <div className={cn("space-y-2 min-h-[100px] rounded-xl border p-2", col.color)}>
+                  {items.length === 0 ? (
+                    <div className="text-xs text-muted-foreground text-center py-8">Vacío</div>
+                  ) : (
+                    items.map((c) => (
+                      <GlassCard key={c.process_candidate_id} className="p-3 cursor-pointer" onClick={() => onOpenDrawer(c)}>
+                        <div className="font-medium text-sm truncate">{c.name}</div>
+                        <div className="text-xs text-muted-foreground mt-1">{c.email}</div>
+                      </GlassCard>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
+  );
+}
+
+// ─── Configuración Tab ──────────────────────────────────────────────────────
+
+function ConfigTab({ processId, process }: { processId: string; process: NonNullable<ReturnType<typeof useQuery<Awaited<ReturnType<typeof getProcess>>>>["data"]> }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState(process.name);
+  const [jobTitle, setJobTitle] = useState(process.job_title);
+  const [area, setArea] = useState(process.area);
+  const [seniority, setSeniority] = useState(process.seniority);
+  const [budget, setBudget] = useState(String(process.budget_max_usd || ""));
+  const [selectedSetId, setSelectedSetId] = useState(process.question_set_id ?? "");
+  const [voicePrompt, setVoicePrompt] = useState(process.voice_override_system_prompt ?? "");
+  const [voiceGreeting, setVoiceGreeting] = useState(process.voice_override_first_message ?? "");
+
+  const { data: questionSets } = useQuery({ queryKey: ["question-sets"], queryFn: () => getQuestionSets() });
+  const { data: jds } = useQuery({ queryKey: ["job-descriptions", processId], queryFn: () => getJobDescriptions({ data: { processId } }) });
+
+  const isActive = process.status !== "CLOSED" && process.status !== "ARCHIVED";
+
+  const updateBasicsMutation = useMutation({
+    mutationFn: () => updateProcess({ data: { processId, name, job_title: jobTitle, area, seniority, budget_max_usd: budget ? Number(budget) : undefined } }),
+    onSuccess: () => { toast.success("Datos actualizados"); qc.invalidateQueries({ queryKey: ["process", processId] }); },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
+  });
+
+  const assignSetMutation = useMutation({
+    mutationFn: () => assignQuestionSet({ data: { processId, questionSetId: selectedSetId } }),
+    onSuccess: () => { toast.success("Set de preguntas asignado"); qc.invalidateQueries({ queryKey: ["process", processId] }); },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo asignar"),
+  });
+
+  const voiceMutation = useMutation({
+    mutationFn: () => updateVoiceConfig({ data: { processId, voice_override_system_prompt: voicePrompt || null, voice_override_first_message: voiceGreeting || null } }),
+    onSuccess: () => { toast.success("Configuración de voz guardada"); qc.invalidateQueries({ queryKey: ["process", processId] }); },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
+  });
+
+  const enhanceMutation = useMutation({
+    mutationFn: () => enhanceJobDescription({ data: { processId } }),
+    onSuccess: (res) => {
+      toast.success("JD mejorada", { description: res.recommendations.slice(0, 2).join(" · ") });
+      qc.invalidateQueries({ queryKey: ["job-descriptions", processId] });
+      qc.invalidateQueries({ queryKey: ["process", processId] });
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo mejorar la JD"),
+  });
+
+  return (
+    <div className="space-y-5 max-w-3xl">
+      <GlassCard className="p-5 space-y-4">
+        <div className="text-sm font-semibold flex items-center gap-2"><Settings2 className="h-4 w-4 text-primary" /> Datos básicos</div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nombre</label>
+            <input disabled={!isActive} value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cargo</label>
+            <input disabled={!isActive} value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Área</label>
+            <input disabled={!isActive} value={area} onChange={(e) => setArea(e.target.value)} className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Seniority</label>
+            <input disabled={!isActive} value={seniority} onChange={(e) => setSeniority(e.target.value)} className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Presupuesto máx. USD</label>
+            <input disabled={!isActive} type="number" value={budget} onChange={(e) => setBudget(e.target.value)} className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50" />
+          </div>
+        </div>
+        <button
+          onClick={() => updateBasicsMutation.mutate()}
+          disabled={!isActive || updateBasicsMutation.isPending}
+          className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
+        >
+          {updateBasicsMutation.isPending ? "Guardando…" : "Guardar cambios"}
+        </button>
+        {!isActive && <p className="text-xs text-muted-foreground">Proceso {PROCESS_STATUS_LABEL[process.status].toLowerCase()} — no se puede editar.</p>}
+      </GlassCard>
+
+      <GlassCard className="p-5 space-y-3">
+        <div className="text-sm font-semibold">Job Description</div>
+        {jds && jds.length > 0 ? (
+          <div className="space-y-1.5">
+            {jds.map((jd) => (
+              <div key={jd.jd_id} className="text-xs px-3 py-2 rounded-lg bg-background/50 border border-border">
+                <span className="font-medium">v{jd.version}</span> — {jd.text_preview}
+              </div>
+            ))}
+          </div>
+        ) : <p className="text-xs text-muted-foreground">Sin JD aún.</p>}
+        <button
+          onClick={() => enhanceMutation.mutate()}
+          disabled={!isActive || !process.job_description || enhanceMutation.isPending}
+          className="px-3 py-1.5 rounded-lg border border-primary/40 text-primary bg-primary/5 text-xs font-medium disabled:opacity-40"
+        >
+          {enhanceMutation.isPending ? "Mejorando…" : "Mejorar con IA"}
+        </button>
+      </GlassCard>
+
+      <GlassCard className="p-5 space-y-3">
+        <div className="text-sm font-semibold">Set de preguntas de profiling</div>
+        <div className="flex items-center gap-2">
+          <select value={selectedSetId} onChange={(e) => setSelectedSetId(e.target.value)} disabled={!isActive} className="flex-1 px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50">
+            <option value="">— Sin asignar —</option>
+            {(questionSets?.question_sets ?? []).filter((qs) => qs.status === "ACTIVE").map((qs) => (
+              <option key={qs.id} value={qs.id}>{qs.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => assignSetMutation.mutate()}
+            disabled={!isActive || !selectedSetId || selectedSetId === process.question_set_id || assignSetMutation.isPending}
+            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
+          >
+            Cambiar
+          </button>
+        </div>
+        <Link to="/app/sets/nuevo" className="text-xs text-primary hover:underline">Crear nuevo set</Link>
+      </GlassCard>
+
+      <GlassCard className="p-5 space-y-3">
+        <div className="text-sm font-semibold">Configuración de voz (override del proceso)</div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">System prompt</label>
+          <textarea disabled={!isActive} value={voicePrompt} onChange={(e) => setVoicePrompt(e.target.value)} className="mt-1.5 w-full min-h-[80px] px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50" />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Primer saludo</label>
+          <input disabled={!isActive} value={voiceGreeting} onChange={(e) => setVoiceGreeting(e.target.value)} className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50" />
+        </div>
+        <button
+          onClick={() => voiceMutation.mutate()}
+          disabled={!isActive || voiceMutation.isPending}
+          className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
+        >
+          {voiceMutation.isPending ? "Guardando…" : "Guardar configuración de voz"}
+        </button>
+      </GlassCard>
+    </div>
+  );
+}
+
+// ─── Candidato Drawer ───────────────────────────────────────────────────────
+
+function CandidatoDrawer({ processId, candidate, latestRun, onClose, onOpenProfilingModal }: {
+  processId: string;
+  candidate: CandidateListItem;
+  latestRun: ProfilingRunOut | null;
+  onClose: () => void;
+  onOpenProfilingModal: (r: ProfilingRunOut) => void;
+}) {
+  const qc = useQueryClient();
+  const [notes, setNotes] = useState("");
+  const [overrideScore, setOverrideScore] = useState("");
+  const [notesInit, setNotesInit] = useState(false);
+
+  const { data: detail, isLoading } = useQuery({
+    queryKey: ["candidate-detail", processId, candidate.process_candidate_id],
+    queryFn: () => getCandidateDetail({ data: { processId, pcId: candidate.process_candidate_id } }),
+  });
+
+  if (detail && !notesInit) {
+    setNotes(detail.human_notes ?? "");
+    setOverrideScore(detail.human_override_match != null ? String(detail.human_override_match) : "");
+    setNotesInit(true);
+  }
+
+  const overrideMutation = useMutation({
+    mutationFn: () => overrideCandidate({
+      data: {
+        processId, pcId: candidate.process_candidate_id,
+        human_notes: notes || null,
+        human_override_match: overrideScore ? Number(overrideScore) : null,
+      },
+    }),
+    onSuccess: () => {
+      toast.success("Guardado");
+      qc.invalidateQueries({ queryKey: ["candidate-detail", processId, candidate.process_candidate_id] });
+      qc.invalidateQueries({ queryKey: ["candidates", processId] });
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
+  });
+
+  const feedbackMutation = useMutation({
+    mutationFn: (evaluation: "CORRECT" | "PARTIAL" | "INCORRECT") => submitFeedback({
+      data: { processCandidateId: candidate.process_candidate_id, context: "MATCH", evaluation, notes },
+    }),
+    onSuccess: () => toast.success("Feedback registrado"),
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo registrar"),
+  });
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed top-0 right-0 h-full w-full sm:w-[480px] bg-background shadow-2xl z-50 overflow-y-auto border-l border-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-background z-10">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-muted grid place-items-center text-xs font-bold">{initials(candidate.name)}</div>
+            <div>
+              <div className="font-semibold text-sm">{candidate.name}</div>
+              <div className="text-xs text-muted-foreground">{candidate.email}</div>
+            </div>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent"><XCircle className="h-4 w-4" /></button>
+        </div>
+
+        {isLoading ? (
+          <div className="py-16 text-center text-sm text-muted-foreground">Cargando…</div>
+        ) : (
+          <div className="p-5 space-y-5">
+            {detail?.match && (
+              <GlassCard className="p-4 space-y-3">
+                <div className="flex items-center gap-4">
+                  <MatchRing pct={detail.match.percentage} category={detail.match.category} size={64} />
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Análisis de Match IA</div>
+                    {detail.match.category && <div className={cn("text-xs mt-1 font-medium", CATEGORY_COLOR[detail.match.category].text)}>{MATCH_CATEGORY_LABEL[detail.match.category]}</div>}
+                  </div>
+                </div>
+                {detail.match.summary && <p className="text-xs text-foreground/80">{detail.match.summary}</p>}
+                {detail.match.strengths.length > 0 && (
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-success font-semibold mb-1">Fortalezas</div>
+                    <ul className="text-xs space-y-0.5">{detail.match.strengths.map((s, i) => <li key={i}>+ {s}</li>)}</ul>
+                  </div>
+                )}
+                {detail.match.gaps.length > 0 && (
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-destructive font-semibold mb-1">Brechas</div>
+                    <ul className="text-xs space-y-0.5">{detail.match.gaps.map((g, i) => <li key={i}>− {g}</li>)}</ul>
+                  </div>
+                )}
+                {detail.total_cost > 0 && (
+                  <div className="text-[10px] text-muted-foreground">Costo IA: ${detail.total_cost.toFixed(4)}</div>
+                )}
+              </GlassCard>
+            )}
+
+            {latestRun && (
+              <GlassCard className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><PhoneCall className="h-3.5 w-3.5" /> Profiling</div>
+                  {latestRun.status === "COMPLETED" && (
+                    <button onClick={() => onOpenProfilingModal(latestRun)} className="text-xs text-primary hover:underline">Ver detalle completo</button>
+                  )}
+                </div>
+                <div className="text-xs">Estado: {CANDIDATE_STATUS_LABEL[candidate.status] ?? candidate.status}</div>
+                {latestRun.advancement_probability && (
+                  <div className="text-xs">Avance: <span className="font-semibold">{ADVANCEMENT_PROBABILITY_LABEL[latestRun.advancement_probability]}</span></div>
+                )}
+              </GlassCard>
+            )}
+
+            {(detail?.candidate.cv_url || detail?.candidate.normalized_cv_url) && (
+              <div className="flex gap-2">
+                {detail.candidate.cv_url && (
+                  <a href={`/dl/cv/${processId}/${candidate.process_candidate_id}`} target="_blank" rel="noopener noreferrer"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-background/60 text-xs font-medium">
+                    <Download className="h-3.5 w-3.5" /> CV original
+                  </a>
+                )}
+                {detail.candidate.normalized_cv_url && (
+                  <a href={`/dl/cv-normalized/${processId}/${candidate.process_candidate_id}`} target="_blank" rel="noopener noreferrer"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-primary/40 text-primary bg-primary/5 text-xs font-medium">
+                    <Download className="h-3.5 w-3.5" /> CV normalizado
+                  </a>
+                )}
+              </div>
+            )}
+
+            <GlassCard className="p-4 space-y-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Override del recruiter</div>
+              <div>
+                <label className="text-xs text-muted-foreground">Score manual (0-100)</label>
+                <input type="number" min={0} max={100} value={overrideScore} onChange={(e) => setOverrideScore(e.target.value)}
+                  placeholder="Usar score de IA" className="mt-1 w-full px-3 py-1.5 rounded-lg bg-background/70 border border-border text-xs" />
+              </div>
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observaciones…"
+                className="w-full min-h-[70px] px-3 py-2 rounded-lg bg-background/70 border border-border text-xs" />
+              <button onClick={() => overrideMutation.mutate()} disabled={overrideMutation.isPending}
+                className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-50">
+                {overrideMutation.isPending ? "Guardando…" : "Guardar"}
+              </button>
+
+              <div className="flex gap-2 pt-2 border-t border-border">
+                {(["CORRECT", "PARTIAL", "INCORRECT"] as const).map((ev) => (
+                  <button key={ev} onClick={() => feedbackMutation.mutate(ev)} disabled={feedbackMutation.isPending}
+                    className="flex-1 px-2 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-accent transition disabled:opacity-50">
+                    {ev === "CORRECT" ? "Correcto" : ev === "PARTIAL" ? "Parcial" : "Incorrecto"}
+                  </button>
+                ))}
+              </div>
+            </GlassCard>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

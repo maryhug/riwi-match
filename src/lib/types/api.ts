@@ -264,6 +264,16 @@ export interface CandidateDetailResponse {
     gaps: string[];
     breakdown: MatchBreakdown | Record<string, never>;
   } | null;
+  costs: Array<{
+    operation_type: string;
+    model_used: string | null;
+    tokens_input: number | null;
+    tokens_output: number | null;
+    call_duration_s: number | null;
+    estimated_cost: number;
+    created_at: string;
+  }>;
+  total_cost: number;
 }
 
 export interface OverrideCandidateRequest {
