@@ -76,6 +76,8 @@ export interface ProcessListItem {
   seniority: string;
   status: ProcessStatus;
   budget_max_usd: number;
+  recruiter_id: string;
+  recruiter_name: string;
   created_at: string;
 }
 
@@ -104,6 +106,8 @@ export interface ProcessDetailResponse {
   status: ProcessStatus;
   budget_max_usd: number;
   match_weights: MatchWeights | null;
+  recruiter_id: string;
+  recruiter_name: string;
   question_set_id: string | null;
   voice_override_system_prompt: string | null;
   voice_override_first_message: string | null;
