@@ -1,48 +1,128 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { GripVertical, Star, Pencil, Trash2, Plus } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { GripVertical, Star, Pencil, Trash2, Plus, Archive, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
-import { QuestionFormDialog } from "@/components/app/QuestionFormDialog";
-import type { QuestionSet, SetQuestion } from "@/lib/mock-data";
+import { QuestionFormDialog, type QuestionDraft } from "@/components/app/QuestionFormDialog";
+import {
+  getQuestionSet, updateQuestionSet, deleteQuestionSet,
+  addQuestion, updateQuestion, deleteQuestion,
+} from "@/lib/api/question-sets.functions";
+import { QUESTION_TYPE_LABEL } from "@/lib/types/enums";
+import type { QuestionOut } from "@/lib/types/api";
 
-const SEED_QUESTIONS: SetQuestion[] = [
-  { texto: "¿Tienes disponibilidad para modalidad híbrida en Medellín?", tipo: "Sí/No", critica: true, peso: 30, keywordsPositivas: ["disponible", "sí", "acepto"], keywordsNegativas: ["no puedo", "solo remoto"] },
-  { texto: "Cuéntanos por qué saliste de tu último empleo", tipo: "Abierta", critica: false, peso: 20, keywordsPositivas: ["crecimiento", "nuevo reto"], keywordsNegativas: ["conflicto", "despido", "demanda"] },
-  { texto: "¿Cuál es tu expectativa salarial?", tipo: "Numérica", critica: false, peso: 15, keywordsPositivas: [], keywordsNegativas: ["muy por encima del rango"] },
-  { texto: "¿Cuántos años de experiencia tienes con Node.js?", tipo: "Numérica", critica: true, peso: 20, keywordsPositivas: ["5+", "senior"], keywordsNegativas: ["sin experiencia"] },
-  { texto: "¿Has liderado equipos? ¿De qué tamaño?", tipo: "Abierta", critica: false, peso: 10, keywordsPositivas: ["liderazgo", "squad"], keywordsNegativas: [] },
-  { texto: "¿Tu inglés es B2 o superior?", tipo: "Sí/No", critica: true, peso: 5, keywordsPositivas: ["b2", "c1", "sí"], keywordsNegativas: ["a1", "a2", "no"] },
-];
+export function SetBuilder({ setId }: { setId: string }) {
+  const nav = useNavigate();
+  const qc = useQueryClient();
+  const [dialogState, setDialogState] = useState<{ mode: "create" } | { mode: "edit"; question: QuestionOut } | null>(null);
+  const [name, setName] = useState<string | null>(null);
+  const [description, setDescription] = useState<string | null>(null);
 
-export function SetBuilder({ isNew, setInfo }: { isNew: boolean; setInfo: QuestionSet | null }) {
-  const [questions, setQuestions] = useState<SetQuestion[]>(isNew ? [] : SEED_QUESTIONS);
-  const [dialogState, setDialogState] = useState<{ mode: "create" } | { mode: "edit"; index: number } | null>(null);
+  const { data: set, isLoading } = useQuery({
+    queryKey: ["question-set", setId],
+    queryFn: () => getQuestionSet({ data: { id: setId } }),
+  });
 
-  const removeQuestion = (index: number) => {
-    setQuestions(questions.filter((_, i) => i !== index));
-  };
+  const questions = set?.questions ?? [];
 
-  const handleSubmit = (question: SetQuestion) => {
-    if (dialogState?.mode === "edit") {
-      setQuestions(questions.map((q, i) => (i === dialogState.index ? question : q)));
+  /** Si el set está ACTIVE/en uso, cada escritura clona silenciosamente una nueva versión
+   * con id distinto — navegar ahí para que el usuario siga editando la versión correcta. */
+  const followClone = (newId: string) => {
+    if (newId !== setId) {
+      toast.info("Se creó una nueva versión del set (estaba activo)");
+      nav({ to: "/app/sets/$id", params: { id: newId } });
     } else {
-      setQuestions([...questions, question]);
+      qc.invalidateQueries({ queryKey: ["question-set", setId] });
     }
+    qc.invalidateQueries({ queryKey: ["question-sets"] });
   };
+
+  const addMutation = useMutation({
+    mutationFn: (q: QuestionDraft) => addQuestion({ data: { setId, ...q } }),
+    onSuccess: (res) => { toast.success("Pregunta agregada"); followClone(res.question_set_id); setDialogState(null); },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo agregar"),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ questionId, q }: { questionId: string; q: QuestionDraft }) =>
+      updateQuestion({ data: { setId, questionId, ...q } }),
+    onSuccess: (res) => { toast.success("Pregunta actualizada"); followClone(res.question_set_id); setDialogState(null); },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo actualizar"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (questionId: string) => deleteQuestion({ data: { setId, questionId } }),
+    onSuccess: () => { toast.success("Pregunta eliminada"); qc.invalidateQueries({ queryKey: ["question-set", setId] }); qc.invalidateQueries({ queryKey: ["question-sets"] }); },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo eliminar"),
+  });
+
+  const metaMutation = useMutation({
+    mutationFn: (body: { name?: string; description?: string; status?: "DRAFT" | "ACTIVE" | "ARCHIVED" }) =>
+      updateQuestionSet({ data: { id: setId, ...body } }),
+    onSuccess: () => { toast.success("Guardado"); qc.invalidateQueries({ queryKey: ["question-set", setId] }); qc.invalidateQueries({ queryKey: ["question-sets"] }); },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
+  });
+
+  const deleteSetMutation = useMutation({
+    mutationFn: () => deleteQuestionSet({ data: { id: setId } }),
+    onSuccess: () => { toast.success("Set eliminado"); qc.invalidateQueries({ queryKey: ["question-sets"] }); nav({ to: "/app/sets" }); },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo eliminar (puede estar en uso)"),
+  });
+
+  const handleSubmit = (q: QuestionDraft) => {
+    if (dialogState?.mode === "edit") updateMutation.mutate({ questionId: dialogState.question.id, q });
+    else addMutation.mutate(q);
+  };
+
+  if (isLoading) return <div className="py-16 text-center text-sm text-muted-foreground">Cargando set…</div>;
+  if (!set) return <div className="py-16 text-center text-sm text-muted-foreground">Set no encontrado.</div>;
 
   return (
     <div className="space-y-5">
       <Link to="/app/sets" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition">
         ← Volver a sets
       </Link>
-      <div>
-        {isNew ? (
-          <input type="text" placeholder="Nombre del nuevo set..." className="text-2xl font-bold bg-transparent border-b border-border focus:border-primary outline-none w-full max-w-md pb-1" autoFocus />
-        ) : (
-          <h1 className="text-2xl font-bold">{setInfo?.nombre || "Cargando..."}</h1>
-        )}
-        <p className="text-sm text-muted-foreground mt-2">Editor de preguntas · arrastra para reordenar.</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex-1 min-w-[240px]">
+          <input
+            value={name ?? set.name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => { if (name !== null && name !== set.name) metaMutation.mutate({ name }); }}
+            className="text-2xl font-bold bg-transparent border-b border-transparent hover:border-border focus:border-primary outline-none w-full max-w-md pb-1"
+          />
+          <input
+            value={description ?? set.description ?? ""}
+            onChange={(e) => setDescription(e.target.value)}
+            onBlur={() => { if (description !== null && description !== (set.description ?? "")) metaMutation.mutate({ description }); }}
+            placeholder="Descripción del set…"
+            className="mt-1 text-sm text-muted-foreground bg-transparent border-b border-transparent hover:border-border focus:border-primary outline-none w-full max-w-md"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          {set.status === "DRAFT" && (
+            <button onClick={() => metaMutation.mutate({ status: "ACTIVE" })} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/15 text-success text-xs font-semibold">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Activar
+            </button>
+          )}
+          {set.status === "ACTIVE" && (
+            <button onClick={() => metaMutation.mutate({ status: "ARCHIVED" })} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold">
+              <Archive className="h-3.5 w-3.5" /> Archivar
+            </button>
+          )}
+          <button
+            onClick={() => { if (confirm("¿Eliminar este set? Esta acción no se puede deshacer.")) deleteSetMutation.mutate(); }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-destructive/40 text-destructive text-xs font-semibold"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Eliminar set
+          </button>
+        </div>
       </div>
+      {set.status === "ACTIVE" && (
+        <div className="text-[11px] text-warning bg-warning/10 rounded-lg px-3 py-2">
+          Este set está activo — cualquier cambio en las preguntas creará una nueva versión.
+        </div>
+      )}
 
       <div className="space-y-3">
         {questions.length === 0 && (
@@ -52,49 +132,48 @@ export function SetBuilder({ isNew, setInfo }: { isNew: boolean; setInfo: Questi
         )}
 
         {questions.map((q, i) => (
-          <GlassCard key={i} className="p-4">
+          <GlassCard key={q.id} className="p-4">
             <div className="flex items-start gap-3">
-              <button className="text-muted-foreground hover:text-foreground mt-1.5"><GripVertical className="h-4 w-4" /></button>
+              <div className="text-muted-foreground mt-1.5"><GripVertical className="h-4 w-4" /></div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Pregunta {i + 1}</span>
-                  <span className="px-2 py-0.5 rounded bg-accent text-accent-foreground text-[10px] font-semibold">{q.tipo}</span>
-                  {q.critica && (
+                  <span className="px-2 py-0.5 rounded bg-accent text-accent-foreground text-[10px] font-semibold">{QUESTION_TYPE_LABEL[q.type]}</span>
+                  {q.is_critical && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/15 text-destructive text-[10px] font-semibold">
                       <Star className="h-3 w-3 fill-current" /> Crítica
                     </span>
                   )}
-                  <div className="ml-auto text-xs text-muted-foreground">Peso: <span className="font-semibold text-foreground">{q.peso}%</span></div>
+                  <div className="ml-auto text-xs text-muted-foreground">Peso: <span className="font-semibold text-foreground">{q.weight}%</span></div>
                 </div>
-                <p className="font-medium text-sm">{q.texto}</p>
+                <p className="font-medium text-sm">{q.text}</p>
 
-                {(q.keywordsPositivas.length > 0 || q.keywordsNegativas.length > 0) && (
+                {(q.positive_keywords.length > 0 || q.risk_keywords.length > 0) && (
                   <div className="mt-3 flex flex-wrap gap-1.5 items-center">
-                    {q.keywordsPositivas.length > 0 && (
+                    {q.positive_keywords.length > 0 && (
                       <>
                         <span className="text-[10px] text-muted-foreground mr-1">Keywords positivas:</span>
-                        {q.keywordsPositivas.map((k) => <span key={k} className="px-2 py-0.5 rounded bg-success/15 text-success text-[10px]">{k}</span>)}
+                        {q.positive_keywords.map((k) => <span key={k} className="px-2 py-0.5 rounded bg-success/15 text-success text-[10px]">{k}</span>)}
                       </>
                     )}
-                    {q.keywordsNegativas.length > 0 && (
+                    {q.risk_keywords.length > 0 && (
                       <>
-                        <span className="text-[10px] text-muted-foreground ml-2 mr-1">No avance:</span>
-                        {q.keywordsNegativas.map((k) => <span key={k} className="px-2 py-0.5 rounded bg-destructive/15 text-destructive text-[10px]">{k}</span>)}
+                        <span className="text-[10px] text-muted-foreground ml-2 mr-1">Revisión:</span>
+                        {q.risk_keywords.map((k) => <span key={k} className="px-2 py-0.5 rounded bg-destructive/15 text-destructive text-[10px]">{k}</span>)}
                       </>
                     )}
                   </div>
                 )}
-                <div className="mt-2 text-[10px] text-muted-foreground italic">Las palabras clave no descartan automáticamente; activan revisión humana.</div>
               </div>
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setDialogState({ mode: "edit", index: i })}
+                  onClick={() => setDialogState({ mode: "edit", question: q })}
                   className="text-muted-foreground hover:text-primary p-1"
                   aria-label="Editar pregunta"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
-                <button onClick={() => removeQuestion(i)} className="text-muted-foreground hover:text-destructive p-1" aria-label="Eliminar pregunta">
+                <button onClick={() => deleteMutation.mutate(q.id)} className="text-muted-foreground hover:text-destructive p-1" aria-label="Eliminar pregunta">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -112,8 +191,9 @@ export function SetBuilder({ isNew, setInfo }: { isNew: boolean; setInfo: Questi
       <QuestionFormDialog
         open={dialogState !== null}
         onOpenChange={(open) => { if (!open) setDialogState(null); }}
-        initial={dialogState?.mode === "edit" ? questions[dialogState.index] : null}
+        initial={dialogState?.mode === "edit" ? dialogState.question : null}
         onSubmit={handleSubmit}
+        saving={addMutation.isPending || updateMutation.isPending}
       />
     </div>
   );

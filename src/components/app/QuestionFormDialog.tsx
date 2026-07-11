@@ -4,36 +4,59 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import type { SetQuestion } from "@/lib/mock-data";
+import type { QuestionOut } from "@/lib/types/api";
+import type { QuestionType } from "@/lib/types/enums";
 
-const EMPTY: SetQuestion = {
-  texto: "",
-  tipo: "Abierta",
-  critica: false,
-  peso: 10,
-  keywordsPositivas: [],
-  keywordsNegativas: [],
+export interface QuestionDraft {
+  text: string;
+  type: QuestionType;
+  is_critical: boolean;
+  weight: number;
+  positive_keywords: string[];
+  risk_keywords: string[];
+}
+
+const EMPTY: QuestionDraft = {
+  text: "",
+  type: "OPEN",
+  is_critical: false,
+  weight: 10,
+  positive_keywords: [],
+  risk_keywords: [],
 };
+
+function toDraft(q: QuestionOut): QuestionDraft {
+  return {
+    text: q.text,
+    type: q.type,
+    is_critical: q.is_critical,
+    weight: q.weight,
+    positive_keywords: q.positive_keywords,
+    risk_keywords: q.risk_keywords,
+  };
+}
 
 export function QuestionFormDialog({
   open,
   onOpenChange,
   initial,
   onSubmit,
+  saving,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initial: SetQuestion | null;
-  onSubmit: (question: SetQuestion) => void;
+  initial: QuestionOut | null;
+  onSubmit: (question: QuestionDraft) => void;
+  saving?: boolean;
 }) {
-  const [draft, setDraft] = useState<SetQuestion>(initial ?? EMPTY);
+  const [draft, setDraft] = useState<QuestionDraft>(initial ? toDraft(initial) : EMPTY);
 
   useEffect(() => {
-    if (open) setDraft(initial ?? EMPTY);
+    if (open) setDraft(initial ? toDraft(initial) : EMPTY);
   }, [open, initial]);
 
   const isEditing = initial !== null;
-  const canSave = draft.texto.trim().length > 0;
+  const canSave = draft.text.trim().length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -50,8 +73,8 @@ export function QuestionFormDialog({
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pregunta</label>
             <textarea
               autoFocus
-              value={draft.texto}
-              onChange={(e) => setDraft({ ...draft, texto: e.target.value })}
+              value={draft.text}
+              onChange={(e) => setDraft({ ...draft, text: e.target.value })}
               placeholder="Ej. ¿Cuántos años de experiencia tienes con Node.js?"
               className="mt-1.5 w-full min-h-[72px] rounded-xl bg-background/70 border border-border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
             />
@@ -61,13 +84,15 @@ export function QuestionFormDialog({
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo de respuesta</label>
               <select
-                value={draft.tipo}
-                onChange={(e) => setDraft({ ...draft, tipo: e.target.value as SetQuestion["tipo"] })}
+                value={draft.type}
+                onChange={(e) => setDraft({ ...draft, type: e.target.value as QuestionType })}
                 className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
               >
-                <option value="Sí/No">Sí/No</option>
-                <option value="Abierta">Abierta</option>
-                <option value="Numérica">Numérica</option>
+                <option value="YES_NO">Sí/No</option>
+                <option value="OPEN">Abierta</option>
+                <option value="NUMERIC">Numérica</option>
+                <option value="CLOSED">Cerrada</option>
+                <option value="MULTIPLE_CHOICE">Opción múltiple</option>
               </select>
             </div>
             <div>
@@ -76,8 +101,8 @@ export function QuestionFormDialog({
                 type="number"
                 min={0}
                 max={100}
-                value={draft.peso}
-                onChange={(e) => setDraft({ ...draft, peso: parseInt(e.target.value) || 0 })}
+                value={draft.weight}
+                onChange={(e) => setDraft({ ...draft, weight: parseInt(e.target.value) || 0 })}
                 className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
               />
             </div>
@@ -88,20 +113,20 @@ export function QuestionFormDialog({
               <div className="text-sm font-medium">Pregunta crítica</div>
               <div className="text-xs text-muted-foreground mt-0.5">Si el candidato no cumple, se marca como criterio excluyente.</div>
             </div>
-            <Switch checked={draft.critica} onCheckedChange={(v) => setDraft({ ...draft, critica: v })} />
+            <Switch checked={draft.is_critical} onCheckedChange={(v) => setDraft({ ...draft, is_critical: v })} />
           </div>
 
           <TagInput
             label="Keywords positivas"
             tone="success"
-            value={draft.keywordsPositivas}
-            onChange={(v) => setDraft({ ...draft, keywordsPositivas: v })}
+            value={draft.positive_keywords}
+            onChange={(v) => setDraft({ ...draft, positive_keywords: v })}
           />
           <TagInput
             label="Keywords que activan revisión"
             tone="destructive"
-            value={draft.keywordsNegativas}
-            onChange={(v) => setDraft({ ...draft, keywordsNegativas: v })}
+            value={draft.risk_keywords}
+            onChange={(v) => setDraft({ ...draft, risk_keywords: v })}
           />
           <p className="text-[11px] text-muted-foreground italic">
             Las palabras clave no descartan automáticamente; activan revisión humana.
@@ -118,11 +143,11 @@ export function QuestionFormDialog({
           </button>
           <button
             type="button"
-            disabled={!canSave}
-            onClick={() => { onSubmit(draft); onOpenChange(false); }}
+            disabled={!canSave || saving}
+            onClick={() => onSubmit(draft)}
             className="px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30 disabled:opacity-40"
           >
-            Guardar pregunta
+            {saving ? "Guardando…" : "Guardar pregunta"}
           </button>
         </DialogFooter>
       </DialogContent>
