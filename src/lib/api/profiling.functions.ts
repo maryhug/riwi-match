@@ -20,9 +20,7 @@ export const triggerProfiling = createServerFn({ method: "POST" })
 export const getProcessProfilingRuns = createServerFn({ method: "GET" })
   .validator(z.object({ processId: z.string() }))
   .handler(async ({ data }) => {
-    return apiCall<ProfilingRunListResponse>(
-      `/api/v1/processes/${data.processId}/profiling/runs`,
-    );
+    return apiCall<ProfilingRunListResponse>(`/api/v1/processes/${data.processId}/profiling/runs`);
   });
 
 export const getAllProfilingRuns = createServerFn({ method: "GET" }).handler(async () => {

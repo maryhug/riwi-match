@@ -460,6 +460,7 @@ export interface AIPromptOut {
 export interface GlobalSettingOut {
   id: string;
   setting_key: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setting_value: Record<string, any>;
   updated_by: string | null;
   updated_at: string;
@@ -473,7 +474,9 @@ export interface AuditLogOut {
   action: string;
   entity_type: string;
   entity_id: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   old_value: Record<string, any> | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   new_value: Record<string, any> | null;
   ip_address: string | null;
   created_at: string;

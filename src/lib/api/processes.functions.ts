@@ -125,10 +125,10 @@ export const createJobDescription = createServerFn({ method: "POST" })
 export const parseJobDescription = createServerFn({ method: "POST" })
   .validator(z.object({ processId: z.string(), jdRawText: z.string().min(1) }))
   .handler(async ({ data }) => {
-    return apiCall<ParseJDResponse>(
-      `/api/v1/processes/${data.processId}/job-description/parse`,
-      { method: "POST", body: { jd_raw_text: data.jdRawText } },
-    );
+    return apiCall<ParseJDResponse>(`/api/v1/processes/${data.processId}/job-description/parse`, {
+      method: "POST",
+      body: { jd_raw_text: data.jdRawText },
+    });
   });
 
 export const enhanceJobDescription = createServerFn({ method: "POST" })

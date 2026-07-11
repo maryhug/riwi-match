@@ -33,7 +33,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setNavPosition = (p: NavPosition) => {
     setNavPositionState(p);
-    try { localStorage.setItem("navPosition", p); } catch {}
+    try {
+      localStorage.setItem("navPosition", p);
+    } catch {}
   };
 
   return (

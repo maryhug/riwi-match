@@ -1,7 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 import { DollarSign, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
@@ -33,11 +41,17 @@ function groupByPeriod(daily: { date: string; cost: number }[], period: Period) 
     }
     buckets.set(key, (buckets.get(key) ?? 0) + d.cost);
   }
-  return [...buckets.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([label, costo]) => ({ label, costo }));
+  return [...buckets.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([label, costo]) => ({ label, costo }));
 }
 
 const LIMIT_FIELDS: { key: string; label: string; placeholder: string }[] = [
-  { key: "budget_max_per_process", label: "Presupuesto máximo por proceso (USD)", placeholder: "Sin límite" },
+  {
+    key: "budget_max_per_process",
+    label: "Presupuesto máximo por proceso (USD)",
+    placeholder: "Sin límite",
+  },
   { key: "monthly_budget", label: "Presupuesto mensual (USD)", placeholder: "Sin límite" },
   { key: "daily_call_limit", label: "Límite de llamadas/día", placeholder: "Sin límite" },
 ];
@@ -58,7 +72,10 @@ function Costos() {
     queryFn: () => getGlobalSettings(),
   });
 
-  const { data: processesData } = useQuery({ queryKey: ["processes"], queryFn: () => getProcesses() });
+  const { data: processesData } = useQuery({
+    queryKey: ["processes"],
+    queryFn: () => getProcesses(),
+  });
 
   const settingsMap = useMemo(() => {
     const m = new Map<string, unknown>();
@@ -69,8 +86,12 @@ function Costos() {
   const saveMutation = useMutation({
     mutationFn: ({ key, value }: { key: string; value: number }) =>
       updateGlobalSetting({ data: { key, value: { amount: value } } }),
-    onSuccess: () => { toast.success("Límite actualizado"); qc.invalidateQueries({ queryKey: ["global-settings"] }); },
-    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
+    onSuccess: () => {
+      toast.success("Límite actualizado");
+      qc.invalidateQueries({ queryKey: ["global-settings"] });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
   });
 
   if (isLoading || !metrics) {
@@ -79,7 +100,9 @@ function Costos() {
 
   const now = new Date();
   const costoDelMes = metrics.daily_costs
-    .filter((d) => d.date.startsWith(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`))
+    .filter((d) =>
+      d.date.startsWith(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`),
+    )
     .reduce((s, d) => s + d.cost, 0);
 
   const cvExtraction = metrics.cost_by_operation.find((o) => o.operation_type === "CV_EXTRACTION");
@@ -105,22 +128,38 @@ function Costos() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">Finanzas</div>
+        <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">
+          Finanzas
+        </div>
         <h1 className="mt-1 text-3xl font-bold tracking-tight">Costos y consumo</h1>
-        <p className="text-sm text-muted-foreground mt-1">Seguimiento por operación, proceso y recruiter.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Seguimiento por operación, proceso y recruiter.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           ["Costo total histórico", `$${metrics.total_cost_usd.toFixed(2)}`],
           ["Costo del mes", `$${costoDelMes.toFixed(2)}`],
-          ["Costo prom. / CV", cvExtraction && cvExtraction.count > 0 ? `$${(cvExtraction.total_cost / cvExtraction.count).toFixed(4)}` : "—"],
-          ["Costo prom. / profiling", voiceCall && voiceCall.count > 0 ? `$${(voiceCall.total_cost / voiceCall.count).toFixed(4)}` : "—"],
+          [
+            "Costo prom. / CV",
+            cvExtraction && cvExtraction.count > 0
+              ? `$${(cvExtraction.total_cost / cvExtraction.count).toFixed(4)}`
+              : "—",
+          ],
+          [
+            "Costo prom. / profiling",
+            voiceCall && voiceCall.count > 0
+              ? `$${(voiceCall.total_cost / voiceCall.count).toFixed(4)}`
+              : "—",
+          ],
         ].map(([l, v]) => (
           <GlassCard key={l} className="p-4">
             <div className="flex items-start justify-between">
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{l}</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {l}
+                </div>
                 <div className="mt-2 text-2xl font-bold">{v}</div>
               </div>
               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-warning to-destructive grid place-items-center text-white">
@@ -135,15 +174,27 @@ function Costos() {
         <div className="flex items-center justify-between mb-3">
           <div className="text-sm font-semibold">Consumo del periodo</div>
           <div className="flex gap-1 text-xs">
-            {([["daily", "Diario"], ["weekly", "Semanal"], ["monthly", "Mensual"]] as const).map(([p, label]) => (
-              <button key={p} onClick={() => setPeriod(p)} className={`px-3 py-1 rounded-md ${period === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}>
+            {(
+              [
+                ["daily", "Diario"],
+                ["weekly", "Semanal"],
+                ["monthly", "Mensual"],
+              ] as const
+            ).map(([p, label]) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-3 py-1 rounded-md ${period === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}
+              >
                 {label}
               </button>
             ))}
           </div>
         </div>
         {chartData.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Sin datos de consumo aún.</div>
+          <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
+            Sin datos de consumo aún.
+          </div>
         ) : (
           <div className="h-64">
             <ResponsiveContainer>
@@ -158,7 +209,13 @@ function Costos() {
                 <XAxis dataKey="label" stroke="hsl(233 20% 46%)" fontSize={11} />
                 <YAxis stroke="hsl(233 20% 46%)" fontSize={11} />
                 <Tooltip />
-                <Area type="monotone" dataKey="costo" stroke="hsl(248 100% 68%)" strokeWidth={2.5} fill="url(#g1)" />
+                <Area
+                  type="monotone"
+                  dataKey="costo"
+                  stroke="hsl(248 100% 68%)"
+                  strokeWidth={2.5}
+                  fill="url(#g1)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -175,9 +232,17 @@ function Costos() {
               <tbody>
                 {metrics.cost_by_operation.map((r) => (
                   <tr key={r.operation_type} className="border-t border-border/30">
-                    <td className="px-5 py-3 font-medium">{OPERATION_TYPE_LABEL[r.operation_type as keyof typeof OPERATION_TYPE_LABEL] ?? r.operation_type}</td>
-                    <td className="px-3 py-3 text-xs text-muted-foreground">{r.count} operación(es)</td>
-                    <td className="px-3 py-3 text-right font-semibold tabular-nums">${r.total_cost.toFixed(4)}</td>
+                    <td className="px-5 py-3 font-medium">
+                      {OPERATION_TYPE_LABEL[
+                        r.operation_type as keyof typeof OPERATION_TYPE_LABEL
+                      ] ?? r.operation_type}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-muted-foreground">
+                      {r.count} operación(es)
+                    </td>
+                    <td className="px-3 py-3 text-right font-semibold tabular-nums">
+                      ${r.total_cost.toFixed(4)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -200,7 +265,8 @@ function Costos() {
                       onChange={(e) => setEdits({ ...edits, [key]: e.target.value })}
                       onBlur={() => {
                         const num = Number(edits[key]);
-                        if (edits[key] !== undefined && !Number.isNaN(num)) saveMutation.mutate({ key, value: num });
+                        if (edits[key] !== undefined && !Number.isNaN(num))
+                          saveMutation.mutate({ key, value: num });
                       }}
                       placeholder={placeholder}
                       className="w-28 px-2.5 py-1.5 text-sm text-right rounded-lg bg-background/70 border border-border"
@@ -210,11 +276,15 @@ function Costos() {
               })}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">Solo un administrador puede editar los límites globales.</p>
+            <p className="text-xs text-muted-foreground">
+              Solo un administrador puede editar los límites globales.
+            </p>
           )}
           <div className="mt-4 space-y-2">
             {budgetAlerts.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Ningún proceso ha alcanzado el 80% de su presupuesto.</p>
+              <p className="text-xs text-muted-foreground">
+                Ningún proceso ha alcanzado el 80% de su presupuesto.
+              </p>
             ) : (
               budgetAlerts.map((a) => <Alert key={a.name} pct={a.pct} label={a.name} />)
             )}
@@ -227,7 +297,9 @@ function Costos() {
 
 function Alert({ pct, label }: { pct: number; label: string }) {
   const destructive = pct >= 100;
-  const cls = destructive ? "bg-destructive/15 text-destructive border-destructive/30" : "bg-warning/15 text-warning-foreground border-warning/30";
+  const cls = destructive
+    ? "bg-destructive/15 text-destructive border-destructive/30"
+    : "bg-warning/15 text-warning-foreground border-warning/30";
   return (
     <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${cls} text-xs`}>
       <AlertTriangle className="h-3.5 w-3.5" />

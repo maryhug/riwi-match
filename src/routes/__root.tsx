@@ -79,20 +79,43 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "RIWI MATCH — Talent Acquisition AI" },
-      { name: "description", content: "Plataforma interna de reclutamiento con IA de Riwi: lectura de CVs, match con JD y profiling automatizado." },
+      {
+        name: "description",
+        content:
+          "Plataforma interna de reclutamiento con IA de Riwi: lectura de CVs, match con JD y profiling automatizado.",
+      },
       { property: "og:title", content: "RIWI MATCH — Talent Acquisition AI" },
-      { property: "og:description", content: "Plataforma interna de reclutamiento con IA de Riwi: lectura de CVs, match con JD y profiling automatizado." },
+      {
+        property: "og:description",
+        content:
+          "Plataforma interna de reclutamiento con IA de Riwi: lectura de CVs, match con JD y profiling automatizado.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "RIWI MATCH — Talent Acquisition AI" },
-      { name: "twitter:description", content: "Plataforma interna de reclutamiento con IA de Riwi: lectura de CVs, match con JD y profiling automatizado." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9d0081b5-215e-48d0-8eb1-de1e7b5e8b0b/id-preview-2b067670--cab65423-6e76-43c5-8eaf-f843348d6510.lovable.app-1781094973903.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9d0081b5-215e-48d0-8eb1-de1e7b5e8b0b/id-preview-2b067670--cab65423-6e76-43c5-8eaf-f843348d6510.lovable.app-1781094973903.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Plataforma interna de reclutamiento con IA de Riwi: lectura de CVs, match con JD y profiling automatizado.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9d0081b5-215e-48d0-8eb1-de1e7b5e8b0b/id-preview-2b067670--cab65423-6e76-43c5-8eaf-f843348d6510.lovable.app-1781094973903.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9d0081b5-215e-48d0-8eb1-de1e7b5e8b0b/id-preview-2b067670--cab65423-6e76-43c5-8eaf-f843348d6510.lovable.app-1781094973903.png",
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap",
+      },
       { rel: "stylesheet", href: appCss },
     ],
   }),

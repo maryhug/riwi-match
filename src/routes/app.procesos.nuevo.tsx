@@ -1,12 +1,27 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Sparkles, Upload, Check, ChevronDown, ChevronUp, X, FileText } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Sparkles,
+  Upload,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  X,
+  FileText,
+} from "lucide-react";
 import { GlassCard } from "@/components/app/GlassCard";
 import { toast } from "sonner";
 import {
-  createProcess, updateProcess, createJobDescription, parseJobDescription,
-  enhanceJobDescription, getProcess, assignQuestionSet,
+  createProcess,
+  updateProcess,
+  createJobDescription,
+  parseJobDescription,
+  enhanceJobDescription,
+  getProcess,
+  assignQuestionSet,
 } from "@/lib/api/processes.functions";
 import { uploadCVs } from "@/lib/api/candidates.functions";
 import { getQuestionSets } from "@/lib/api/question-sets.functions";
@@ -20,7 +35,16 @@ export const Route = createFileRoute("/app/procesos/nuevo")({
 
 const steps = ["Datos básicos", "Job Description", "CVs y profiling"];
 
-const AREAS = ["Tecnología", "Producto", "Diseño", "Datos", "Ventas", "Marketing", "Personas", "Comercial"];
+const AREAS = [
+  "Tecnología",
+  "Producto",
+  "Diseño",
+  "Datos",
+  "Ventas",
+  "Marketing",
+  "Personas",
+  "Comercial",
+];
 const SENIORITIES = ["Jr", "Ssr", "Sr", "Lead", "Manager"];
 const ACCEPTED_CV_TYPES = ".pdf,.docx,.doc,.jpg,.jpeg,.png,.webp";
 const MAX_CV_FILES = 50;
@@ -199,23 +223,36 @@ function Wizard() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <Link to="/app" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+      <Link
+        to="/app"
+        className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="h-3.5 w-3.5" /> Volver
       </Link>
 
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Crear proceso</h1>
-        <p className="text-sm text-muted-foreground mt-1">Asistente en 3 pasos para configurar tu proceso de selección.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Asistente en 3 pasos para configurar tu proceso de selección.
+        </p>
       </div>
 
       <div className="flex items-center gap-4">
         {steps.map((s, i) => (
           <div key={s} className="flex items-center gap-2 flex-1">
-            <div className={`h-8 w-8 grid place-items-center rounded-full text-xs font-bold ${i <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+            <div
+              className={`h-8 w-8 grid place-items-center rounded-full text-xs font-bold ${i <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+            >
               {i < step ? <Check className="h-4 w-4" /> : i + 1}
             </div>
-            <div className={`text-sm font-medium ${i === step ? "text-foreground" : "text-muted-foreground"}`}>{s}</div>
-            {i < steps.length - 1 && <div className={`flex-1 h-px ${i < step ? "bg-primary" : "bg-border"}`} />}
+            <div
+              className={`text-sm font-medium ${i === step ? "text-foreground" : "text-muted-foreground"}`}
+            >
+              {s}
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`flex-1 h-px ${i < step ? "bg-primary" : "bg-border"}`} />
+            )}
           </div>
         ))}
       </div>
@@ -225,7 +262,9 @@ function Wizard() {
           <div className="space-y-5">
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nombre del proceso</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Nombre del proceso
+                </label>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -234,7 +273,9 @@ function Wizard() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cargo</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Cargo
+                </label>
                 <input
                   value={jobTitle}
                   onChange={(e) => setJobTitle(e.target.value)}
@@ -243,33 +284,45 @@ function Wizard() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Área</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Área
+                </label>
                 <select
                   value={area}
                   onChange={(e) => setArea(e.target.value)}
                   className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
                 >
-                  {AREAS.map((a) => <option key={a}>{a}</option>)}
+                  {AREAS.map((a) => (
+                    <option key={a}>{a}</option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Seniority</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Seniority
+                </label>
                 <select
                   value={seniority}
                   onChange={(e) => setSeniority(e.target.value)}
                   className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
                 >
-                  {SENIORITIES.map((s) => <option key={s}>{s}</option>)}
+                  {SENIORITIES.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Reclutador responsable</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Reclutador responsable
+                </label>
                 <div className="mt-1.5 w-full px-3 py-2 rounded-xl bg-muted/50 border border-border text-sm text-muted-foreground">
                   {user ? `${user.name} ${user.last_name} (tú)` : "…"}
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Presupuesto máximo USD (opcional)</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Presupuesto máximo USD (opcional)
+                </label>
                 <input
                   type="number"
                   min={0}
@@ -291,24 +344,33 @@ function Wizard() {
                   <Sparkles className="h-3.5 w-3.5 text-primary" />
                   Configuración avanzada de pesos de match (Opcional)
                 </span>
-                {showWeights ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {showWeights ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
               </button>
 
               {showWeights && (
                 <div className="p-4 border-t border-border space-y-4">
                   <p className="text-xs text-muted-foreground leading-normal">
-                    Ajusta los porcentajes para dar más peso a dimensiones específicas durante el análisis y ranking automatizado por IA. La suma total debe ser exactamente 100%.
+                    Ajusta los porcentajes para dar más peso a dimensiones específicas durante el
+                    análisis y ranking automatizado por IA. La suma total debe ser exactamente 100%.
                   </p>
                   <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {WEIGHT_FIELDS.map(({ key, label }) => (
                       <div key={key}>
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</label>
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          {label}
+                        </label>
                         <input
                           type="number"
                           min={0}
                           max={100}
                           value={weights[key]}
-                          onChange={(e) => setWeights({ ...weights, [key]: parseInt(e.target.value) || 0 })}
+                          onChange={(e) =>
+                            setWeights({ ...weights, [key]: parseInt(e.target.value) || 0 })
+                          }
                           className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
                         />
                       </div>
@@ -317,16 +379,24 @@ function Wizard() {
 
                   <div className="flex flex-wrap items-center justify-between pt-2 border-t border-border/50 gap-2">
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-md ${
-                        totalWeights === 100 && !hasNegativeWeight ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
-                      }`}>
+                      <span
+                        className={`text-xs font-semibold px-2 py-1 rounded-md ${
+                          totalWeights === 100 && !hasNegativeWeight
+                            ? "bg-success/15 text-success"
+                            : "bg-destructive/15 text-destructive"
+                        }`}
+                      >
                         Suma total: {totalWeights}%
                       </span>
                       {totalWeights !== 100 && (
-                        <span className="text-[11px] text-destructive font-medium">Debe ser exactamente 100%</span>
+                        <span className="text-[11px] text-destructive font-medium">
+                          Debe ser exactamente 100%
+                        </span>
                       )}
                       {hasNegativeWeight && (
-                        <span className="text-[11px] text-destructive font-medium">No se permiten valores negativos</span>
+                        <span className="text-[11px] text-destructive font-medium">
+                          No se permiten valores negativos
+                        </span>
                       )}
                     </div>
                     <button
@@ -364,7 +434,10 @@ function Wizard() {
               <>
                 <textarea
                   value={jdText}
-                  onChange={(e) => { setJdText(e.target.value); setJdSaved(false); }}
+                  onChange={(e) => {
+                    setJdText(e.target.value);
+                    setJdSaved(false);
+                  }}
                   placeholder="Pega aquí la descripción del cargo…"
                   className="w-full min-h-[140px] rounded-xl bg-background/70 border border-border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
@@ -374,7 +447,11 @@ function Wizard() {
                     disabled={jdText.trim().length < 10 || saveJDMutation.isPending}
                     className="px-4 py-2 rounded-xl border border-border bg-background/60 text-sm font-medium disabled:opacity-40"
                   >
-                    {saveJDMutation.isPending ? "Guardando…" : jdSaved ? "JD guardada ✓" : "Guardar JD"}
+                    {saveJDMutation.isPending
+                      ? "Guardando…"
+                      : jdSaved
+                        ? "JD guardada ✓"
+                        : "Guardar JD"}
                   </button>
                   {jdSaved && (
                     <button
@@ -388,7 +465,14 @@ function Wizard() {
                 </div>
               </>
             ) : (
-              <UploadJDFile processId={processId} onUploaded={(text) => { setJdText(text); setJdSaved(true); setJdTab("text"); }} />
+              <UploadJDFile
+                processId={processId}
+                onUploaded={(text) => {
+                  setJdText(text);
+                  setJdSaved(true);
+                  setJdTab("text");
+                }}
+              />
             )}
 
             <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/5 to-info/5 p-5">
@@ -398,32 +482,57 @@ function Wizard() {
                     <Sparkles className="h-4 w-4 text-primary" />
                     Análisis por IA
                   </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Extrae requisitos obligatorios, deseables y excluyentes (no persiste nada).</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Extrae requisitos obligatorios, deseables y excluyentes (no persiste nada).
+                  </div>
                 </div>
                 <button
                   onClick={() => parseJDMutation.mutate()}
                   disabled={jdText.trim().length < 10 || parseJDMutation.isPending}
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30 disabled:opacity-60"
                 >
-                  {parseJDMutation.isPending ? "Analizando…" : parseResult ? "Re-analizar" : "Analizar JD con IA"}
+                  {parseJDMutation.isPending
+                    ? "Analizando…"
+                    : parseResult
+                      ? "Re-analizar"
+                      : "Analizar JD con IA"}
                 </button>
               </div>
 
               {parseResult && (
                 <div className="mt-5 space-y-4">
                   {[
-                    { l: "Requisitos obligatorios", c: parseResult.must_have, color: "bg-primary/15 text-primary" },
-                    { l: "Deseables", c: parseResult.nice_to_have, color: "bg-info/30 text-info-foreground" },
-                    { l: "Criterios excluyentes", c: parseResult.deal_breakers, color: "bg-destructive/15 text-destructive" },
+                    {
+                      l: "Requisitos obligatorios",
+                      c: parseResult.must_have,
+                      color: "bg-primary/15 text-primary",
+                    },
+                    {
+                      l: "Deseables",
+                      c: parseResult.nice_to_have,
+                      color: "bg-info/30 text-info-foreground",
+                    },
+                    {
+                      l: "Criterios excluyentes",
+                      c: parseResult.deal_breakers,
+                      color: "bg-destructive/15 text-destructive",
+                    },
                   ].map((g) => (
                     <div key={g.l}>
-                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">{g.l}</div>
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                        {g.l}
+                      </div>
                       {g.c.length === 0 ? (
                         <div className="text-xs text-muted-foreground">—</div>
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
                           {g.c.map((x) => (
-                            <span key={x} className={`px-2.5 py-1 rounded-md text-xs font-medium ${g.color}`}>{x}</span>
+                            <span
+                              key={x}
+                              className={`px-2.5 py-1 rounded-md text-xs font-medium ${g.color}`}
+                            >
+                              {x}
+                            </span>
                           ))}
                         </div>
                       )}
@@ -431,7 +540,9 @@ function Wizard() {
                   ))}
                   {parseResult.summary && (
                     <div>
-                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Resumen</div>
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                        Resumen
+                      </div>
                       <p className="text-xs text-foreground/80">{parseResult.summary}</p>
                     </div>
                   )}
@@ -444,16 +555,25 @@ function Wizard() {
         {step === 2 && processId && (
           <div className="space-y-4">
             <div
-              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
               onDragLeave={() => setDragging(false)}
-              onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+                addFiles(e.dataTransfer.files);
+              }}
               className={`rounded-2xl border-2 border-dashed p-10 text-center transition-colors ${dragging ? "border-primary bg-primary/5" : "border-border bg-background/40"}`}
             >
               <div className="grid h-12 w-12 mx-auto place-items-center rounded-xl bg-primary/15 text-primary mb-3">
                 <Upload className="h-5 w-5" />
               </div>
               <div className="font-semibold">Arrastra los CVs aquí</div>
-              <div className="text-xs text-muted-foreground mt-1">PDF, DOCX, JPG, PNG · máx. {MAX_CV_FILES} por lote · {MAX_CV_SIZE_MB} MB c/u</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                PDF, DOCX, JPG, PNG · máx. {MAX_CV_FILES} por lote · {MAX_CV_SIZE_MB} MB c/u
+              </div>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="mt-4 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
@@ -472,12 +592,23 @@ function Wizard() {
 
             {files.length > 0 && (
               <div className="space-y-2">
-                <div className="text-xs font-medium text-muted-foreground">{files.length} archivo(s) seleccionado(s)</div>
+                <div className="text-xs font-medium text-muted-foreground">
+                  {files.length} archivo(s) seleccionado(s)
+                </div>
                 <div className="max-h-40 overflow-y-auto space-y-1.5">
                   {files.map((f, i) => (
-                    <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-background/60 border border-border text-xs">
-                      <span className="flex items-center gap-2 truncate"><FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />{f.name}</span>
-                      <button onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive">
+                    <div
+                      key={i}
+                      className="flex items-center justify-between px-3 py-2 rounded-lg bg-background/60 border border-border text-xs"
+                    >
+                      <span className="flex items-center gap-2 truncate">
+                        <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        {f.name}
+                      </span>
+                      <button
+                        onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -494,7 +625,9 @@ function Wizard() {
             )}
 
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Set de preguntas (opcional)</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Set de preguntas (opcional)
+              </label>
               <select
                 value={selectedQuestionSetId}
                 onChange={(e) => {
@@ -506,7 +639,11 @@ function Wizard() {
                 <option value="">— Asignar después —</option>
                 {(questionSets?.question_sets ?? [])
                   .filter((qs) => qs.status === "ACTIVE")
-                  .map((qs) => <option key={qs.id} value={qs.id}>{qs.name}</option>)}
+                  .map((qs) => (
+                    <option key={qs.id} value={qs.id}>
+                      {qs.name}
+                    </option>
+                  ))}
               </select>
             </div>
           </div>
@@ -530,7 +667,8 @@ function Wizard() {
             onClick={() => (step === 0 ? createProcessMutation.mutate() : setStep(step + 1))}
             className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30 disabled:opacity-40 disabled:shadow-none"
           >
-            {createProcessMutation.isPending ? "Guardando…" : "Siguiente"} <ArrowRight className="h-4 w-4" />
+            {createProcessMutation.isPending ? "Guardando…" : "Siguiente"}{" "}
+            <ArrowRight className="h-4 w-4" />
           </button>
         ) : (
           <button
@@ -548,7 +686,13 @@ function Wizard() {
   );
 }
 
-function UploadJDFile({ processId, onUploaded }: { processId: string; onUploaded: (text: string) => void }) {
+function UploadJDFile({
+  processId,
+  onUploaded,
+}: {
+  processId: string;
+  onUploaded: (text: string) => void;
+}) {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -586,7 +730,10 @@ function UploadJDFile({ processId, onUploaded }: { processId: string; onUploaded
         type="file"
         accept=".pdf,.docx,.doc,.txt"
         className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+        }}
       />
     </div>
   );

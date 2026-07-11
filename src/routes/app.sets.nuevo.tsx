@@ -21,21 +21,29 @@ function NuevoSet() {
       toast.success("Set creado");
       nav({ to: "/app/sets/$id", params: { id: set.id } });
     },
-    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo crear el set"),
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo crear el set"),
   });
 
   return (
     <div className="space-y-5 max-w-lg">
-      <Link to="/app/sets" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition">
+      <Link
+        to="/app/sets"
+        className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition"
+      >
         ← Volver a sets
       </Link>
       <div>
         <h1 className="text-2xl font-bold">Nuevo set de preguntas</h1>
-        <p className="text-sm text-muted-foreground mt-1">Dale un nombre — luego podrás agregar las preguntas.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Dale un nombre — luego podrás agregar las preguntas.
+        </p>
       </div>
       <GlassCard className="p-5 space-y-4">
         <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nombre</label>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Nombre
+          </label>
           <input
             autoFocus
             value={name}
@@ -45,7 +53,9 @@ function NuevoSet() {
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Descripción (opcional)</label>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Descripción (opcional)
+          </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}

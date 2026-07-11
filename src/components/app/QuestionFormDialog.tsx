@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import type { QuestionOut } from "@/lib/types/api";
@@ -70,7 +75,9 @@ export function QuestionFormDialog({
 
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pregunta</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Pregunta
+            </label>
             <textarea
               autoFocus
               value={draft.text}
@@ -82,7 +89,9 @@ export function QuestionFormDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo de respuesta</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Tipo de respuesta
+              </label>
               <select
                 value={draft.type}
                 onChange={(e) => setDraft({ ...draft, type: e.target.value as QuestionType })}
@@ -96,7 +105,9 @@ export function QuestionFormDialog({
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Peso (%)</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Peso (%)
+              </label>
               <input
                 type="number"
                 min={0}
@@ -111,9 +122,14 @@ export function QuestionFormDialog({
           <div className="flex items-center justify-between rounded-xl border border-border bg-background/40 px-3.5 py-3">
             <div>
               <div className="text-sm font-medium">Pregunta crítica</div>
-              <div className="text-xs text-muted-foreground mt-0.5">Si el candidato no cumple, se marca como criterio excluyente.</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Si el candidato no cumple, se marca como criterio excluyente.
+              </div>
             </div>
-            <Switch checked={draft.is_critical} onCheckedChange={(v) => setDraft({ ...draft, is_critical: v })} />
+            <Switch
+              checked={draft.is_critical}
+              onCheckedChange={(v) => setDraft({ ...draft, is_critical: v })}
+            />
           </div>
 
           <TagInput
@@ -156,8 +172,16 @@ export function QuestionFormDialog({
 }
 
 function TagInput({
-  label, tone, value, onChange,
-}: { label: string; tone: "success" | "destructive"; value: string[]; onChange: (v: string[]) => void }) {
+  label,
+  tone,
+  value,
+  onChange,
+}: {
+  label: string;
+  tone: "success" | "destructive";
+  value: string[];
+  onChange: (v: string[]) => void;
+}) {
   const [draft, setDraft] = useState("");
 
   const commit = () => {
@@ -168,17 +192,25 @@ function TagInput({
 
   return (
     <div>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</label>
+      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        {label}
+      </label>
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5 rounded-xl border border-border bg-background/70 p-2 min-h-[42px] focus-within:ring-2 focus-within:ring-primary/40">
         {value.map((k) => (
           <span
             key={k}
             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${
-              tone === "success" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
+              tone === "success"
+                ? "bg-success/15 text-success"
+                : "bg-destructive/15 text-destructive"
             }`}
           >
             {k}
-            <button type="button" onClick={() => onChange(value.filter((x) => x !== k))} className="hover:opacity-70">
+            <button
+              type="button"
+              onClick={() => onChange(value.filter((x) => x !== k))}
+              className="hover:opacity-70"
+            >
               <X className="h-2.5 w-2.5" />
             </button>
           </span>
@@ -187,7 +219,10 @@ function TagInput({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === ",") { e.preventDefault(); commit(); }
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              commit();
+            }
             if (e.key === "Backspace" && !draft && value.length) onChange(value.slice(0, -1));
           }}
           onBlur={commit}

@@ -51,8 +51,13 @@ function Login() {
               <Sparkles className="h-6 w-6 text-white" />
             </div>
             <div>
-              <div className="text-xl font-bold leading-none">RIWI <span className="text-primary">MATCH</span><span className="text-primary">.</span></div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mt-1">Talent Acquisition AI</div>
+              <div className="text-xl font-bold leading-none">
+                RIWI <span className="text-primary">MATCH</span>
+                <span className="text-primary">.</span>
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mt-1">
+                Talent Acquisition AI
+              </div>
             </div>
           </Link>
 
@@ -68,7 +73,9 @@ function Login() {
               </div>
             )}
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Email
+              </label>
               <input
                 type="email"
                 value={email}
@@ -79,7 +86,9 @@ function Login() {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Contraseña</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Contraseña
+              </label>
               <input
                 type="password"
                 value={password}
@@ -106,14 +115,16 @@ function Login() {
       {/* Right hero panel */}
       <div className="relative z-10 hidden lg:flex items-center justify-center p-12">
         <div className="glass-strong rounded-3xl p-10 max-w-lg">
-          <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">Riwi · 2026</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">
+            Riwi · 2026
+          </div>
           <h2 className="mt-3 text-3xl font-bold leading-tight">
             Reclutar con <span className="text-gradient-primary">inteligencia</span>,<br />
             decidir con criterio humano.
           </h2>
           <p className="mt-4 text-sm text-muted-foreground">
-            RIWI MATCH automatiza la lectura de hojas de vida, el match contra el JD y el profiling por voz —
-            tú mantienes el control de la decisión final.
+            RIWI MATCH automatiza la lectura de hojas de vida, el match contra el JD y el profiling
+            por voz — tú mantienes el control de la decisión final.
           </p>
 
           <div className="mt-8 grid grid-cols-3 gap-3">
@@ -124,7 +135,9 @@ function Login() {
             ].map((s) => (
               <div key={s.v} className="glass-subtle rounded-xl p-3 text-center">
                 <div className="text-xl font-bold text-primary">{s.k}</div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.v}</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {s.v}
+                </div>
               </div>
             ))}
           </div>

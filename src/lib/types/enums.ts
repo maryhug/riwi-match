@@ -138,11 +138,7 @@ export const WHATSAPP_CONSENT_STATUS_LABEL: Record<WhatsAppConsentStatus, string
 };
 
 export type AITaskType =
-  | "CV_EXTRACTION"
-  | "CV_MATCH"
-  | "JD_ENHANCEMENT"
-  | "VOICE_PROFILING"
-  | "WHATSAPP_MESSAGE";
+  "CV_EXTRACTION" | "CV_MATCH" | "JD_ENHANCEMENT" | "VOICE_PROFILING" | "WHATSAPP_MESSAGE";
 
 export const AI_TASK_TYPE_LABEL: Record<AITaskType, string> = {
   CV_EXTRACTION: "Extracción de CV",

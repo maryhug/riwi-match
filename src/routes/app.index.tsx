@@ -1,7 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Plus, FileText, PhoneCall, CheckCircle2, DollarSign, Filter, MoreHorizontal, Archive, XCircle } from "lucide-react";
+import {
+  Plus,
+  FileText,
+  PhoneCall,
+  CheckCircle2,
+  DollarSign,
+  Filter,
+  MoreHorizontal,
+  Archive,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
@@ -9,7 +19,10 @@ import { getProcesses, updateProcessStatus } from "@/lib/api/processes.functions
 import { getDashboardMetrics } from "@/lib/api/metrics.functions";
 import { PROCESS_STATUS_LABEL, type ProcessStatus } from "@/lib/types/enums";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
@@ -31,11 +44,26 @@ const estadoColors: Record<ProcessStatus, string> = {
 };
 
 function initials(name: string) {
-  return name.split(" ").filter(Boolean).slice(0, 2).map((n) => n[0]).join("").toUpperCase();
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
 }
 
-function KPI({ icon: Icon, label, value, accent, sparkline }: {
-  icon: React.ElementType; label: string; value: string; accent: string;
+function KPI({
+  icon: Icon,
+  label,
+  value,
+  accent,
+  sparkline,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  accent: string;
   sparkline?: { v: number }[];
 }) {
   return (
@@ -53,7 +81,13 @@ function KPI({ icon: Icon, label, value, accent, sparkline }: {
         <div className="absolute bottom-0 left-0 right-0 h-12 opacity-70">
           <ResponsiveContainer>
             <LineChart data={sparkline}>
-              <Line type="monotone" dataKey="v" stroke="hsl(248 100% 68%)" strokeWidth={2} dot={false} />
+              <Line
+                type="monotone"
+                dataKey="v"
+                stroke="hsl(248 100% 68%)"
+                strokeWidth={2}
+                dot={false}
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -80,7 +114,8 @@ function Inicio() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: (vars: { processId: string; status: string }) => updateProcessStatus({ data: vars }),
+    mutationFn: (vars: { processId: string; status: string }) =>
+      updateProcessStatus({ data: vars }),
     onSuccess: () => {
       toast.success("Estado del proceso actualizado");
       qc.invalidateQueries({ queryKey: ["processes"] });
@@ -95,27 +130,34 @@ function Inicio() {
   const { reclutadores, areas } = useMemo(() => {
     const r = new Set<string>();
     const a = new Set<string>();
-    for (const p of procesos) {
+    for (const p of processesData?.processes ?? []) {
       r.add(p.recruiter_name);
       a.add(p.area);
     }
     return { reclutadores: [...r], areas: [...a] };
-  }, [procesos]);
+  }, [processesData]);
 
-  const filtered = procesos.filter((p) =>
-    (!estadoFilter || p.status === estadoFilter) &&
-    (!reclutadorFilter || p.recruiter_name === reclutadorFilter) &&
-    (!areaFilter || p.area === areaFilter),
+  const filtered = procesos.filter(
+    (p) =>
+      (!estadoFilter || p.status === estadoFilter) &&
+      (!reclutadorFilter || p.recruiter_name === reclutadorFilter) &&
+      (!areaFilter || p.area === areaFilter),
   );
 
-  const procesosActivos = procesos.filter((p) => p.status !== "CLOSED" && p.status !== "ARCHIVED").length;
+  const procesosActivos = procesos.filter(
+    (p) => p.status !== "CLOSED" && p.status !== "ARCHIVED",
+  ).length;
 
   const cvExtraction = metrics?.cost_by_operation.find((o) => o.operation_type === "CV_EXTRACTION");
-  const profilingsCompletados = metrics?.cost_by_operation.find((o) => o.operation_type === "ANSWER_EVALUATION");
+  const profilingsCompletados = metrics?.cost_by_operation.find(
+    (o) => o.operation_type === "ANSWER_EVALUATION",
+  );
 
   const now = new Date();
   const costoDelMes = (metrics?.daily_costs ?? [])
-    .filter((d) => d.date.startsWith(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`))
+    .filter((d) =>
+      d.date.startsWith(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`),
+    )
     .reduce((sum, d) => sum + d.cost, 0);
 
   const sparkline = (metrics?.daily_costs ?? []).slice(-14).map((d) => ({ v: d.cost }));
@@ -124,10 +166,13 @@ function Inicio() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">Talent Acquisition</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">
+            Talent Acquisition
+          </div>
           <h1 className="mt-1 text-3xl font-bold tracking-tight">Procesos de contratación</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Operación viva del equipo · {procesos.length} proceso{procesos.length === 1 ? "" : "s"} registrado{procesos.length === 1 ? "" : "s"}
+            Operación viva del equipo · {procesos.length} proceso{procesos.length === 1 ? "" : "s"}{" "}
+            registrado{procesos.length === 1 ? "" : "s"}
           </p>
         </div>
         <Link
@@ -139,10 +184,31 @@ function Inicio() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI icon={FileText} label="Procesos activos" value={String(procesosActivos)} accent="bg-primary" />
-        <KPI icon={CheckCircle2} label="CVs procesados" value={String(cvExtraction?.count ?? 0)} accent="bg-success" />
-        <KPI icon={PhoneCall} label="Profilings evaluados" value={String(profilingsCompletados?.count ?? 0)} accent="bg-info text-info-foreground" />
-        <KPI icon={DollarSign} label="Costo del mes" value={`$${costoDelMes.toFixed(2)}`} accent="bg-warning text-warning-foreground" sparkline={sparkline} />
+        <KPI
+          icon={FileText}
+          label="Procesos activos"
+          value={String(procesosActivos)}
+          accent="bg-primary"
+        />
+        <KPI
+          icon={CheckCircle2}
+          label="CVs procesados"
+          value={String(cvExtraction?.count ?? 0)}
+          accent="bg-success"
+        />
+        <KPI
+          icon={PhoneCall}
+          label="Profilings evaluados"
+          value={String(profilingsCompletados?.count ?? 0)}
+          accent="bg-info text-info-foreground"
+        />
+        <KPI
+          icon={DollarSign}
+          label="Costo del mes"
+          value={`$${costoDelMes.toFixed(2)}`}
+          accent="bg-warning text-warning-foreground"
+          sparkline={sparkline}
+        />
       </div>
 
       <GlassCard className="p-0 overflow-hidden">
@@ -150,11 +216,16 @@ function Inicio() {
           <div className="text-sm font-semibold">Listado de procesos</div>
           <div className="flex-1" />
           <DropdownMenu>
-            <DropdownMenuTrigger className={cn(
-              "inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border transition",
-              estadoFilter ? "bg-primary/10 border-primary text-primary" : "bg-background/60 border-border hover:bg-background",
-            )}>
-              <Filter className="h-3.5 w-3.5" /> {estadoFilter ? PROCESS_STATUS_LABEL[estadoFilter] : "Estado"}
+            <DropdownMenuTrigger
+              className={cn(
+                "inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border transition",
+                estadoFilter
+                  ? "bg-primary/10 border-primary text-primary"
+                  : "bg-background/60 border-border hover:bg-background",
+              )}
+            >
+              <Filter className="h-3.5 w-3.5" />{" "}
+              {estadoFilter ? PROCESS_STATUS_LABEL[estadoFilter] : "Estado"}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setEstadoFilter(null)}>Todos</DropdownMenuItem>
@@ -166,30 +237,42 @@ function Inicio() {
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
-            <DropdownMenuTrigger className={cn(
-              "inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border transition",
-              reclutadorFilter ? "bg-primary/10 border-primary text-primary" : "bg-background/60 border-border hover:bg-background",
-            )}>
+            <DropdownMenuTrigger
+              className={cn(
+                "inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border transition",
+                reclutadorFilter
+                  ? "bg-primary/10 border-primary text-primary"
+                  : "bg-background/60 border-border hover:bg-background",
+              )}
+            >
               <Filter className="h-3.5 w-3.5" /> {reclutadorFilter ?? "Reclutador"}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setReclutadorFilter(null)}>Todos</DropdownMenuItem>
               {reclutadores.map((r) => (
-                <DropdownMenuItem key={r} onClick={() => setReclutadorFilter(r)}>{r}</DropdownMenuItem>
+                <DropdownMenuItem key={r} onClick={() => setReclutadorFilter(r)}>
+                  {r}
+                </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
-            <DropdownMenuTrigger className={cn(
-              "inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border transition",
-              areaFilter ? "bg-primary/10 border-primary text-primary" : "bg-background/60 border-border hover:bg-background",
-            )}>
+            <DropdownMenuTrigger
+              className={cn(
+                "inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border transition",
+                areaFilter
+                  ? "bg-primary/10 border-primary text-primary"
+                  : "bg-background/60 border-border hover:bg-background",
+              )}
+            >
               <Filter className="h-3.5 w-3.5" /> {areaFilter ?? "Área"}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setAreaFilter(null)}>Todas</DropdownMenuItem>
               {areas.map((a) => (
-                <DropdownMenuItem key={a} onClick={() => setAreaFilter(a)}>{a}</DropdownMenuItem>
+                <DropdownMenuItem key={a} onClick={() => setAreaFilter(a)}>
+                  {a}
+                </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -221,12 +304,16 @@ function Inicio() {
                 {filtered.map((p) => (
                   <tr
                     key={p.process_id}
-                    onClick={() => navigate({ to: "/app/procesos/$id", params: { id: p.process_id } })}
+                    onClick={() =>
+                      navigate({ to: "/app/procesos/$id", params: { id: p.process_id } })
+                    }
                     className="cursor-pointer border-t border-border/30 hover:bg-accent/30 transition"
                   >
                     <td className="px-5 py-3">
                       <div className="font-medium hover:text-primary transition">{p.name}</div>
-                      <div className="text-xs text-muted-foreground">{p.job_title} · {p.seniority}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {p.job_title} · {p.seniority}
+                      </div>
                     </td>
                     <td className="px-3 py-3 text-muted-foreground">{p.area}</td>
                     <td className="px-3 py-3">
@@ -238,12 +325,18 @@ function Inicio() {
                       </div>
                     </td>
                     <td className="px-3 py-3">
-                      <span className={`inline-flex px-2 py-1 rounded-md text-[10px] font-semibold ${estadoColors[p.status]}`}>
+                      <span
+                        className={`inline-flex px-2 py-1 rounded-md text-[10px] font-semibold ${estadoColors[p.status]}`}
+                      >
                         {PROCESS_STATUS_LABEL[p.status]}
                       </span>
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums">
-                      {p.budget_max_usd > 0 ? `$${p.budget_max_usd.toFixed(2)}` : <span className="text-muted-foreground">—</span>}
+                      {p.budget_max_usd > 0 ? (
+                        `$${p.budget_max_usd.toFixed(2)}`
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-3 text-xs text-muted-foreground">
                       {new Date(p.created_at).toLocaleDateString("es-CO")}
@@ -259,14 +352,21 @@ function Inicio() {
                         <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                           {p.status !== "CLOSED" && p.status !== "ARCHIVED" && (
                             <DropdownMenuItem
-                              onClick={() => statusMutation.mutate({ processId: p.process_id, status: "CLOSED" })}
+                              onClick={() =>
+                                statusMutation.mutate({ processId: p.process_id, status: "CLOSED" })
+                              }
                             >
                               <XCircle className="h-3.5 w-3.5 mr-2" /> Cerrar proceso
                             </DropdownMenuItem>
                           )}
                           {p.status === "CLOSED" && (
                             <DropdownMenuItem
-                              onClick={() => statusMutation.mutate({ processId: p.process_id, status: "ARCHIVED" })}
+                              onClick={() =>
+                                statusMutation.mutate({
+                                  processId: p.process_id,
+                                  status: "ARCHIVED",
+                                })
+                              }
                             >
                               <Archive className="h-3.5 w-3.5 mr-2" /> Archivar
                             </DropdownMenuItem>

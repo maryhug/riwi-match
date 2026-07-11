@@ -87,15 +87,39 @@ export function Topbar() {
             <PopoverContent align="end" className="w-80 p-0 overflow-hidden">
               <div className="px-4 py-3 border-b border-border/50">
                 <div className="text-sm font-semibold">Notificaciones</div>
-                <div className="text-xs text-muted-foreground">Próximamente — ejemplo de cómo se verán</div>
+                <div className="text-xs text-muted-foreground">
+                  Próximamente — ejemplo de cómo se verán
+                </div>
               </div>
               <div className="max-h-80 overflow-auto">
                 {[
-                  { icon: AlertTriangle, color: "text-warning", title: "Presupuesto al 80%", desc: "El proceso 'Backend Sr' alcanzó 80% del presupuesto.", time: "Hace 12 min" },
-                  { icon: DollarSign, color: "text-destructive", title: "Presupuesto excedido", desc: "Proceso 'Account Manager Bogotá' superó el límite mensual.", time: "Hace 1 h" },
-                  { icon: CheckCircle2, color: "text-success", title: "Profiling completado", desc: "5 candidatos terminaron la llamada en 'Data Engineer'.", time: "Hace 3 h" },
+                  {
+                    icon: AlertTriangle,
+                    color: "text-warning",
+                    title: "Presupuesto al 80%",
+                    desc: "El proceso 'Backend Sr' alcanzó 80% del presupuesto.",
+                    time: "Hace 12 min",
+                  },
+                  {
+                    icon: DollarSign,
+                    color: "text-destructive",
+                    title: "Presupuesto excedido",
+                    desc: "Proceso 'Account Manager Bogotá' superó el límite mensual.",
+                    time: "Hace 1 h",
+                  },
+                  {
+                    icon: CheckCircle2,
+                    color: "text-success",
+                    title: "Profiling completado",
+                    desc: "5 candidatos terminaron la llamada en 'Data Engineer'.",
+                    time: "Hace 3 h",
+                  },
                 ].map((n, i) => (
-                  <Link to="/app" key={i} className="flex gap-3 px-4 py-3 hover:bg-accent/50 transition border-b border-border/30 last:border-0">
+                  <Link
+                    to="/app"
+                    key={i}
+                    className="flex gap-3 px-4 py-3 hover:bg-accent/50 transition border-b border-border/30 last:border-0"
+                  >
                     <n.icon className={`h-4 w-4 mt-0.5 shrink-0 ${n.color}`} />
                     <div className="min-w-0">
                       <div className="text-sm font-medium">{n.title}</div>

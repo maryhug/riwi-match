@@ -23,7 +23,9 @@ export const createAIModel = createServerFn({ method: "POST" })
 export const activateAIModel = createServerFn({ method: "POST" })
   .validator(z.object({ modelId: z.string() }))
   .handler(async ({ data }) => {
-    return apiCall<AIModelOut>(`/api/v1/ai-config/models/${data.modelId}/activate`, { method: "PATCH" });
+    return apiCall<AIModelOut>(`/api/v1/ai-config/models/${data.modelId}/activate`, {
+      method: "PATCH",
+    });
   });
 
 export const getAIPrompts = createServerFn({ method: "GET" }).handler(async () => {

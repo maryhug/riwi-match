@@ -1,7 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+} from "recharts";
 import { getTADashboard } from "@/lib/api/reports.functions";
 import { getDashboardMetrics } from "@/lib/api/metrics.functions";
 import { getProcesses } from "@/lib/api/processes.functions";
@@ -15,11 +25,21 @@ export const Route = createFileRoute("/app/equipo")({
 function Equipo() {
   const [reclutadorFilter, setReclutadorFilter] = useState<string | null>(null);
 
-  const { data: ta, isLoading: taLoading } = useQuery({ queryKey: ["ta-dashboard"], queryFn: () => getTADashboard() });
-  const { data: metrics, isLoading: metricsLoading } = useQuery({ queryKey: ["dashboard-metrics"], queryFn: () => getDashboardMetrics() });
-  const { data: processesData } = useQuery({ queryKey: ["processes"], queryFn: () => getProcesses() });
+  const { data: ta, isLoading: taLoading } = useQuery({
+    queryKey: ["ta-dashboard"],
+    queryFn: () => getTADashboard(),
+  });
+  const { data: metrics, isLoading: metricsLoading } = useQuery({
+    queryKey: ["dashboard-metrics"],
+    queryFn: () => getDashboardMetrics(),
+  });
+  const { data: processesData } = useQuery({
+    queryKey: ["processes"],
+    queryFn: () => getProcesses(),
+  });
 
-  const profilingsCount = metrics?.cost_by_operation.find((o) => o.operation_type === "ANSWER_EVALUATION")?.count ?? 0;
+  const profilingsCount =
+    metrics?.cost_by_operation.find((o) => o.operation_type === "ANSWER_EVALUATION")?.count ?? 0;
 
   const processCostMap = useMemo(() => {
     const m = new Map<string, { total_cost: number; candidate_count: number }>();
@@ -41,9 +61,13 @@ function Equipo() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">Liderazgo TA</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">
+            Liderazgo TA
+          </div>
           <h1 className="mt-1 text-3xl font-bold tracking-tight">Dashboard de equipo</h1>
-          <p className="text-sm text-muted-foreground mt-1">Vista consolidada del equipo de Talent Acquisition.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Vista consolidada del equipo de Talent Acquisition.
+          </p>
         </div>
         <select
           value={reclutadorFilter ?? ""}
@@ -52,13 +76,17 @@ function Equipo() {
         >
           <option value="">Todo el equipo</option>
           {(metrics?.cost_by_user ?? []).map((u) => (
-            <option key={u.user_id} value={u.user_name}>{u.user_name}</option>
+            <option key={u.user_id} value={u.user_name}>
+              {u.user_name}
+            </option>
           ))}
         </select>
       </div>
 
       {isLoading ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">Cargando métricas del equipo…</div>
+        <div className="py-16 text-center text-sm text-muted-foreground">
+          Cargando métricas del equipo…
+        </div>
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -69,8 +97,13 @@ function Equipo() {
               ["Profilings evaluados", String(profilingsCount)],
               ["Costo total", `$${(ta?.total_cost_usd ?? 0).toFixed(2)}`],
             ].map(([l, v]) => (
-              <div key={l} className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl p-4">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{l}</div>
+              <div
+                key={l}
+                className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl p-4"
+              >
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {l}
+                </div>
                 <div className="mt-2 text-2xl font-bold">{v}</div>
               </div>
             ))}
@@ -80,7 +113,9 @@ function Equipo() {
             <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl p-5">
               <div className="text-sm font-semibold mb-3">Costo por reclutador</div>
               {(metrics?.cost_by_user ?? []).length === 0 ? (
-                <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">Sin datos aún.</div>
+                <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">
+                  Sin datos aún.
+                </div>
               ) : (
                 <div className="h-64">
                   <ResponsiveContainer>
@@ -99,16 +134,29 @@ function Equipo() {
             <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl p-5">
               <div className="text-sm font-semibold mb-3">Tendencia de consumo diario</div>
               {(metrics?.daily_costs ?? []).length === 0 ? (
-                <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">Sin datos aún.</div>
+                <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">
+                  Sin datos aún.
+                </div>
               ) : (
                 <div className="h-64">
                   <ResponsiveContainer>
                     <LineChart data={metrics!.daily_costs}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 20% 90%)" />
-                      <XAxis dataKey="date" stroke="hsl(233 20% 46%)" fontSize={10} tickFormatter={(d: string) => d.slice(5)} />
+                      <XAxis
+                        dataKey="date"
+                        stroke="hsl(233 20% 46%)"
+                        fontSize={10}
+                        tickFormatter={(d: string) => d.slice(5)}
+                      />
                       <YAxis stroke="hsl(233 20% 46%)" fontSize={11} />
                       <Tooltip formatter={(v: number) => `$${v.toFixed(4)}`} />
-                      <Line type="monotone" dataKey="cost" stroke="hsl(285 92% 65%)" strokeWidth={3} dot={{ r: 3 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="cost"
+                        stroke="hsl(285 92% 65%)"
+                        strokeWidth={3}
+                        dot={{ r: 3 }}
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -117,7 +165,9 @@ function Equipo() {
           </div>
 
           <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl overflow-hidden">
-            <div className="p-4 border-b border-border/40 text-sm font-semibold">Procesos por reclutador</div>
+            <div className="p-4 border-b border-border/40 text-sm font-semibold">
+              Procesos por reclutador
+            </div>
             {rows.length === 0 ? (
               <div className="p-6 text-center text-xs text-muted-foreground">Sin procesos.</div>
             ) : (

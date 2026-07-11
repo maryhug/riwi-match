@@ -32,10 +32,7 @@ export interface SessionUser {
   status: "ACTIVE" | "SUSPENDED";
 }
 
-export function setSessionCookies(tokens: {
-  access_token: string;
-  refresh_token: string;
-}): void {
+export function setSessionCookies(tokens: { access_token: string; refresh_token: string }): void {
   setCookie(ACCESS_COOKIE, tokens.access_token, {
     httpOnly: true,
     secure: true,

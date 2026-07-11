@@ -6,8 +6,12 @@ import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
 import { QuestionFormDialog, type QuestionDraft } from "@/components/app/QuestionFormDialog";
 import {
-  getQuestionSet, updateQuestionSet, deleteQuestionSet,
-  addQuestion, updateQuestion, deleteQuestion,
+  getQuestionSet,
+  updateQuestionSet,
+  deleteQuestionSet,
+  addQuestion,
+  updateQuestion,
+  deleteQuestion,
 } from "@/lib/api/question-sets.functions";
 import { QUESTION_TYPE_LABEL } from "@/lib/types/enums";
 import type { QuestionOut } from "@/lib/types/api";
@@ -15,7 +19,9 @@ import type { QuestionOut } from "@/lib/types/api";
 export function SetBuilder({ setId }: { setId: string }) {
   const nav = useNavigate();
   const qc = useQueryClient();
-  const [dialogState, setDialogState] = useState<{ mode: "create" } | { mode: "edit"; question: QuestionOut } | null>(null);
+  const [dialogState, setDialogState] = useState<
+    { mode: "create" } | { mode: "edit"; question: QuestionOut } | null
+  >(null);
   const [name, setName] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
 
@@ -40,47 +46,83 @@ export function SetBuilder({ setId }: { setId: string }) {
 
   const addMutation = useMutation({
     mutationFn: (q: QuestionDraft) => addQuestion({ data: { setId, ...q } }),
-    onSuccess: (res) => { toast.success("Pregunta agregada"); followClone(res.question_set_id); setDialogState(null); },
-    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo agregar"),
+    onSuccess: (res) => {
+      toast.success("Pregunta agregada");
+      followClone(res.question_set_id);
+      setDialogState(null);
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo agregar"),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ questionId, q }: { questionId: string; q: QuestionDraft }) =>
       updateQuestion({ data: { setId, questionId, ...q } }),
-    onSuccess: (res) => { toast.success("Pregunta actualizada"); followClone(res.question_set_id); setDialogState(null); },
-    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo actualizar"),
+    onSuccess: (res) => {
+      toast.success("Pregunta actualizada");
+      followClone(res.question_set_id);
+      setDialogState(null);
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo actualizar"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (questionId: string) => deleteQuestion({ data: { setId, questionId } }),
-    onSuccess: () => { toast.success("Pregunta eliminada"); qc.invalidateQueries({ queryKey: ["question-set", setId] }); qc.invalidateQueries({ queryKey: ["question-sets"] }); },
-    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo eliminar"),
+    onSuccess: () => {
+      toast.success("Pregunta eliminada");
+      qc.invalidateQueries({ queryKey: ["question-set", setId] });
+      qc.invalidateQueries({ queryKey: ["question-sets"] });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo eliminar"),
   });
 
   const metaMutation = useMutation({
-    mutationFn: (body: { name?: string; description?: string; status?: "DRAFT" | "ACTIVE" | "ARCHIVED" }) =>
-      updateQuestionSet({ data: { id: setId, ...body } }),
-    onSuccess: () => { toast.success("Guardado"); qc.invalidateQueries({ queryKey: ["question-set", setId] }); qc.invalidateQueries({ queryKey: ["question-sets"] }); },
-    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
+    mutationFn: (body: {
+      name?: string;
+      description?: string;
+      status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
+    }) => updateQuestionSet({ data: { id: setId, ...body } }),
+    onSuccess: () => {
+      toast.success("Guardado");
+      qc.invalidateQueries({ queryKey: ["question-set", setId] });
+      qc.invalidateQueries({ queryKey: ["question-sets"] });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
   });
 
   const deleteSetMutation = useMutation({
     mutationFn: () => deleteQuestionSet({ data: { id: setId } }),
-    onSuccess: () => { toast.success("Set eliminado"); qc.invalidateQueries({ queryKey: ["question-sets"] }); nav({ to: "/app/sets" }); },
-    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "No se pudo eliminar (puede estar en uso)"),
+    onSuccess: () => {
+      toast.success("Set eliminado");
+      qc.invalidateQueries({ queryKey: ["question-sets"] });
+      nav({ to: "/app/sets" });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo eliminar (puede estar en uso)"),
   });
 
   const handleSubmit = (q: QuestionDraft) => {
-    if (dialogState?.mode === "edit") updateMutation.mutate({ questionId: dialogState.question.id, q });
+    if (dialogState?.mode === "edit")
+      updateMutation.mutate({ questionId: dialogState.question.id, q });
     else addMutation.mutate(q);
   };
 
-  if (isLoading) return <div className="py-16 text-center text-sm text-muted-foreground">Cargando set…</div>;
-  if (!set) return <div className="py-16 text-center text-sm text-muted-foreground">Set no encontrado.</div>;
+  if (isLoading)
+    return <div className="py-16 text-center text-sm text-muted-foreground">Cargando set…</div>;
+  if (!set)
+    return (
+      <div className="py-16 text-center text-sm text-muted-foreground">Set no encontrado.</div>
+    );
 
   return (
     <div className="space-y-5">
-      <Link to="/app/sets" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition">
+      <Link
+        to="/app/sets"
+        className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition"
+      >
         ← Volver a sets
       </Link>
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -88,30 +130,44 @@ export function SetBuilder({ setId }: { setId: string }) {
           <input
             value={name ?? set.name}
             onChange={(e) => setName(e.target.value)}
-            onBlur={() => { if (name !== null && name !== set.name) metaMutation.mutate({ name }); }}
+            onBlur={() => {
+              if (name !== null && name !== set.name) metaMutation.mutate({ name });
+            }}
             className="text-2xl font-bold bg-transparent border-b border-transparent hover:border-border focus:border-primary outline-none w-full max-w-md pb-1"
           />
           <input
             value={description ?? set.description ?? ""}
             onChange={(e) => setDescription(e.target.value)}
-            onBlur={() => { if (description !== null && description !== (set.description ?? "")) metaMutation.mutate({ description }); }}
+            onBlur={() => {
+              if (description !== null && description !== (set.description ?? ""))
+                metaMutation.mutate({ description });
+            }}
             placeholder="Descripción del set…"
             className="mt-1 text-sm text-muted-foreground bg-transparent border-b border-transparent hover:border-border focus:border-primary outline-none w-full max-w-md"
           />
         </div>
         <div className="flex items-center gap-2">
           {set.status === "DRAFT" && (
-            <button onClick={() => metaMutation.mutate({ status: "ACTIVE" })} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/15 text-success text-xs font-semibold">
+            <button
+              onClick={() => metaMutation.mutate({ status: "ACTIVE" })}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/15 text-success text-xs font-semibold"
+            >
               <CheckCircle2 className="h-3.5 w-3.5" /> Activar
             </button>
           )}
           {set.status === "ACTIVE" && (
-            <button onClick={() => metaMutation.mutate({ status: "ARCHIVED" })} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold">
+            <button
+              onClick={() => metaMutation.mutate({ status: "ARCHIVED" })}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold"
+            >
               <Archive className="h-3.5 w-3.5" /> Archivar
             </button>
           )}
           <button
-            onClick={() => { if (confirm("¿Eliminar este set? Esta acción no se puede deshacer.")) deleteSetMutation.mutate(); }}
+            onClick={() => {
+              if (confirm("¿Eliminar este set? Esta acción no se puede deshacer."))
+                deleteSetMutation.mutate();
+            }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-destructive/40 text-destructive text-xs font-semibold"
           >
             <Trash2 className="h-3.5 w-3.5" /> Eliminar set
@@ -134,17 +190,25 @@ export function SetBuilder({ setId }: { setId: string }) {
         {questions.map((q, i) => (
           <GlassCard key={q.id} className="p-4">
             <div className="flex items-start gap-3">
-              <div className="text-muted-foreground mt-1.5"><GripVertical className="h-4 w-4" /></div>
+              <div className="text-muted-foreground mt-1.5">
+                <GripVertical className="h-4 w-4" />
+              </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Pregunta {i + 1}</span>
-                  <span className="px-2 py-0.5 rounded bg-accent text-accent-foreground text-[10px] font-semibold">{QUESTION_TYPE_LABEL[q.type]}</span>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Pregunta {i + 1}
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-accent text-accent-foreground text-[10px] font-semibold">
+                    {QUESTION_TYPE_LABEL[q.type]}
+                  </span>
                   {q.is_critical && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/15 text-destructive text-[10px] font-semibold">
                       <Star className="h-3 w-3 fill-current" /> Crítica
                     </span>
                   )}
-                  <div className="ml-auto text-xs text-muted-foreground">Peso: <span className="font-semibold text-foreground">{q.weight}%</span></div>
+                  <div className="ml-auto text-xs text-muted-foreground">
+                    Peso: <span className="font-semibold text-foreground">{q.weight}%</span>
+                  </div>
                 </div>
                 <p className="font-medium text-sm">{q.text}</p>
 
@@ -152,14 +216,32 @@ export function SetBuilder({ setId }: { setId: string }) {
                   <div className="mt-3 flex flex-wrap gap-1.5 items-center">
                     {q.positive_keywords.length > 0 && (
                       <>
-                        <span className="text-[10px] text-muted-foreground mr-1">Keywords positivas:</span>
-                        {q.positive_keywords.map((k) => <span key={k} className="px-2 py-0.5 rounded bg-success/15 text-success text-[10px]">{k}</span>)}
+                        <span className="text-[10px] text-muted-foreground mr-1">
+                          Keywords positivas:
+                        </span>
+                        {q.positive_keywords.map((k) => (
+                          <span
+                            key={k}
+                            className="px-2 py-0.5 rounded bg-success/15 text-success text-[10px]"
+                          >
+                            {k}
+                          </span>
+                        ))}
                       </>
                     )}
                     {q.risk_keywords.length > 0 && (
                       <>
-                        <span className="text-[10px] text-muted-foreground ml-2 mr-1">Revisión:</span>
-                        {q.risk_keywords.map((k) => <span key={k} className="px-2 py-0.5 rounded bg-destructive/15 text-destructive text-[10px]">{k}</span>)}
+                        <span className="text-[10px] text-muted-foreground ml-2 mr-1">
+                          Revisión:
+                        </span>
+                        {q.risk_keywords.map((k) => (
+                          <span
+                            key={k}
+                            className="px-2 py-0.5 rounded bg-destructive/15 text-destructive text-[10px]"
+                          >
+                            {k}
+                          </span>
+                        ))}
                       </>
                     )}
                   </div>
@@ -173,7 +255,11 @@ export function SetBuilder({ setId }: { setId: string }) {
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
-                <button onClick={() => deleteMutation.mutate(q.id)} className="text-muted-foreground hover:text-destructive p-1" aria-label="Eliminar pregunta">
+                <button
+                  onClick={() => deleteMutation.mutate(q.id)}
+                  className="text-muted-foreground hover:text-destructive p-1"
+                  aria-label="Eliminar pregunta"
+                >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -190,7 +276,9 @@ export function SetBuilder({ setId }: { setId: string }) {
 
       <QuestionFormDialog
         open={dialogState !== null}
-        onOpenChange={(open) => { if (!open) setDialogState(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDialogState(null);
+        }}
         initial={dialogState?.mode === "edit" ? dialogState.question : null}
         onSubmit={handleSubmit}
         saving={addMutation.isPending || updateMutation.isPending}

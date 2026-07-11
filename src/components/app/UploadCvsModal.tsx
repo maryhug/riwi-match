@@ -61,14 +61,23 @@ export function UploadCvsModal({
           <DialogTitle>Cargar más CVs</DialogTitle>
         </DialogHeader>
         <div
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
           onDragLeave={() => setDragging(false)}
-          onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            addFiles(e.dataTransfer.files);
+          }}
           className={`rounded-2xl border-2 border-dashed p-8 text-center transition-colors ${dragging ? "border-primary bg-primary/5" : "border-border bg-background/40"}`}
         >
           <Upload className="h-8 w-8 mx-auto text-primary mb-2" />
           <div className="text-sm font-semibold">Arrastra los CVs aquí</div>
-          <div className="text-xs text-muted-foreground mt-1">PDF, DOCX, JPG, PNG · máx. {MAX_FILES} · {MAX_SIZE_MB}MB c/u</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            PDF, DOCX, JPG, PNG · máx. {MAX_FILES} · {MAX_SIZE_MB}MB c/u
+          </div>
           <button
             onClick={() => inputRef.current?.click()}
             className="mt-3 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
@@ -87,12 +96,23 @@ export function UploadCvsModal({
 
         {files.length > 0 && (
           <div className="space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">{files.length} archivo(s)</div>
+            <div className="text-xs font-medium text-muted-foreground">
+              {files.length} archivo(s)
+            </div>
             <div className="max-h-40 overflow-y-auto space-y-1.5">
               {files.map((f, i) => (
-                <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-background/60 border border-border text-xs">
-                  <span className="flex items-center gap-2 truncate"><FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />{f.name}</span>
-                  <button onClick={() => setFiles((p) => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive">
+                <div
+                  key={i}
+                  className="flex items-center justify-between px-3 py-2 rounded-lg bg-background/60 border border-border text-xs"
+                >
+                  <span className="flex items-center gap-2 truncate">
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    {f.name}
+                  </span>
+                  <button
+                    onClick={() => setFiles((p) => p.filter((_, j) => j !== i))}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
