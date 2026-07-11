@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { GlassCard } from "@/components/app/GlassCard";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
-import { equipoCargas, calidadCVs } from "@/lib/mock-data";
-import { AlertTriangle, Sparkles } from "lucide-react";
+import { getTADashboard } from "@/lib/api/reports.functions";
+import { getDashboardMetrics } from "@/lib/api/metrics.functions";
+import { getProcesses } from "@/lib/api/processes.functions";
+import { PROCESS_STATUS_LABEL } from "@/lib/types/enums";
 
 export const Route = createFileRoute("/app/equipo")({
   head: () => ({ meta: [{ title: "Dashboard de Equipo · RIWI MATCH" }] }),
@@ -10,6 +13,30 @@ export const Route = createFileRoute("/app/equipo")({
 });
 
 function Equipo() {
+  const [reclutadorFilter, setReclutadorFilter] = useState<string | null>(null);
+
+  const { data: ta, isLoading: taLoading } = useQuery({ queryKey: ["ta-dashboard"], queryFn: () => getTADashboard() });
+  const { data: metrics, isLoading: metricsLoading } = useQuery({ queryKey: ["dashboard-metrics"], queryFn: () => getDashboardMetrics() });
+  const { data: processesData } = useQuery({ queryKey: ["processes"], queryFn: () => getProcesses() });
+
+  const profilingsCount = metrics?.cost_by_operation.find((o) => o.operation_type === "ANSWER_EVALUATION")?.count ?? 0;
+
+  const processCostMap = useMemo(() => {
+    const m = new Map<string, { total_cost: number; candidate_count: number }>();
+    for (const cp of metrics?.cost_by_process ?? []) m.set(cp.process_id, cp);
+    return m;
+  }, [metrics]);
+
+  const rows = (processesData?.processes ?? [])
+    .filter((p) => !reclutadorFilter || p.recruiter_name === reclutadorFilter)
+    .map((p) => ({
+      ...p,
+      cost: processCostMap.get(p.process_id)?.total_cost ?? 0,
+      candidates: processCostMap.get(p.process_id)?.candidate_count ?? 0,
+    }));
+
+  const isLoading = taLoading || metricsLoading;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
@@ -18,107 +45,108 @@ function Equipo() {
           <h1 className="mt-1 text-3xl font-bold tracking-tight">Dashboard de equipo</h1>
           <p className="text-sm text-muted-foreground mt-1">Vista consolidada del equipo de Talent Acquisition.</p>
         </div>
-        <div className="flex gap-2">
-          <select className="px-3 py-2 text-sm rounded-xl bg-background/70 border border-border">
-            <option>Últimos 30 días</option><option>Este trimestre</option><option>Este año</option>
-          </select>
-          <select className="px-3 py-2 text-sm rounded-xl bg-background/70 border border-border">
-            <option>Todo el equipo</option><option>Camila Restrepo</option><option>Julián Marín</option>
-          </select>
-        </div>
+        <select
+          value={reclutadorFilter ?? ""}
+          onChange={(e) => setReclutadorFilter(e.target.value || null)}
+          className="px-3 py-2 text-sm rounded-xl bg-background/70 border border-border"
+        >
+          <option value="">Todo el equipo</option>
+          {(metrics?.cost_by_user ?? []).map((u) => (
+            <option key={u.user_id} value={u.user_name}>{u.user_name}</option>
+          ))}
+        </select>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        {[
-          ["Procesos activos", "12"],
-          ["CVs cargados", "221"],
-          ["Match promedio", "73%"],
-          ["Profilings completados", "67%"],
-          ["Costo del periodo", "$1,284"],
-        ].map(([l, v]) => (
-          <GlassCard key={l} className="p-4">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{l}</div>
-            <div className="mt-2 text-2xl font-bold">{v}</div>
-          </GlassCard>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <GlassCard>
-          <div className="text-sm font-semibold mb-3">CVs cargados por recruiter</div>
-          <div className="h-64">
-            <ResponsiveContainer>
-              <BarChart data={equipoCargas}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 20% 90%)" />
-                <XAxis dataKey="recruiter" stroke="hsl(233 20% 46%)" fontSize={11} />
-                <YAxis stroke="hsl(233 20% 46%)" fontSize={11} />
-                <Tooltip />
-                <Bar dataKey="cvs" fill="hsl(248 100% 68%)" radius={[8,8,0,0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </GlassCard>
-
-        <GlassCard>
-          <div className="text-sm font-semibold mb-3">Tendencia de calidad de CVs recibidos</div>
-          <div className="h-64">
-            <ResponsiveContainer>
-              <LineChart data={calidadCVs}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 20% 90%)" />
-                <XAxis dataKey="semana" stroke="hsl(233 20% 46%)" fontSize={11} />
-                <YAxis stroke="hsl(233 20% 46%)" fontSize={11} />
-                <Tooltip />
-                <Line type="monotone" dataKey="calidad" stroke="hsl(285 92% 65%)" strokeWidth={3} dot={{ r: 4 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </GlassCard>
-      </div>
-
-      <GlassCard className="p-0 overflow-hidden">
-        <div className="p-4 border-b border-border/40 text-sm font-semibold">Efectividad de avance por proceso</div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
-              <th className="text-left px-5 py-3 font-medium">Proceso</th>
-              <th className="text-left px-3 py-3 font-medium">Recruiter</th>
-              <th className="text-right px-3 py-3 font-medium">Candidatos</th>
-              <th className="text-right px-3 py-3 font-medium">% Avance Alta</th>
-              <th className="text-right px-3 py-3 font-medium">Costo</th>
-              <th className="text-center px-3 py-3 font-medium">Flag</th>
-            </tr>
-          </thead>
-          <tbody>
+      {isLoading ? (
+        <div className="py-16 text-center text-sm text-muted-foreground">Cargando métricas del equipo…</div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             {[
-              ["Backend Node Sr", "Camila R.", 24, 38, "$184.50", false],
-              ["Data Engineer", "Julián M.", 18, 28, "$92.30", false],
-              ["Product Designer Sr", "Andrés L.", 14, 58, "$145.00", false],
-              ["QA Automation Jr", "Camila R.", 31, 11, "$12.40", true],
-            ].map((r, i) => (
-              <tr key={i} className="border-t border-border/30">
-                <td className="px-5 py-3 font-medium">{r[0]}</td>
-                <td className="px-3 py-3 text-muted-foreground">{r[1]}</td>
-                <td className="px-3 py-3 text-right tabular-nums">{r[2]}</td>
-                <td className="px-3 py-3 text-right tabular-nums font-semibold">{r[3]}%</td>
-                <td className="px-3 py-3 text-right tabular-nums">{r[4]}</td>
-                <td className="px-3 py-3 text-center">{r[5] && "🔻"}</td>
-              </tr>
+              ["Procesos activos", String(ta?.active_processes ?? 0)],
+              ["Total procesos", String(ta?.total_processes ?? 0)],
+              ["Candidatos totales", String(ta?.total_candidates ?? 0)],
+              ["Profilings evaluados", String(profilingsCount)],
+              ["Costo total", `$${(ta?.total_cost_usd ?? 0).toFixed(2)}`],
+            ].map(([l, v]) => (
+              <div key={l} className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl p-4">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{l}</div>
+                <div className="mt-2 text-2xl font-bold">{v}</div>
+              </div>
             ))}
-          </tbody>
-        </table>
-      </GlassCard>
+          </div>
 
-      <GlassCard className="border-l-4 border-info">
-        <div className="flex gap-3">
-          <Sparkles className="h-5 w-5 text-info shrink-0 mt-0.5" />
-          <div>
-            <div className="text-sm font-semibold">Insight detectado</div>
-            <div className="text-sm text-muted-foreground mt-1">
-              El proceso "QA Automation Jr" tiene <span className="text-destructive font-semibold">62% de CVs con error de lectura</span> — revisar la fuente de hunting o el formato exigido.
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl p-5">
+              <div className="text-sm font-semibold mb-3">Costo por reclutador</div>
+              {(metrics?.cost_by_user ?? []).length === 0 ? (
+                <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">Sin datos aún.</div>
+              ) : (
+                <div className="h-64">
+                  <ResponsiveContainer>
+                    <BarChart data={metrics!.cost_by_user}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 20% 90%)" />
+                      <XAxis dataKey="user_name" stroke="hsl(233 20% 46%)" fontSize={11} />
+                      <YAxis stroke="hsl(233 20% 46%)" fontSize={11} />
+                      <Tooltip formatter={(v: number) => `$${v.toFixed(2)}`} />
+                      <Bar dataKey="total_cost" fill="hsl(248 100% 68%)" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl p-5">
+              <div className="text-sm font-semibold mb-3">Tendencia de consumo diario</div>
+              {(metrics?.daily_costs ?? []).length === 0 ? (
+                <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">Sin datos aún.</div>
+              ) : (
+                <div className="h-64">
+                  <ResponsiveContainer>
+                    <LineChart data={metrics!.daily_costs}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 20% 90%)" />
+                      <XAxis dataKey="date" stroke="hsl(233 20% 46%)" fontSize={10} tickFormatter={(d: string) => d.slice(5)} />
+                      <YAxis stroke="hsl(233 20% 46%)" fontSize={11} />
+                      <Tooltip formatter={(v: number) => `$${v.toFixed(4)}`} />
+                      <Line type="monotone" dataKey="cost" stroke="hsl(285 92% 65%)" strokeWidth={3} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      </GlassCard>
+
+          <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl overflow-hidden">
+            <div className="p-4 border-b border-border/40 text-sm font-semibold">Procesos por reclutador</div>
+            {rows.length === 0 ? (
+              <div className="p-6 text-center text-xs text-muted-foreground">Sin procesos.</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
+                    <th className="text-left px-5 py-3 font-medium">Proceso</th>
+                    <th className="text-left px-3 py-3 font-medium">Reclutador</th>
+                    <th className="text-left px-3 py-3 font-medium">Estado</th>
+                    <th className="text-right px-3 py-3 font-medium">Candidatos</th>
+                    <th className="text-right px-3 py-3 font-medium">Costo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((p) => (
+                    <tr key={p.process_id} className="border-t border-border/30">
+                      <td className="px-5 py-3 font-medium">{p.name}</td>
+                      <td className="px-3 py-3 text-muted-foreground">{p.recruiter_name}</td>
+                      <td className="px-3 py-3 text-xs">{PROCESS_STATUS_LABEL[p.status]}</td>
+                      <td className="px-3 py-3 text-right tabular-nums">{p.candidates}</td>
+                      <td className="px-3 py-3 text-right tabular-nums">${p.cost.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
