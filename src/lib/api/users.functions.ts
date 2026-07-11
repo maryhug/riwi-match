@@ -45,3 +45,10 @@ export const updateUserStatus = createServerFn({ method: "POST" })
       body: { status: data.status },
     });
   });
+
+export const deleteUser = createServerFn({ method: "POST" })
+  .validator(z.object({ userId: z.string() }))
+  .handler(async ({ data }) => {
+    return apiCall<void>(`/api/v1/users/${data.userId}`, { method: "DELETE" });
+  });
+

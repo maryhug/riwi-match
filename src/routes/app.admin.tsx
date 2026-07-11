@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useState } from "react";
 import { GlassCard } from "@/components/app/GlassCard";
-import { Settings, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Settings, Plus, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { getUsers, createUser, updateUser, updateUserStatus } from "@/lib/api/users.functions";
+import { getUsers, createUser, updateUser, updateUserStatus, deleteUser } from "@/lib/api/users.functions";
 import {
   getAIModels,
   activateAIModel,
@@ -25,6 +25,7 @@ import {
   USER_STATUS_LABEL,
   AI_TASK_TYPE_LABEL,
   type UserRole,
+  type UserStatus,
   type AITaskType,
 } from "@/lib/types/enums";
 import type { User } from "@/lib/types/api";
@@ -72,27 +73,69 @@ function Admin() {
 function UsuariosTab() {
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const { data: users, isLoading } = useQuery({ queryKey: ["users"], queryFn: () => getUsers() });
 
   const updateRoleMutation = useMutation({
     mutationFn: (vars: { userId: string; role: UserRole }) => updateUser({ data: vars }),
-    onSuccess: () => {
-      toast.success("Rol actualizado");
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["users"] });
+      const previousUsers = qc.getQueryData<User[]>(["users"]);
+      if (previousUsers) {
+        qc.setQueryData<User[]>(
+          ["users"],
+          previousUsers.map((u) => (u.id === vars.userId ? { ...u, role: vars.role } : u))
+        );
+      }
+      return { previousUsers };
+    },
+    onError: (err, vars, context) => {
+      toast.error(err instanceof Error ? err.message : "No se pudo actualizar");
+      if (context?.previousUsers) qc.setQueryData(["users"], context.previousUsers);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
     },
-    onError: (err: unknown) =>
-      toast.error(err instanceof Error ? err.message : "No se pudo actualizar"),
+    onSuccess: () => {
+      toast.success("Rol actualizado");
+    },
   });
 
   const toggleStatusMutation = useMutation({
     mutationFn: (vars: { userId: string; status: "ACTIVE" | "SUSPENDED" }) =>
       updateUserStatus({ data: vars }),
-    onSuccess: () => {
-      toast.success("Estado actualizado");
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["users"] });
+      const previousUsers = qc.getQueryData<User[]>(["users"]);
+      if (previousUsers) {
+        qc.setQueryData<User[]>(
+          ["users"],
+          previousUsers.map((u) => (u.id === vars.userId ? { ...u, status: vars.status } : u))
+        );
+      }
+      return { previousUsers };
+    },
+    onError: (err, vars, context) => {
+      toast.error(err instanceof Error ? err.message : "No se pudo actualizar");
+      if (context?.previousUsers) qc.setQueryData(["users"], context.previousUsers);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
     },
+    onSuccess: () => {
+      toast.success("Estado actualizado");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (userId: string) => deleteUser({ data: { userId } }),
+    onSuccess: () => {
+      toast.success("Usuario eliminado");
+      qc.invalidateQueries({ queryKey: ["users"] });
+      setUserToDelete(null);
+    },
     onError: (err: unknown) =>
-      toast.error(err instanceof Error ? err.message : "No se pudo actualizar"),
+      toast.error(err instanceof Error ? err.message : "No se pudo eliminar el usuario"),
   });
 
   return (
@@ -116,10 +159,15 @@ function UsuariosTab() {
                 <th className="text-left px-3 py-3 font-medium">Email</th>
                 <th className="text-left px-3 py-3 font-medium">Rol</th>
                 <th className="text-left px-3 py-3 font-medium">Estado</th>
+                <th className="text-left px-3 py-3 font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {(users ?? []).map((u) => (
+              {(users ?? []).map((u) => {
+                const isUpdatingRole = updateRoleMutation.isPending && updateRoleMutation.variables?.userId === u.id;
+                const isUpdatingStatus = toggleStatusMutation.isPending && toggleStatusMutation.variables?.userId === u.id;
+                
+                return (
                 <tr key={u.id} className="border-t border-border/30">
                   <td className="px-5 py-3 font-medium">
                     {u.name} {u.last_name}
@@ -128,13 +176,14 @@ function UsuariosTab() {
                   <td className="px-3 py-3">
                     <select
                       value={u.role}
+                      disabled={isUpdatingRole}
                       onChange={(e) =>
                         updateRoleMutation.mutate({
                           userId: u.id,
                           role: e.target.value as UserRole,
                         })
                       }
-                      className="px-2 py-1 rounded-md bg-background/70 border border-border text-xs"
+                      className={`px-2 py-1 rounded-md bg-background/70 border border-border text-xs ${isUpdatingRole ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
                       {(Object.keys(USER_ROLE_LABEL) as UserRole[]).map((r) => (
                         <option key={r} value={r}>
@@ -144,26 +193,110 @@ function UsuariosTab() {
                     </select>
                   </td>
                   <td className="px-3 py-3">
-                    <button
-                      onClick={() =>
+                    <select
+                      value={u.status}
+                      disabled={isUpdatingStatus}
+                      onChange={(e) =>
                         toggleStatusMutation.mutate({
                           userId: u.id,
-                          status: u.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE",
+                          status: e.target.value as UserStatus,
                         })
                       }
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold ${u.status === "ACTIVE" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}
+                      className={`px-2 py-1 rounded-md bg-background/70 border text-xs text-foreground transition-colors ${
+                        isUpdatingStatus ? "opacity-50 cursor-not-allowed " : ""
+                      }${u.status === "ACTIVE" ? "border-success hover:border-success/80 focus:border-success focus:ring-success" : "border-destructive hover:border-destructive/80 focus:border-destructive focus:ring-destructive"}`}
                     >
-                      {USER_STATUS_LABEL[u.status]}
+                      <option value="ACTIVE">{USER_STATUS_LABEL["ACTIVE"]}</option>
+                      <option value="SUSPENDED">{USER_STATUS_LABEL["SUSPENDED"]}</option>
+                    </select>
+                  </td>
+                  <td className="px-3 py-3">
+                    <button
+                      onClick={() => setUserToDelete(u)}
+                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition"
+                      title="Eliminar usuario"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
       </GlassCard>
       <CreateUserDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <DeleteUserDialog
+        user={userToDelete}
+        onClose={() => setUserToDelete(null)}
+        onConfirm={() => {
+          if (userToDelete) deleteMutation.mutate(userToDelete.id);
+        }}
+      />
     </div>
+  );
+}
+
+function DeleteUserDialog({
+  user,
+  onClose,
+  onConfirm,
+}: {
+  user: User | null;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const [emailInput, setEmailInput] = useState("");
+  const isMatch = user && emailInput === user.email;
+
+  return (
+    <Dialog open={!!user} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-destructive">Eliminar usuario</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 text-sm mt-2">
+          <p>
+            Estás a punto de eliminar permanentemente al usuario{" "}
+            <strong>{user?.name} {user?.last_name}</strong>. Esta acción no se puede deshacer.
+          </p>
+          <p>
+            Para confirmar, por favor escribe el correo de la cuenta:{" "}
+            <strong className="select-all">{user?.email}</strong>
+          </p>
+          <input
+            value={emailInput}
+            onChange={(e) => setEmailInput(e.target.value)}
+            placeholder={user?.email ?? ""}
+            className="w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm focus:border-destructive focus:ring-1 focus:ring-destructive transition-all"
+          />
+        </div>
+        <DialogFooter className="mt-6">
+          <button
+            onClick={() => {
+              setEmailInput("");
+              onClose();
+            }}
+            className="px-4 py-2 rounded-xl border border-border text-sm hover:bg-muted transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => {
+              if (isMatch) {
+                onConfirm();
+                setEmailInput("");
+              }
+            }}
+            disabled={!isMatch}
+            className="px-4 py-2 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold disabled:opacity-40 hover:bg-destructive/90 transition-colors"
+          >
+            Eliminar permanentemente
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

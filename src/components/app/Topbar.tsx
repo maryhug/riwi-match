@@ -18,6 +18,12 @@ const breadcrumbMap: Record<string, string> = {
   nuevo: "Nuevo",
 };
 
+// Segmentos intermedios que no tienen ruta propia (ej. "/app/procesos" no existe,
+// el listado vive en "/app") — el breadcrumb debe enlazar a esta ruta en su lugar.
+const breadcrumbHrefOverrides: Record<string, string> = {
+  procesos: "/app",
+};
+
 export function Topbar() {
   const { theme, toggleTheme } = useApp();
   const { user } = useAuth();
@@ -33,7 +39,8 @@ export function Topbar() {
           {segments.map((seg, i) => {
             const label = breadcrumbMap[seg] || decodeURIComponent(seg);
             const isLast = i === segments.length - 1;
-            const href = "/" + segments.slice(0, i + 1).join("/");
+            const rawHref = "/" + segments.slice(0, i + 1).join("/");
+            const href = !isLast && breadcrumbHrefOverrides[seg] ? breadcrumbHrefOverrides[seg] : rawHref;
             return (
               <span key={i} className="flex items-center gap-1">
                 {i > 0 && <span className="text-muted-foreground/40">/</span>}
