@@ -138,7 +138,12 @@ export const WHATSAPP_CONSENT_STATUS_LABEL: Record<WhatsAppConsentStatus, string
 };
 
 export type AITaskType =
-  "CV_EXTRACTION" | "CV_MATCH" | "JD_ENHANCEMENT" | "VOICE_PROFILING" | "WHATSAPP_MESSAGE";
+  | "CV_EXTRACTION"
+  | "CV_MATCH"
+  | "JD_ENHANCEMENT"
+  | "VOICE_PROFILING"
+  | "WHATSAPP_MESSAGE"
+  | "VOICE_CALL_AGENT";
 
 export const AI_TASK_TYPE_LABEL: Record<AITaskType, string> = {
   CV_EXTRACTION: "Extracción de CV",
@@ -146,6 +151,7 @@ export const AI_TASK_TYPE_LABEL: Record<AITaskType, string> = {
   JD_ENHANCEMENT: "Mejora de JD",
   VOICE_PROFILING: "Evaluación de profiling",
   WHATSAPP_MESSAGE: "Mensaje WhatsApp",
+  VOICE_CALL_AGENT: "Agente de llamada (prompt base)",
 };
 
 export type OperationType =
@@ -155,14 +161,16 @@ export type OperationType =
   | "VOICE_CALL"
   | "VOICE_TRANSCRIPTION"
   | "WHATSAPP_MESSAGE"
-  | "ANSWER_EVALUATION";
+  | "ANSWER_EVALUATION"
+  | "TWILIO_CALL";
 
 export const OPERATION_TYPE_LABEL: Record<OperationType, string> = {
   CV_EXTRACTION: "Extracción de CV",
   CV_MATCH: "Match de CV",
   JD_ENHANCEMENT: "Mejora de JD",
-  VOICE_CALL: "Llamada de voz",
+  VOICE_CALL: "Llamada de voz (ElevenLabs)",
   VOICE_TRANSCRIPTION: "Transcripción de voz",
   WHATSAPP_MESSAGE: "Mensaje WhatsApp",
   ANSWER_EVALUATION: "Evaluación de respuestas",
+  TWILIO_CALL: "Telefonía (Twilio)",
 };

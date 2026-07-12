@@ -36,6 +36,10 @@ const ROUTES: Array<{ pattern: RegExp; backendPath: (m: RegExpMatchArray) => str
     pattern: /^\/dl\/export\/costs\/([^/]+)$/,
     backendPath: (m) => `/api/v1/processes/${m[1]}/export/costs`,
   },
+  {
+    pattern: /^\/dl\/profiling-audio\/([^/]+)$/,
+    backendPath: (m) => `/api/v1/profiling/runs/${m[1]}/audio`,
+  },
 ];
 
 export async function handleDownloadRequest(request: Request): Promise<Response | null> {

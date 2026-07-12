@@ -24,6 +24,7 @@ export function SetBuilder({ setId }: { setId: string }) {
   >(null);
   const [name, setName] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
+  const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
 
   const { data: set, isLoading } = useQuery({
     queryKey: ["question-set", setId],
@@ -83,11 +84,11 @@ export function SetBuilder({ setId }: { setId: string }) {
       name?: string;
       description?: string;
       status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
+      default_system_prompt?: string;
     }) => updateQuestionSet({ data: { id: setId, ...body } }),
-    onSuccess: () => {
+    onSuccess: (res) => {
       toast.success("Guardado");
-      qc.invalidateQueries({ queryKey: ["question-set", setId] });
-      qc.invalidateQueries({ queryKey: ["question-sets"] });
+      followClone(res.id);
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
@@ -179,6 +180,25 @@ export function SetBuilder({ setId }: { setId: string }) {
           Este set está activo — cualquier cambio en las preguntas creará una nueva versión.
         </div>
       )}
+
+      <GlassCard className="p-4 space-y-2">
+        <div className="text-sm font-semibold">Prompt del agente de llamada</div>
+        <p className="text-xs text-muted-foreground">
+          Se suma al prompt universal (identidad, tono, estructura) que ya aplica a todas las
+          llamadas — acá solo va lo específico de este cargo/proceso. Las preguntas del cuestionario
+          y el aviso de consentimiento se agregan automáticamente, no hace falta escribirlos aquí.
+        </p>
+        <textarea
+          value={systemPrompt ?? set.default_system_prompt ?? ""}
+          onChange={(e) => setSystemPrompt(e.target.value)}
+          onBlur={() => {
+            if (systemPrompt !== null && systemPrompt !== (set.default_system_prompt ?? ""))
+              metaMutation.mutate({ default_system_prompt: systemPrompt });
+          }}
+          placeholder="Ej: Eres un agente de voz de Riwi Corp llamando para el cargo de…"
+          className="w-full min-h-[120px] px-3 py-2 rounded-lg bg-background/70 border border-border text-sm font-mono"
+        />
+      </GlassCard>
 
       <div className="space-y-3">
         {questions.length === 0 && (

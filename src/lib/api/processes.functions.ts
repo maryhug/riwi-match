@@ -4,7 +4,6 @@ import { apiCall } from "./client.server";
 import type {
   CreateJDResponse,
   CreateProcessRequest,
-  EnhanceJDResponse,
   JobDescriptionListResponse,
   ParseJDResponse,
   ProcessDetailResponse,
@@ -129,15 +128,6 @@ export const parseJobDescription = createServerFn({ method: "POST" })
       method: "POST",
       body: { jd_raw_text: data.jdRawText },
     });
-  });
-
-export const enhanceJobDescription = createServerFn({ method: "POST" })
-  .validator(z.object({ processId: z.string() }))
-  .handler(async ({ data }) => {
-    return apiCall<EnhanceJDResponse>(
-      `/api/v1/processes/${data.processId}/job-description/enhance`,
-      { method: "POST" },
-    );
   });
 
 export const getJobDescriptions = createServerFn({ method: "GET" })

@@ -19,8 +19,6 @@ import {
   updateProcess,
   createJobDescription,
   parseJobDescription,
-  enhanceJobDescription,
-  getProcess,
   assignQuestionSet,
 } from "@/lib/api/processes.functions";
 import { uploadCVs } from "@/lib/api/candidates.functions";
@@ -150,24 +148,16 @@ function Wizard() {
     mutationFn: () => parseJobDescription({ data: { processId: processId!, jdRawText: jdText } }),
     onSuccess: (res) => {
       setParseResult(res);
-      toast.success("JD analizada por IA");
-    },
-    onError: (err: unknown) => {
-      toast.error(err instanceof Error ? err.message : "No se pudo analizar la JD");
-    },
-  });
-
-  const enhanceJDMutation = useMutation({
-    mutationFn: () => enhanceJobDescription({ data: { processId: processId! } }),
-    onSuccess: async (res) => {
-      const process = await getProcess({ data: { processId: processId! } });
-      if (process.job_description) setJdText(process.job_description.jd_raw_text);
-      toast.success("JD mejorada por IA", {
-        description: res.recommendations.slice(0, 2).join(" · "),
+      if (res.enhanced_jd) {
+        setJdText(res.enhanced_jd);
+        setJdSaved(false);
+      }
+      toast.success("JD analizada y enriquecida por IA", {
+        description: "La versión mejorada ya está en el campo de texto — puedes editarla.",
       });
     },
     onError: (err: unknown) => {
-      toast.error(err instanceof Error ? err.message : "No se pudo mejorar la JD");
+      toast.error(err instanceof Error ? err.message : "No se pudo analizar la JD");
     },
   });
 
@@ -453,15 +443,6 @@ function Wizard() {
                         ? "JD guardada ✓"
                         : "Guardar JD"}
                   </button>
-                  {jdSaved && (
-                    <button
-                      onClick={() => enhanceJDMutation.mutate()}
-                      disabled={enhanceJDMutation.isPending}
-                      className="px-4 py-2 rounded-xl border border-primary/40 text-primary bg-primary/5 text-sm font-medium disabled:opacity-40"
-                    >
-                      {enhanceJDMutation.isPending ? "Mejorando…" : "Mejorar JD con IA"}
-                    </button>
-                  )}
                 </div>
               </>
             ) : (
@@ -480,10 +461,11 @@ function Wizard() {
                 <div>
                   <div className="text-sm font-semibold flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary" />
-                    Análisis por IA
+                    Analizar y enriquecer con IA
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    Extrae requisitos obligatorios, deseables y excluyentes (no persiste nada).
+                    Extrae requisitos obligatorios/deseables/excluyentes y sugiere una versión
+                    mejorada + recomendaciones (no persiste nada hasta que la apliques).
                   </div>
                 </div>
                 <button
@@ -495,7 +477,7 @@ function Wizard() {
                     ? "Analizando…"
                     : parseResult
                       ? "Re-analizar"
-                      : "Analizar JD con IA"}
+                      : "Analizar con IA"}
                 </button>
               </div>
 
@@ -546,6 +528,41 @@ function Wizard() {
                       <p className="text-xs text-foreground/80">{parseResult.summary}</p>
                     </div>
                   )}
+
+                  {(parseResult.recommendations.length > 0 ||
+                    parseResult.missing_elements.length > 0) && (
+                    <div className="grid sm:grid-cols-2 gap-4 pt-2 border-t border-border/40">
+                      {parseResult.recommendations.length > 0 && (
+                        <div>
+                          <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                            Recomendaciones
+                          </div>
+                          <ul className="text-xs text-foreground/80 space-y-1 list-disc list-inside">
+                            {parseResult.recommendations.map((r) => (
+                              <li key={r}>{r}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {parseResult.missing_elements.length > 0 && (
+                        <div>
+                          <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                            Elementos faltantes
+                          </div>
+                          <ul className="text-xs text-foreground/80 space-y-1 list-disc list-inside">
+                            {parseResult.missing_elements.map((m) => (
+                              <li key={m}>{m}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-[11px] text-muted-foreground pt-2 border-t border-border/40">
+                    La versión mejorada ya se cargó en el campo de texto de arriba — puedes seguir
+                    editándola antes de guardar.
+                  </p>
                 </div>
               )}
             </div>

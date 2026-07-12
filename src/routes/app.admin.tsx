@@ -406,6 +406,7 @@ const TASK_TYPES: AITaskType[] = [
   "JD_ENHANCEMENT",
   "VOICE_PROFILING",
   "WHATSAPP_MESSAGE",
+  "VOICE_CALL_AGENT",
 ];
 
 function ParametrosIATab() {

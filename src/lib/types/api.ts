@@ -140,15 +140,10 @@ export interface ParseJDResponse {
   nice_to_have: string[];
   deal_breakers: string[];
   summary: string;
-}
-
-export interface EnhanceJDResponse {
-  jd_id: string;
-  process_id: string;
-  version: number;
+  /** Version reescrita/enriquecida por IA, en Markdown — sugerida, no aplicada. */
+  enhanced_jd: string;
   recommendations: string[];
   missing_elements: string[];
-  created_at: string;
 }
 
 export interface UploadJDResponse {
@@ -177,6 +172,7 @@ export interface ProcessMetricsResponse {
   match_distribution: Partial<Record<MatchCategory, number>>;
   total_cost_usd: number;
   budget_max_usd: number;
+  cost_by_category: { voz: number; twilio: number; whatsapp: number; llm: number };
 }
 
 // ─── Candidates ──────────────────────────────────────────────────────────────
@@ -224,6 +220,8 @@ export interface CandidateListItem {
   whatsapp_consent: WhatsAppConsentStatus;
   normalized_cv_url: string | null;
   city: string | null;
+  /** Suma de todos los CostLog de este candidato en el proceso (CV, match, llamadas, WhatsApp). */
+  total_cost: number;
   // Presentes solo si match_explanation existe — el backend omite la clave, no la manda null.
   match_summary?: string | null;
   strengths?: string[];
@@ -352,6 +350,8 @@ export interface ProfilingRunOut {
   advancement_explanation: string | null;
   transcription_url: string | null;
   transcript_summary: string | null;
+  transcript_turns: { role: string; message: string | null; time_in_call_secs?: number }[] | null;
+  has_audio: boolean;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
