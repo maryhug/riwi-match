@@ -454,6 +454,7 @@ export interface AIPromptOut {
   system_prompt_text: string;
   is_active: boolean;
   updated_by: string | null;
+  created_at: string;
   updated_at: string;
 }
 

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Fragment, useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { GlassCard } from "@/components/app/GlassCard";
 import { Settings, Plus, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -18,6 +18,9 @@ import {
   createAIModel,
   getAIPrompts,
   createAIPrompt,
+  activateAIPrompt,
+  getGlobalSettings,
+  updateGlobalSetting,
 } from "@/lib/api/ai-config.functions";
 import { getAuditLogs } from "@/lib/api/audit.functions";
 import {
@@ -28,7 +31,7 @@ import {
   type UserStatus,
   type AITaskType,
 } from "@/lib/types/enums";
-import type { User } from "@/lib/types/api";
+import type { User, AIModelOut, AIPromptOut } from "@/lib/types/api";
 
 export const Route = createFileRoute("/app/admin")({
   head: () => ({ meta: [{ title: "Administración · RIWI MATCH" }] }),
@@ -412,6 +415,7 @@ const TASK_TYPES: AITaskType[] = [
 function ParametrosIATab() {
   const qc = useQueryClient();
   const [newPromptOpen, setNewPromptOpen] = useState<AITaskType | null>(null);
+  const [historyOpen, setHistoryOpen] = useState<AITaskType | null>(null);
   const { data: modelsData } = useQuery({ queryKey: ["ai-models"], queryFn: () => getAIModels() });
   const { data: promptsData } = useQuery({
     queryKey: ["ai-prompts"],
@@ -429,62 +433,240 @@ function ParametrosIATab() {
   });
 
   return (
-    <div className="space-y-4">
-      {TASK_TYPES.map((taskType) => {
-        const models = (modelsData?.models ?? []).filter((m) => m.task_type === taskType);
-        const activeModel = models.find((m) => m.is_active);
-        const prompts = (promptsData?.prompts ?? []).filter((p) => p.task_type === taskType);
-        const activePrompt = prompts.find((p) => p.is_active);
+    <div className="space-y-8">
+      <section className="space-y-3">
+        <SectionLabel>Regla de negocio global</SectionLabel>
+        <MatchThresholdsCard />
+      </section>
 
-        return (
-          <GlassCard key={taskType} className="space-y-3">
-            <div className="text-sm font-semibold">{AI_TASK_TYPE_LABEL[taskType]}</div>
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-xs text-muted-foreground">Modelo activo</div>
-              <select
-                value={activeModel?.id ?? ""}
-                onChange={(e) => e.target.value && activateMutation.mutate(e.target.value)}
-                className="px-3 py-1.5 rounded-lg bg-background/70 border border-border text-xs"
-              >
-                <option value="" disabled>
-                  {models.length === 0 ? "Sin modelos configurados" : "Seleccionar…"}
-                </option>
-                {models.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.provider} · {m.model_name}
-                    {m.is_active ? " (activo)" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-xs text-muted-foreground">Prompt activo</div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium">
-                  {activePrompt?.version_name ?? "Sin prompt configurado"}
-                </span>
-                <button
-                  onClick={() => setNewPromptOpen(taskType)}
-                  className="text-xs text-primary hover:underline"
-                >
-                  Nueva versión
-                </button>
-              </div>
-            </div>
-          </GlassCard>
-        );
-      })}
-
-      <GlassCard className="space-y-2">
-        <div className="text-sm font-semibold">Umbrales de clasificación de match</div>
-        <p className="text-xs text-muted-foreground">
-          Alto ≥ 80% · Medio ≥ 60% · Bajo ≥ 40% · Por debajo, no recomendado. Estos umbrales están
-          definidos en el backend (no son configurables desde esta pantalla todavía).
-        </p>
-      </GlassCard>
+      <section className="space-y-3">
+        <SectionLabel>Modelos y prompts por tarea</SectionLabel>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {TASK_TYPES.map((taskType) => (
+            <TaskTypeConfigCard
+              key={taskType}
+              taskType={taskType}
+              models={(modelsData?.models ?? []).filter((m) => m.task_type === taskType)}
+              activePrompt={(promptsData?.prompts ?? []).find(
+                (p) => p.task_type === taskType && p.is_active,
+              )}
+              onActivateModel={(modelId) => activateMutation.mutate(modelId)}
+              onNewPrompt={() => setNewPromptOpen(taskType)}
+              onOpenHistory={() => setHistoryOpen(taskType)}
+            />
+          ))}
+        </div>
+      </section>
 
       <NewPromptDialog taskType={newPromptOpen} onClose={() => setNewPromptOpen(null)} />
+      <PromptHistoryDialog
+        taskType={historyOpen}
+        prompts={(promptsData?.prompts ?? []).filter((p) => p.task_type === historyOpen)}
+        onClose={() => setHistoryOpen(null)}
+      />
     </div>
+  );
+}
+
+function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <div className="text-xs uppercase tracking-[0.15em] text-muted-foreground font-semibold">
+      {children}
+    </div>
+  );
+}
+
+function TaskTypeConfigCard({
+  taskType,
+  models,
+  activePrompt,
+  onActivateModel,
+  onNewPrompt,
+  onOpenHistory,
+}: {
+  taskType: AITaskType;
+  models: AIModelOut[];
+  activePrompt: AIPromptOut | undefined;
+  onActivateModel: (modelId: string) => void;
+  onNewPrompt: () => void;
+  onOpenHistory: () => void;
+}) {
+  const activeModel = models.find((m) => m.is_active);
+  return (
+    <GlassCard className="space-y-3">
+      <div className="text-sm font-semibold">{AI_TASK_TYPE_LABEL[taskType]}</div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-xs text-muted-foreground">Modelo activo</div>
+        <select
+          value={activeModel?.id ?? ""}
+          onChange={(e) => e.target.value && onActivateModel(e.target.value)}
+          className="px-3 py-1.5 rounded-lg bg-background/70 border border-border text-xs"
+        >
+          <option value="" disabled>
+            {models.length === 0 ? "Sin modelos configurados" : "Seleccionar…"}
+          </option>
+          {models.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.provider} · {m.model_name}
+              {m.is_active ? " (activo)" : ""}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-xs text-muted-foreground">Prompt activo</div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium">
+            {activePrompt?.version_name ?? "Sin prompt configurado"}
+          </span>
+          <button onClick={onOpenHistory} className="text-xs text-primary hover:underline">
+            Ver / historial
+          </button>
+          <button onClick={onNewPrompt} className="text-xs text-primary hover:underline">
+            Nueva versión
+          </button>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+const DEFAULT_MATCH_THRESHOLDS = { high: 75, medium: 50, low: 30 };
+
+const THRESHOLD_FIELDS = [
+  {
+    key: "low" as const,
+    label: "Bajo",
+    hint: "Por debajo, no recomendado",
+    dot: "bg-destructive",
+    ring: "focus-within:border-destructive/60 focus-within:ring-destructive/20",
+  },
+  {
+    key: "medium" as const,
+    label: "Medio",
+    hint: "Requiere validación",
+    dot: "bg-warning",
+    ring: "focus-within:border-warning/60 focus-within:ring-warning/20",
+  },
+  {
+    key: "high" as const,
+    label: "Alto",
+    hint: "Match fuerte",
+    dot: "bg-success",
+    ring: "focus-within:border-success/60 focus-within:ring-success/20",
+  },
+];
+
+function MatchThresholdsCard() {
+  const qc = useQueryClient();
+  const { data: settingsData } = useQuery({
+    queryKey: ["global-settings"],
+    queryFn: () => getGlobalSettings(),
+  });
+
+  const saved = settingsData?.settings.find((s) => s.setting_key === "match_thresholds")
+    ?.setting_value as { high: number; medium: number; low: number } | undefined;
+
+  const [thresholds, setThresholds] = useState(saved ?? DEFAULT_MATCH_THRESHOLDS);
+
+  // Sincroniza el formulario cuando llega el valor guardado (o cambia tras un save de otra sesión)
+  const [hydrated, setHydrated] = useState(false);
+  if (saved && !hydrated) {
+    setThresholds(saved);
+    setHydrated(true);
+  }
+
+  const isValid =
+    Number.isInteger(thresholds.high) &&
+    Number.isInteger(thresholds.medium) &&
+    Number.isInteger(thresholds.low) &&
+    thresholds.low >= 0 &&
+    thresholds.low <= thresholds.medium &&
+    thresholds.medium <= thresholds.high &&
+    thresholds.high <= 100;
+
+  const saveMutation = useMutation({
+    mutationFn: () => updateGlobalSetting({ data: { key: "match_thresholds", value: thresholds } }),
+    onSuccess: () => {
+      toast.success("Umbrales de match actualizados");
+      qc.invalidateQueries({ queryKey: ["global-settings"] });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudieron guardar los umbrales"),
+  });
+
+  return (
+    <GlassCard className="space-y-4">
+      <div>
+        <div className="text-sm font-semibold">Umbrales de clasificación de match</div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Score global mínimo (0–100) para cada categoría. Un candidato por debajo del umbral Bajo
+          se marca como no recomendado.
+        </p>
+      </div>
+
+      {/* Barra de rango: rojo cubre todo lo que no llega a Medio (no recomendado + Bajo) */}
+      <div className="h-2 rounded-full overflow-hidden flex bg-muted">
+        <div className="h-full bg-destructive/70" style={{ width: `${thresholds.medium}%` }} />
+        <div
+          className="h-full bg-warning/70"
+          style={{ width: `${Math.max(thresholds.high - thresholds.medium, 0)}%` }}
+        />
+        <div
+          className="h-full bg-success/70"
+          style={{ width: `${Math.max(100 - thresholds.high, 0)}%` }}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {THRESHOLD_FIELDS.map(({ key, label, hint, dot, ring }) => (
+          <label
+            key={key}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg bg-background/70 border border-border transition ${ring}`}
+          >
+            <span className={`h-2 w-2 rounded-full shrink-0 ${dot}`} />
+            <span className="flex-1 min-w-0">
+              <span className="block text-xs font-medium">{label}</span>
+              <span className="block text-[11px] text-muted-foreground truncate">{hint}</span>
+            </span>
+            <span className="flex flex-col items-end shrink-0">
+              <span className="text-[10px] text-muted-foreground">A partir de:</span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={thresholds[key]}
+                onChange={(e) => setThresholds({ ...thresholds, [key]: Number(e.target.value) })}
+                className="w-14 bg-transparent text-right text-sm font-semibold outline-none"
+              />
+            </span>
+          </label>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        {!isValid ? (
+          <p className="text-xs text-destructive">Deben cumplir 0 ≤ Bajo ≤ Medio ≤ Alto ≤ 100.</p>
+        ) : (
+          <span />
+        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setThresholds(DEFAULT_MATCH_THRESHOLDS)}
+            className="px-4 py-2 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground transition"
+          >
+            Por defecto
+          </button>
+          <button
+            onClick={() => saveMutation.mutate()}
+            disabled={!isValid || saveMutation.isPending}
+            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
+          >
+            {saveMutation.isPending ? "Guardando…" : "Guardar umbrales"}
+          </button>
+        </div>
+      </div>
+    </GlassCard>
   );
 }
 
@@ -556,6 +738,93 @@ function NewPromptDialog({
             className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
           >
             {createMutation.isPending ? "Guardando…" : "Crear y activar"}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PromptHistoryDialog({
+  taskType,
+  prompts,
+  onClose,
+}: {
+  taskType: AITaskType | null;
+  prompts: AIPromptOut[];
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const activateMutation = useMutation({
+    mutationFn: (promptId: string) => activateAIPrompt({ data: { promptId } }),
+    onSuccess: () => {
+      toast.success("Versión activada");
+      qc.invalidateQueries({ queryKey: ["ai-prompts"] });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo activar esta versión"),
+  });
+
+  return (
+    <Dialog open={taskType !== null} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            Historial de prompts — {taskType && AI_TASK_TYPE_LABEL[taskType]}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+          {prompts.length === 0 && (
+            <p className="text-sm text-muted-foreground">Todavía no hay versiones registradas.</p>
+          )}
+          {prompts.map((p) => {
+            const expanded = expandedId === p.id;
+            return (
+              <div key={p.id} className="rounded-xl border border-border bg-background/70 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm font-medium truncate">{p.version_name}</span>
+                    {p.is_active && (
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-success/15 text-success">
+                        Activo
+                      </span>
+                    )}
+                    <span className="shrink-0 text-[11px] text-muted-foreground">
+                      {new Date(p.created_at).toLocaleString("es-CO")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setExpandedId(expanded ? null : p.id)}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      {expanded ? "Ocultar" : "Ver texto"}
+                    </button>
+                    {!p.is_active && (
+                      <button
+                        onClick={() => activateMutation.mutate(p.id)}
+                        disabled={activateMutation.isPending}
+                        className="text-xs px-2 py-1 rounded-lg border border-border hover:bg-muted disabled:opacity-40"
+                      >
+                        Activar
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {expanded && (
+                  <pre className="mt-3 text-xs whitespace-pre-wrap break-words bg-muted/50 rounded-lg p-3 max-h-64 overflow-y-auto">
+                    {p.system_prompt_text}
+                  </pre>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <DialogFooter>
+          <button onClick={onClose} className="px-4 py-2 rounded-xl border border-border text-sm">
+            Cerrar
           </button>
         </DialogFooter>
       </DialogContent>

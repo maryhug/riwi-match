@@ -45,6 +45,14 @@ export const createAIPrompt = createServerFn({ method: "POST" })
     return apiCall<AIPromptOut>("/api/v1/ai-config/prompts", { method: "POST", body: data });
   });
 
+export const activateAIPrompt = createServerFn({ method: "POST" })
+  .validator(z.object({ promptId: z.string() }))
+  .handler(async ({ data }) => {
+    return apiCall<AIPromptOut>(`/api/v1/ai-config/prompts/${data.promptId}/activate`, {
+      method: "PATCH",
+    });
+  });
+
 export const getGlobalSettings = createServerFn({ method: "GET" }).handler(async () => {
   return apiCall<{ settings: GlobalSettingOut[] }>("/api/v1/ai-config/global-settings");
 });
