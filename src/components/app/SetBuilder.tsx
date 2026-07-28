@@ -16,7 +16,7 @@ import {
 import { QUESTION_TYPE_LABEL } from "@/lib/types/enums";
 import type { QuestionOut } from "@/lib/types/api";
 
-export function SetBuilder({ setId }: { setId: string }) {
+export function SetBuilder({ setId, processId }: { setId: string; processId?: string }) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [dialogState, setDialogState] = useState<
@@ -38,7 +38,7 @@ export function SetBuilder({ setId }: { setId: string }) {
   const followClone = (newId: string) => {
     if (newId !== setId) {
       toast.info("Se creó una nueva versión del set (estaba activo)");
-      nav({ to: "/app/sets/$id", params: { id: newId } });
+      nav({ to: "/app/sets/$id", params: { id: newId }, search: processId ? { processId } : undefined });
     } else {
       qc.invalidateQueries({ queryKey: ["question-set", setId] });
     }
@@ -120,12 +120,22 @@ export function SetBuilder({ setId }: { setId: string }) {
 
   return (
     <div className="space-y-5">
-      <Link
-        to="/app/sets"
-        className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition"
-      >
-        ← Volver a sets
-      </Link>
+      {processId ? (
+        <Link
+          to="/app/procesos/$id"
+          params={{ id: processId }}
+          className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition"
+        >
+          ← Volver al proceso
+        </Link>
+      ) : (
+        <Link
+          to="/app/sets"
+          className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition"
+        >
+          ← Volver a sets
+        </Link>
+      )}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex-1 min-w-[240px]">
           <input

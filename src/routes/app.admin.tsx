@@ -23,6 +23,7 @@ import {
   updateGlobalSetting,
 } from "@/lib/api/ai-config.functions";
 import { getAuditLogs } from "@/lib/api/audit.functions";
+import { getIntegrationsHealth } from "@/lib/api/system.functions";
 import {
   USER_ROLE_LABEL,
   USER_STATUS_LABEL,
@@ -835,37 +836,69 @@ function PromptHistoryDialog({
 // ─── Integraciones ──────────────────────────────────────────────────────────
 
 function IntegracionesTab() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["integrations-health"],
+    queryFn: () => getIntegrationsHealth(),
+  });
+
+  const items = [
+    {
+      id: "twilio",
+      n: "Twilio",
+      desc: "Originación de llamadas de profiling con detección de contestador (AMD).",
+    },
+    {
+      id: "elevenlabs",
+      n: "ElevenLabs",
+      desc: "Agente de voz conversacional para las entrevistas de profiling.",
+    },
+    {
+      id: "meta",
+      n: "Meta WhatsApp Business",
+      desc: "Consentimiento previo por WhatsApp antes de cada llamada.",
+    },
+    { 
+      id: "cloudflare_r2",
+      n: "Cloudflare R2", 
+      desc: "Almacenamiento de CVs originales y normalizados." 
+    },
+  ] as const;
+
   return (
     <div className="grid sm:grid-cols-2 gap-4">
-      {[
-        {
-          n: "Twilio",
-          desc: "Originación de llamadas de profiling con detección de contestador (AMD).",
-        },
-        {
-          n: "ElevenLabs",
-          desc: "Agente de voz conversacional para las entrevistas de profiling.",
-        },
-        {
-          n: "Meta WhatsApp Business",
-          desc: "Consentimiento previo por WhatsApp antes de cada llamada.",
-        },
-        { n: "Cloudflare R2", desc: "Almacenamiento de CVs originales y normalizados." },
-      ].map((i) => (
-        <GlassCard key={i.n}>
-          <div className="flex items-start justify-between mb-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-info">
-              <Settings className="h-5 w-5 text-white" />
+      {items.map((i) => {
+        const health = data?.[i.id];
+        return (
+          <GlassCard key={i.id}>
+            <div className="flex items-start justify-between mb-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-info shrink-0">
+                <Settings className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex items-center gap-2">
+                {isLoading ? (
+                  <span className="text-xs text-muted-foreground animate-pulse">Verificando...</span>
+                ) : health ? (
+                  <>
+                    <span className={`h-2 w-2 rounded-full ${health.status === "ok" ? "bg-success" : "bg-destructive"}`} />
+                    <span className="text-xs font-medium">
+                      {health.status === "ok" ? "Conectado" : "Error"}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Sin datos</span>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="font-semibold">{i.n}</div>
-          <div className="text-xs text-muted-foreground mt-1">{i.desc}</div>
-          <div className="mt-3 text-[11px] text-muted-foreground italic">
-            Configurado por variables de entorno del backend — no hay un endpoint de health-check
-            por servicio todavía, así que no mostramos un estado que no podemos verificar de verdad.
-          </div>
-        </GlassCard>
-      ))}
+            <div className="font-semibold">{i.n}</div>
+            <div className="text-xs text-muted-foreground mt-1">{i.desc}</div>
+            {health?.status === "error" && (
+              <div className="mt-3 text-[11px] text-destructive bg-destructive/10 px-3 py-2 rounded-lg border border-destructive/20">
+                {health.details}
+              </div>
+            )}
+          </GlassCard>
+        );
+      })}
     </div>
   );
 }

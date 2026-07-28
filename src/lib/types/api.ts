@@ -495,3 +495,12 @@ export interface TADashboardResponse {
   total_candidates: number;
   total_cost_usd: number;
 }
+
+// ─── System / Integrations ───────────────────────────────────────────────────
+
+export interface IntegrationHealthResponse {
+  twilio: { status: "ok" | "error"; details: string };
+  elevenlabs: { status: "ok" | "error"; details: string };
+  meta: { status: "ok" | "error"; details: string };
+  cloudflare_r2: { status: "ok" | "error"; details: string };
+}

@@ -1420,38 +1420,71 @@ function ConfigTab({
 
       <GlassCard className="p-5 space-y-3">
         <div className="text-sm font-semibold">Set de preguntas de profiling</div>
-        <div className="flex items-center gap-2">
-          <select
-            value={selectedSetId}
-            onChange={(e) => setSelectedSetId(e.target.value)}
-            disabled={!isActive}
-            className="flex-1 px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
-          >
-            <option value="">— Sin asignar —</option>
-            {(questionSets?.question_sets ?? [])
-              .filter((qs) => qs.status === "ACTIVE")
-              .map((qs) => (
-                <option key={qs.id} value={qs.id}>
-                  {qs.name}
-                </option>
-              ))}
-          </select>
-          <button
-            onClick={() => assignSetMutation.mutate()}
-            disabled={
-              !isActive ||
-              !selectedSetId ||
-              selectedSetId === process.question_set_id ||
-              assignSetMutation.isPending
-            }
-            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
-          >
-            Cambiar
-          </button>
+        
+        {process.question_set_id ? (
+          <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between">
+            <div>
+              <div className="text-sm font-semibold text-primary">Set asignado</div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Copia única para este proceso. Edítala sin afectar la plantilla original.
+              </p>
+            </div>
+            <Link
+              to="/app/sets/$id"
+              params={{ id: process.question_set_id }}
+              search={{ processId }}
+              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold whitespace-nowrap shadow-md shadow-primary/20"
+            >
+              Editar preguntas
+            </Link>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Aún no hay preguntas. Elige una plantilla base para comenzar a perfilar candidatos.
+          </p>
+        )}
+
+        <div className="pt-2 border-t border-border/40">
+          <div className="text-xs font-medium text-muted-foreground mb-2">
+            {process.question_set_id ? "Reemplazar con otra plantilla base:" : "Seleccionar plantilla base:"}
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedSetId === process.question_set_id ? "" : selectedSetId}
+              onChange={(e) => setSelectedSetId(e.target.value)}
+              disabled={!isActive}
+              className="flex-1 px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
+            >
+              <option value="">— Selecciona una plantilla —</option>
+              {(questionSets?.question_sets ?? [])
+                .filter((qs) => qs.status === "ACTIVE")
+                .map((qs) => (
+                  <option key={qs.id} value={qs.id}>
+                    {qs.name}
+                  </option>
+                ))}
+            </select>
+            <button
+              onClick={() => assignSetMutation.mutate()}
+              disabled={
+                !isActive ||
+                !selectedSetId ||
+                selectedSetId === process.question_set_id ||
+                assignSetMutation.isPending
+              }
+              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
+            >
+              {process.question_set_id ? "Reemplazar" : "Asignar"}
+            </button>
+          </div>
+          {!process.question_set_id && (
+            <div className="mt-2 text-right">
+              <Link to="/app/sets/nuevo" className="text-xs text-primary hover:underline">
+                Crear nueva plantilla base
+              </Link>
+            </div>
+          )}
         </div>
-        <Link to="/app/sets/nuevo" className="text-xs text-primary hover:underline">
-          Crear nuevo set
-        </Link>
       </GlassCard>
 
       <GlassCard className="p-5 space-y-3">
