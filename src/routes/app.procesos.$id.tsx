@@ -1703,10 +1703,14 @@ function CandidatoDrawer({
       : null;
 
   return (
-    <>
-      <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="relative w-full max-w-4xl max-h-[88vh] overflow-y-auto glass-strong rounded-3xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-4xl max-h-[88vh] overflow-y-auto glass-strong rounded-3xl cursor-default"
+        onClick={(e) => e.stopPropagation()}
+      >
           <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-border/50 sticky top-0 glass-strong rounded-t-3xl z-10">
             <div className="flex items-center gap-3 min-w-0">
               <div className="h-14 w-14 shrink-0 rounded-full bg-primary text-primary-foreground grid place-items-center font-bold text-lg">
@@ -2038,6 +2042,5 @@ function CandidatoDrawer({
           )}
         </div>
       </div>
-    </>
   );
 }

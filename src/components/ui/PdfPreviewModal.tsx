@@ -36,12 +36,15 @@ export default function PdfPreviewModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      {/* Click outside backdrop to close */}
-      <div className="absolute inset-0" onClick={onClose} />
-
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+      onClick={onClose}
+    >
       {/* Modal Container */}
-      <div className="relative w-full max-w-5xl h-[85vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+      <div
+        className="relative w-full max-w-5xl h-[85vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 cursor-default"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
