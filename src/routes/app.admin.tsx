@@ -871,7 +871,7 @@ function IntegracionesTab() {
         return (
           <GlassCard key={i.id}>
             <div className="flex items-start justify-between mb-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-info shrink-0">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground shrink-0">
                 <Settings className="h-5 w-5 text-white" />
               </div>
               <div className="flex items-center gap-2">

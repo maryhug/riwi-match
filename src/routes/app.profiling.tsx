@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { PhoneCall, Clock, CheckCircle2, XCircle, X, RefreshCw, ListTodo } from "lucide-react";
+import { useMemo, useState } from "react";
+import React from "react";
+import { PhoneCall, Clock, CheckCircle2, XCircle, X, RefreshCw, ListTodo, Calendar, ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
 import { ProfilingResultModal } from "@/components/app/ProfilingResultModal";
@@ -14,7 +15,14 @@ export const Route = createFileRoute("/app/profiling")({
   component: Profiling,
 });
 
-const MAX_CONCURRENT_CALLS = 4; // RB-005: límite configurado en el backend (settings.max_concurrent_calls)
+type Timeframe = "today" | "7days" | "month" | "all";
+
+const timeframeLabels: Record<Timeframe, string> = {
+  today: "Hoy",
+  "7days": "Últimos 7 días",
+  month: "Este mes",
+  all: "Histórico completo",
+};
 
 function initials(name: string) {
   return name
@@ -50,14 +58,12 @@ function Profiling() {
   const qc = useQueryClient();
   const [modalRun, setModalRun] = useState<ProfilingRunOut | null>(null);
   const [pollStart] = useState(() => Date.now());
+  const [timeframe, setTimeframe] = useState<Timeframe>("today");
 
   const { data, isLoading } = useQuery({
     queryKey: ["profiling-runs-global"],
     queryFn: () => getAllProfilingRuns(),
     refetchInterval: () => {
-      // El monitor en vivo siempre pollea mientras la página esté abierta — no tiene
-      // sentido detenerlo como en la vista de un proceso puntual (aquí siempre puede
-      // llegar una llamada nueva de cualquier proceso).
       return Date.now() - pollStart > 30 * 60_000 ? false : 10000;
     },
   });
@@ -72,7 +78,27 @@ function Profiling() {
       toast.error(err instanceof Error ? err.message : "No se pudo cancelar"),
   });
 
-  const runs = data?.profiling_runs ?? [];
+  const rawRuns = data?.profiling_runs ?? [];
+
+  const runs = useMemo(() => {
+    if (timeframe === "all") return rawRuns;
+    const nowMs = Date.now();
+    return rawRuns.filter((r) => {
+      if (["QUEUED", "PENDING", "CALLING", "ANSWERED"].includes(r.status)) return true;
+      const dateStr = r.completed_at || r.created_at;
+      if (!dateStr) return false;
+      const itemTime = new Date(dateStr).getTime();
+      if (timeframe === "today") return isToday(dateStr);
+      if (timeframe === "7days") return itemTime >= nowMs - 7 * 24 * 60 * 60 * 1000;
+      if (timeframe === "month") {
+        const itemD = new Date(dateStr);
+        const nowD = new Date();
+        return itemD.getFullYear() === nowD.getFullYear() && itemD.getMonth() === nowD.getMonth();
+      }
+      return true;
+    });
+  }, [rawRuns, timeframe]);
+
   const cola = runs
     .filter((r) => r.status === "QUEUED" || r.status === "PENDING")
     .sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -82,7 +108,9 @@ function Profiling() {
     ["NO_ANSWER", "FAILED", "RETRY_PENDING", "VOICEMAIL_DETECTED", "CANCELLED"].includes(r.status),
   );
 
-  const completadasHoy = completadas.filter((r) => isToday(r.completed_at)).length;
+  const completadasHoy = rawRuns
+    .filter((r) => r.status === "COMPLETED")
+    .filter((r) => isToday(r.completed_at)).length;
   const contactables =
     completadas.length +
     fallidas.filter((r) => ["NO_ANSWER", "FAILED", "VOICEMAIL_DETECTED"].includes(r.status)).length;
@@ -90,24 +118,45 @@ function Profiling() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold font-mono">
-          Voice AI
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold font-mono">
+            Voice AI
+          </div>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">Ejecución de Profiling</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Monitor en vivo de las llamadas de profiling automatizado.
+          </p>
         </div>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight">Ejecución de Profiling</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Monitor en vivo de las llamadas de profiling automatizado.
-        </p>
+
+        {/* Timeframe Filter Toggles */}
+        <div className="flex items-center gap-1.5 bg-card/80 p-1.5 rounded-2xl border border-border/60 shadow-sm backdrop-blur-md">
+          <Calendar className="h-4 w-4 text-muted-foreground ml-2 mr-1 shrink-0" />
+          {(["today", "7days", "month", "all"] as Timeframe[]).map((tf) => (
+            <button
+              key={tf}
+              onClick={() => setTimeframe(tf)}
+              className={cn(
+                "px-3 py-1.5 text-xs font-semibold rounded-xl transition cursor-pointer",
+                timeframe === tf
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+              )}
+            >
+              {timeframeLabels[tf]}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
+          { l: "En cola", v: cola.length.toString(), cn: "bg-indigo-500 text-white" },
           {
             l: "Llamadas activas",
-            v: `${activas.length} / ${MAX_CONCURRENT_CALLS}`,
+            v: activas.length.toString(),
             cn: "bg-primary text-primary-foreground",
           },
-          { l: "En cola", v: cola.length.toString(), cn: "bg-indigo-500 text-white" },
           {
             l: "Completadas hoy",
             v: completadasHoy.toString(),
@@ -140,21 +189,11 @@ function Profiling() {
         ))}
       </div>
 
-      <div className="glass rounded-2xl p-3 text-xs text-muted-foreground flex flex-wrap gap-2 items-center">
-        <span className="px-2 py-1 rounded-md bg-accent text-accent-foreground font-semibold">
-          Máx {MAX_CONCURRENT_CALLS} simultáneas (RB-005)
-        </span>
-        <span className="flex-1" />
-        <span>
-          Cada llamada informa que es un asistente automatizado y solicita consentimiento.
-        </span>
-      </div>
-
       {isLoading ? (
         <div className="py-16 text-center text-sm text-muted-foreground">Cargando llamadas…</div>
       ) : runs.length === 0 ? (
         <div className="py-16 text-center text-sm text-muted-foreground">
-          No hay llamadas de profiling activas.
+          No hay llamadas registradas para el período seleccionado.
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -191,7 +230,6 @@ function Profiling() {
 
           <Column
             title="En llamada"
-            sub={`máx. ${MAX_CONCURRENT_CALLS}`}
             count={activas.length}
             accent="primary"
             icon={PhoneCall}
@@ -304,30 +342,88 @@ function Column({
   icon: React.ElementType;
   children: React.ReactNode;
 }) {
+  const [visibleLimit, setVisibleLimit] = useState(10);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
   const accentMap: Record<string, string> = {
     primary: "bg-primary",
     info: "bg-indigo-500",
     success: "bg-success",
     destructive: "bg-destructive",
   };
+
+  const childrenArray = React.Children.toArray(children);
+  const visibleChildren = childrenArray.slice(0, visibleLimit);
+  const remaining = childrenArray.length - visibleLimit;
+
+  const handleLoadMore = () => {
+    setLoadingMore(true);
+    setVisibleLimit((prev) => prev + 10);
+
+    setTimeout(() => {
+      setLoadingMore(false);
+      if (scrollRef.current) {
+        scrollRef.current.scrollBy({ top: 220, behavior: "smooth" });
+      }
+    }, 200);
+  };
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 px-1">
+    <div className="flex flex-col rounded-2xl border border-border/50 bg-card/40 p-3 overflow-hidden">
+      {/* Sticky header inside column */}
+      <div className="sticky top-0 z-20 flex items-center gap-2 px-1 py-1.5 bg-card/95 backdrop-blur-md rounded-lg mb-2">
         <div className={`h-2 w-2 rounded-full ${accentMap[accent]}`} />
-        <div className="text-sm font-semibold">{title}</div>
+        <div className="text-sm font-semibold text-foreground">{title}</div>
         {sub && <div className="text-[10px] text-muted-foreground">({sub})</div>}
         <div className="flex-1" />
         <span className="text-xs font-bold text-muted-foreground">{count}</span>
       </div>
-      <div className="space-y-2">
-        {count === 0 ? (
-          <div className="text-xs text-muted-foreground text-center py-6 rounded-xl border border-dashed border-border flex items-center justify-center gap-1.5">
-            <Icon className="h-3.5 w-3.5" /> Vacío
+
+      {count === 0 ? (
+        <div className="text-xs text-muted-foreground text-center py-6 rounded-xl border border-dashed border-border flex items-center justify-center gap-1.5">
+          <Icon className="h-3.5 w-3.5" /> Vacío
+        </div>
+      ) : (
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="relative overflow-hidden rounded-xl flex-1">
+            <div
+              ref={scrollRef}
+              className="space-y-2 max-h-[440px] overflow-y-auto overflow-x-hidden p-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {visibleChildren}
+            </div>
+            {visibleChildren.length > 3 && (
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card via-card/70 to-transparent rounded-b-xl z-10" />
+            )}
           </div>
-        ) : (
-          children
-        )}
-      </div>
+
+          {remaining > 0 && (
+            <div className="pt-2.5 mt-1 shrink-0 flex justify-center">
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-primary/30 bg-primary/10 hover:bg-primary/20 text-xs font-semibold text-primary transition cursor-pointer shadow-sm active:scale-95 disabled:opacity-60"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Cargando…</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Cargar más</span>
+                    <span className="text-[10px] bg-primary/20 px-1.5 py-0.2 rounded-full font-bold">
+                      +{remaining}
+                    </span>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

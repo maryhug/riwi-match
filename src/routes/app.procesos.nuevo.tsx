@@ -456,7 +456,7 @@ function Wizard() {
               />
             )}
 
-            <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/5 to-info/5 p-5">
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-sm font-semibold flex items-center gap-2">
@@ -471,7 +471,7 @@ function Wizard() {
                 <button
                   onClick={() => parseJDMutation.mutate()}
                   disabled={jdText.trim().length < 10 || parseJDMutation.isPending}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30 disabled:opacity-60"
+                  className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold shadow-sm hover:bg-primary/90 transition disabled:opacity-60"
                 >
                   {parseJDMutation.isPending
                     ? "Analizando…"
@@ -682,7 +682,7 @@ function Wizard() {
               (step === 1 && !jdSaved)
             }
             onClick={() => (step === 0 ? createProcessMutation.mutate() : setStep(step + 1))}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30 disabled:opacity-40 disabled:shadow-none"
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold shadow-sm hover:bg-primary/90 transition disabled:opacity-40"
           >
             {createProcessMutation.isPending ? "Guardando…" : "Siguiente"}{" "}
             <ArrowRight className="h-4 w-4" />
@@ -693,7 +693,7 @@ function Wizard() {
               toast.success("Proceso creado exitosamente");
               nav({ to: "/app/procesos/$id", params: { id: processId! } });
             }}
-            className="px-5 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30"
+            className="px-5 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold shadow-sm hover:bg-primary/90 transition"
           >
             Finalizar
           </button>

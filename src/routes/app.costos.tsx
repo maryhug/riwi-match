@@ -162,7 +162,7 @@ function Costos() {
                 </div>
                 <div className="mt-2 text-2xl font-bold">{v}</div>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-warning to-destructive grid place-items-center text-white">
+              <div className="h-10 w-10 rounded-xl bg-warning grid place-items-center text-warning-foreground">
                 <DollarSign className="h-4 w-4" />
               </div>
             </div>

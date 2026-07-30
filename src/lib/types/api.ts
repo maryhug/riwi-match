@@ -504,3 +504,22 @@ export interface IntegrationHealthResponse {
   meta: { status: "ok" | "error"; details: string };
   cloudflare_r2: { status: "ok" | "error"; details: string };
 }
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export interface NotificationOut {
+  id: string;
+  user_id: string;
+  type: string;
+  category: string;
+  title: string;
+  description: string;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface NotificationsListResponse {
+  notifications: NotificationOut[];
+  unread_count: number;
+}

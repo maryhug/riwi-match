@@ -104,7 +104,7 @@ function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-primary to-info text-white font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50 transition disabled:opacity-60"
+              className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold shadow-sm hover:bg-primary/90 transition disabled:opacity-60"
             >
               {loading ? "Ingresando…" : "Iniciar sesión"}
             </button>

@@ -11,6 +11,8 @@ import {
   MoreHorizontal,
   Archive,
   XCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
@@ -25,6 +27,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+
+const PAGE_SIZE = 10;
 
 export const Route = createFileRoute("/app/")({
   head: () => ({ meta: [{ title: "Procesos · RIWI MATCH" }] }),
@@ -102,6 +106,20 @@ function Inicio() {
   const [estadoFilter, setEstadoFilter] = useState<ProcessStatus | null>(null);
   const [reclutadorFilter, setReclutadorFilter] = useState<string | null>(null);
   const [areaFilter, setAreaFilter] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  const handleEstadoFilter = (val: ProcessStatus | null) => {
+    setEstadoFilter(val);
+    setPage(1);
+  };
+  const handleReclutadorFilter = (val: string | null) => {
+    setReclutadorFilter(val);
+    setPage(1);
+  };
+  const handleAreaFilter = (val: string | null) => {
+    setAreaFilter(val);
+    setPage(1);
+  };
 
   const { data: processesData, isLoading } = useQuery({
     queryKey: ["processes"],
@@ -137,12 +155,25 @@ function Inicio() {
     return { reclutadores: [...r], areas: [...a] };
   }, [processesData]);
 
-  const filtered = procesos.filter(
-    (p) =>
-      (!estadoFilter || p.status === estadoFilter) &&
-      (!reclutadorFilter || p.recruiter_name === reclutadorFilter) &&
-      (!areaFilter || p.area === areaFilter),
-  );
+  const filtered = useMemo(() => {
+    return procesos.filter((p) => {
+      // Ocultar archivados por defecto a menos que se filtre explícitamente por ARCHIVED
+      if (estadoFilter !== "ARCHIVED" && p.status === "ARCHIVED") {
+        return false;
+      }
+      if (estadoFilter && p.status !== estadoFilter) return false;
+      if (reclutadorFilter && p.recruiter_name !== reclutadorFilter) return false;
+      if (areaFilter && p.area !== areaFilter) return false;
+      return true;
+    });
+  }, [procesos, estadoFilter, reclutadorFilter, areaFilter]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
+
+  const paginated = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
 
   const procesosActivos = procesos.filter(
     (p) => p.status !== "CLOSED" && p.status !== "ARCHIVED",
@@ -228,9 +259,9 @@ function Inicio() {
               {estadoFilter ? PROCESS_STATUS_LABEL[estadoFilter] : "Estado"}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setEstadoFilter(null)}>Todos</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEstadoFilter(null)}>Todos</DropdownMenuItem>
               {(Object.keys(PROCESS_STATUS_LABEL) as ProcessStatus[]).map((s) => (
-                <DropdownMenuItem key={s} onClick={() => setEstadoFilter(s)}>
+                <DropdownMenuItem key={s} onClick={() => handleEstadoFilter(s)}>
                   {PROCESS_STATUS_LABEL[s]}
                 </DropdownMenuItem>
               ))}
@@ -248,9 +279,9 @@ function Inicio() {
               <Filter className="h-3.5 w-3.5" /> {reclutadorFilter ?? "Reclutador"}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setReclutadorFilter(null)}>Todos</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleReclutadorFilter(null)}>Todos</DropdownMenuItem>
               {reclutadores.map((r) => (
-                <DropdownMenuItem key={r} onClick={() => setReclutadorFilter(r)}>
+                <DropdownMenuItem key={r} onClick={() => handleReclutadorFilter(r)}>
                   {r}
                 </DropdownMenuItem>
               ))}
@@ -268,9 +299,9 @@ function Inicio() {
               <Filter className="h-3.5 w-3.5" /> {areaFilter ?? "Área"}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setAreaFilter(null)}>Todas</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleAreaFilter(null)}>Todas</DropdownMenuItem>
               {areas.map((a) => (
-                <DropdownMenuItem key={a} onClick={() => setAreaFilter(a)}>
+                <DropdownMenuItem key={a} onClick={() => handleAreaFilter(a)}>
                   {a}
                 </DropdownMenuItem>
               ))}
@@ -287,98 +318,129 @@ function Inicio() {
               : "Ningún proceso coincide con los filtros aplicados."}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
-                  <th className="text-left font-medium px-5 py-3">Proceso</th>
-                  <th className="text-left font-medium px-3 py-3">Área</th>
-                  <th className="text-left font-medium px-3 py-3">Reclutador</th>
-                  <th className="text-left font-medium px-3 py-3">Estado</th>
-                  <th className="text-right font-medium px-3 py-3">Presupuesto</th>
-                  <th className="text-left font-medium px-3 py-3">Fecha</th>
-                  <th className="px-3 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((p) => (
-                  <tr
-                    key={p.process_id}
-                    onClick={() =>
-                      navigate({ to: "/app/procesos/$id", params: { id: p.process_id } })
-                    }
-                    className="cursor-pointer border-t border-border/30 hover:bg-accent/30 transition"
-                  >
-                    <td className="px-5 py-3">
-                      <div className="font-medium hover:text-primary transition">{p.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {p.job_title} · {p.seniority}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-muted-foreground">{p.area}</td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-full bg-muted grid place-items-center text-[10px] font-bold text-foreground">
-                          {initials(p.recruiter_name)}
-                        </div>
-                        <span className="text-xs">{p.recruiter_name}</span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span
-                        className={`inline-flex px-2 py-1 rounded-md text-[10px] font-semibold ${estadoColors[p.status]}`}
-                      >
-                        {PROCESS_STATUS_LABEL[p.status]}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums">
-                      {p.budget_max_usd > 0 ? (
-                        `$${p.budget_max_usd.toFixed(2)}`
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-xs text-muted-foreground">
-                      {new Date(p.created_at).toLocaleDateString("es-CO")}
-                    </td>
-                    <td className="px-3 py-3">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          onClick={(e) => e.stopPropagation()}
-                          className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition"
-                        >
-                          <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                          {p.status !== "CLOSED" && p.status !== "ARCHIVED" && (
-                            <DropdownMenuItem
-                              onClick={() =>
-                                statusMutation.mutate({ processId: p.process_id, status: "CLOSED" })
-                              }
-                            >
-                              <XCircle className="h-3.5 w-3.5 mr-2" /> Cerrar proceso
-                            </DropdownMenuItem>
-                          )}
-                          {p.status === "CLOSED" && (
-                            <DropdownMenuItem
-                              onClick={() =>
-                                statusMutation.mutate({
-                                  processId: p.process_id,
-                                  status: "ARCHIVED",
-                                })
-                              }
-                            >
-                              <Archive className="h-3.5 w-3.5 mr-2" /> Archivar
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
+                    <th className="text-left font-medium px-5 py-3">Proceso</th>
+                    <th className="text-left font-medium px-3 py-3">Área</th>
+                    <th className="text-left font-medium px-3 py-3">Reclutador</th>
+                    <th className="text-left font-medium px-3 py-3">Estado</th>
+                    <th className="text-right font-medium px-3 py-3">Presupuesto</th>
+                    <th className="text-left font-medium px-3 py-3">Fecha</th>
+                    <th className="px-3 py-3"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {paginated.map((p) => (
+                    <tr
+                      key={p.process_id}
+                      onClick={() =>
+                        navigate({ to: "/app/procesos/$id", params: { id: p.process_id } })
+                      }
+                      className="cursor-pointer border-t border-border/30 hover:bg-accent/30 transition"
+                    >
+                      <td className="px-5 py-3">
+                        <div className="font-medium hover:text-primary transition">{p.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {p.job_title} · {p.seniority}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-muted-foreground">{p.area}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-7 w-7 rounded-full bg-muted grid place-items-center text-[10px] font-bold text-foreground">
+                            {initials(p.recruiter_name)}
+                          </div>
+                          <span className="text-xs">{p.recruiter_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span
+                          className={`inline-flex px-2 py-1 rounded-md text-[10px] font-semibold ${estadoColors[p.status]}`}
+                        >
+                          {PROCESS_STATUS_LABEL[p.status]}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-right tabular-nums">
+                        {p.budget_max_usd > 0 ? (
+                          `$${p.budget_max_usd.toFixed(2)}`
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-xs text-muted-foreground">
+                        {new Date(p.created_at).toLocaleDateString("es-CO")}
+                      </td>
+                      <td className="px-3 py-3">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition"
+                          >
+                            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                            {p.status !== "CLOSED" && p.status !== "ARCHIVED" && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  statusMutation.mutate({ processId: p.process_id, status: "CLOSED" })
+                                }
+                              >
+                                <XCircle className="h-3.5 w-3.5 mr-2" /> Cerrar proceso
+                              </DropdownMenuItem>
+                            )}
+                            {p.status === "CLOSED" && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  statusMutation.mutate({
+                                    processId: p.process_id,
+                                    status: "ARCHIVED",
+                                  })
+                                }
+                              >
+                                <Archive className="h-3.5 w-3.5 mr-2" /> Archivar
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-border/40 text-xs text-muted-foreground">
+                <div>
+                  Mostrando {(page - 1) * PAGE_SIZE + 1} -{" "}
+                  {Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length} procesos
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background/60 hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed transition font-medium text-foreground cursor-pointer"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+                  </button>
+                  <span className="px-2 font-semibold text-foreground">
+                    Página {page} de {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background/60 hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed transition font-medium text-foreground cursor-pointer"
+                  >
+                    Siguiente <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </GlassCard>
     </div>

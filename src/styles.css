@@ -152,10 +152,19 @@
 @layer base {
   * {
     border-color: var(--color-border);
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
   }
-  html, body {
-    font-family: var(--font-sans);
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);

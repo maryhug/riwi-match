@@ -66,7 +66,7 @@ function NuevoSet() {
         <button
           onClick={() => createMutation.mutate()}
           disabled={name.trim().length === 0 || createMutation.isPending}
-          className="px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-info text-white text-sm font-semibold shadow-lg shadow-primary/30 disabled:opacity-40"
+          className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold shadow-sm hover:bg-primary/90 transition disabled:opacity-40"
         >
           {createMutation.isPending ? "Creando…" : "Crear set"}
         </button>
