@@ -85,7 +85,7 @@ export function FloatingNav() {
           ? "top"
           : "bottom";
 
-  const dropdownAlign = navPosition === "right" ? "end" : "start";
+  const dropdownAlign = navPosition === "left" || navPosition === "right" ? "end" : "start";
 
   return (
     <div

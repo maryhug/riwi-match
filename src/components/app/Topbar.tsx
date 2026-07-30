@@ -366,13 +366,18 @@ function PopoverNotifications() {
 }
 
 export function Topbar() {
-  const { theme, toggleTheme } = useApp();
+  const { theme, toggleTheme, navPosition } = useApp();
   const { user } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const segments = path.split("/").filter(Boolean);
 
   return (
-    <header className="w-full px-4 lg:px-6">
+    <header
+      className={cn(
+        "w-full px-4 lg:px-6 transition-[padding] duration-300",
+        navPosition !== "top" && "pt-4 lg:pt-5",
+      )}
+    >
       <div className="flex items-center gap-3 px-3 py-2 rounded-full border border-border/60 bg-card/80 shadow-lg backdrop-blur-xl">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-1 text-sm pl-2 shrink-0">
