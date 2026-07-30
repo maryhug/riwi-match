@@ -23,6 +23,13 @@ import {
   FileDown,
   FileText,
   ShieldAlert,
+  CheckCircle2,
+  AlertCircle,
+  MapPin,
+  Mail,
+  ThumbsUp,
+  ThumbsDown,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
@@ -1704,160 +1711,214 @@ function CandidatoDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl max-h-[88vh] overflow-y-auto glass-strong rounded-3xl cursor-default"
+        className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border/60 bg-background/95 backdrop-blur-2xl shadow-2xl cursor-default p-0"
         onClick={(e) => e.stopPropagation()}
       >
-          <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-border/50 sticky top-0 glass-strong rounded-t-3xl z-10">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="h-14 w-14 shrink-0 rounded-full bg-primary text-primary-foreground grid place-items-center font-bold text-lg">
-                {initials(candidate.name)}
+        {/* Sticky Header Banner */}
+        <div className="flex items-start justify-between gap-4 p-6 border-b border-border/40 bg-gradient-to-r from-primary/10 via-card/50 to-card/20 sticky top-0 backdrop-blur-xl z-20 rounded-t-3xl">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="h-14 w-14 shrink-0 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white grid place-items-center font-bold text-xl shadow-lg shadow-primary/20">
+              {initials(candidate.name)}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-2xl font-bold tracking-tight text-foreground truncate">
+                  {candidate.name}
+                </h2>
+                {candidate.match_category && (
+                  <span
+                    className={cn(
+                      "px-2.5 py-0.5 rounded-full text-xs font-bold shadow-xs",
+                      CATEGORY_COLOR[candidate.match_category].bg,
+                      CATEGORY_COLOR[candidate.match_category].text,
+                    )}
+                  >
+                    {MATCH_CATEGORY_LABEL[candidate.match_category]}
+                  </span>
+                )}
+                {latestRun?.advancement_probability && (
+                  <span
+                    className={cn(
+                      "px-2.5 py-0.5 rounded-full text-xs font-semibold shadow-xs",
+                      ADVANCE_COLOR[latestRun.advancement_probability],
+                    )}
+                  >
+                    Avance: {ADVANCEMENT_PROBABILITY_LABEL[latestRun.advancement_probability]}
+                  </span>
+                )}
               </div>
-              <div className="min-w-0">
-                <h2 className="text-xl font-bold truncate">{candidate.name}</h2>
-                <div className="text-xs text-muted-foreground truncate">
-                  {candidate.email}
-                  {candidate.phone ? ` · ${candidate.phone}` : ""}
-                  {candidate.city ? ` · ${candidate.city}` : ""}
-                </div>
-                <div className="mt-1.5 flex gap-1.5">
-                  {candidate.match_category && (
-                    <span
-                      className={cn(
-                        "px-2 py-0.5 rounded text-[10px] font-semibold",
-                        CATEGORY_COLOR[candidate.match_category].bg,
-                        CATEGORY_COLOR[candidate.match_category].text,
-                      )}
-                    >
-                      {MATCH_CATEGORY_LABEL[candidate.match_category]}
-                    </span>
-                  )}
-                  {latestRun?.advancement_probability && (
-                    <span
-                      className={cn(
-                        "px-2 py-0.5 rounded text-[10px] font-semibold",
-                        ADVANCE_COLOR[latestRun.advancement_probability],
-                      )}
-                    >
-                      Avance: {ADVANCEMENT_PROBABILITY_LABEL[latestRun.advancement_probability]}
-                    </span>
-                  )}
-                </div>
+
+              <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 font-medium">
+                <span className="flex items-center gap-1">
+                  <Mail className="h-3.5 w-3.5 text-primary/70" /> {candidate.email}
+                </span>
+                {candidate.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="h-3.5 w-3.5 text-primary/70" /> {candidate.phone}
+                  </span>
+                )}
+                {candidate.city && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5 text-primary/70" /> {candidate.city}
+                  </span>
+                )}
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="h-8 w-8 shrink-0 grid place-items-center rounded-lg hover:bg-accent"
-            >
-              <XCircle className="h-4 w-4" />
-            </button>
           </div>
 
-          {isLoading ? (
-            <div className="py-16 text-center text-sm text-muted-foreground">Cargando…</div>
-          ) : (
-            <div className="p-6 grid md:grid-cols-2 gap-4">
-              {/* ── Columna izquierda: análisis de match ── */}
-              <div className="space-y-4">
-                {detail?.match && (
-                  <GlassCard className="p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="text-sm font-semibold">Análisis de match (IA)</div>
-                      <MatchRing
-                        pct={detail.match.percentage}
-                        category={detail.match.category}
-                        size={56}
-                      />
-                    </div>
-                    {detail.match.summary && (
-                      <p className="text-xs text-foreground/80 leading-relaxed">
-                        {detail.match.summary}
-                      </p>
-                    )}
-                    <div className="grid grid-cols-2 gap-3">
-                      {detail.match.strengths.length > 0 && (
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wider text-success font-semibold mb-1">
-                            Fortalezas
-                          </div>
-                          <ul className="text-xs space-y-0.5">
-                            {detail.match.strengths.map((s, i) => (
-                              <li key={i}>• {s}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {detail.match.gaps.length > 0 && (
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wider text-destructive font-semibold mb-1">
-                            Brechas
-                          </div>
-                          <ul className="text-xs space-y-0.5">
-                            {detail.match.gaps.map((g, i) => (
-                              <li key={i}>• {g}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                    {breakdown && (
-                      <div>
-                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">
-                          Breakdown
-                        </div>
-                        <div className="space-y-1.5">
-                          {(Object.keys(BREAKDOWN_LABELS) as (keyof MatchBreakdown)[]).map(
-                            (key) => {
-                              const item = breakdown[key];
-                              if (!item) return null;
-                              return (
-                                <div key={key} className="text-xs">
-                                  <div className="flex items-center justify-between mb-0.5">
-                                    <span className="text-muted-foreground">
-                                      {BREAKDOWN_LABELS[key]}{" "}
-                                      <span className="text-[10px]">({item.weight}%)</span>
-                                    </span>
-                                    <span className="font-semibold tabular-nums">
-                                      {item.raw_score}
-                                    </span>
-                                  </div>
-                                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                                    <div
-                                      className="h-full bg-primary"
-                                      style={{ width: `${item.raw_score}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            },
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {detail.total_cost > 0 && (
-                      <div className="text-[10px] text-muted-foreground italic pt-1 border-t border-border/50">
-                        Generado por IA — costo estimado ${detail.total_cost.toFixed(4)}
-                      </div>
-                    )}
-                  </GlassCard>
-                )}
+          <button
+            onClick={onClose}
+            className="h-9 w-9 shrink-0 grid place-items-center rounded-full bg-background/80 hover:bg-accent border border-border/60 text-muted-foreground hover:text-foreground transition cursor-pointer shadow-sm"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-                {(detail?.candidate.cv_url || detail?.candidate.normalized_cv_url) && (
-                  <div className="flex flex-col gap-2">
+        {isLoading ? (
+          <div className="py-20 text-center text-sm text-muted-foreground flex flex-col items-center justify-center gap-2">
+            <Sparkles className="h-6 w-6 text-primary animate-pulse" />
+            <span>Cargando expediente completo del candidato…</span>
+          </div>
+        ) : (
+          <div className="p-6 grid md:grid-cols-2 gap-6">
+            {/* ── Columna izquierda: análisis de match ── */}
+            <div className="space-y-5">
+              {detail?.match && (
+                <GlassCard className="p-5 space-y-4 border border-border/50 bg-card/40 rounded-2xl">
+                  <div className="flex items-center justify-between pb-2 border-b border-border/30">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-foreground">
+                          Análisis de Match IA
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          Compatibilidad automatizada con el perfil
+                        </div>
+                      </div>
+                    </div>
+                    <MatchRing
+                      pct={detail.match.percentage}
+                      category={detail.match.category}
+                      size={58}
+                    />
+                  </div>
+
+                  {detail.match.summary && (
+                    <div className="text-xs text-foreground/90 leading-relaxed bg-primary/5 border border-primary/10 rounded-xl p-3.5 font-normal">
+                      {detail.match.summary}
+                    </div>
+                  )}
+
+                  {/* Fortalezas y Brechas */}
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {detail.match.strengths.length > 0 && (
+                      <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 space-y-2">
+                        <div className="text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                          Fortalezas
+                        </div>
+                        <ul className="text-xs space-y-1.5 text-foreground/80 font-medium">
+                          {detail.match.strengths.map((s, i) => (
+                            <li key={i} className="flex items-start gap-1.5 leading-snug">
+                              <span className="text-emerald-500 font-bold">•</span> {s}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {detail.match.gaps.length > 0 && (
+                      <div className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 space-y-2">
+                        <div className="text-[11px] uppercase tracking-wider text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1.5">
+                          <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                          Brechas
+                        </div>
+                        <ul className="text-xs space-y-1.5 text-foreground/80 font-medium">
+                          {detail.match.gaps.map((g, i) => (
+                            <li key={i} className="flex items-start gap-1.5 leading-snug">
+                              <span className="text-rose-500 font-bold">•</span> {g}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Breakdown */}
+                  {breakdown && (
+                    <div className="pt-2 border-t border-border/30">
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold mb-2.5">
+                        Desglose Por Criterio (Breakdown)
+                      </div>
+                      <div className="space-y-2.5">
+                        {(Object.keys(BREAKDOWN_LABELS) as (keyof MatchBreakdown)[]).map(
+                          (key) => {
+                            const item = breakdown[key];
+                            if (!item) return null;
+                            return (
+                              <div key={key} className="text-xs space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-muted-foreground font-medium">
+                                    {BREAKDOWN_LABELS[key]}{" "}
+                                    <span className="text-[10px] text-muted-foreground/70 font-normal">
+                                      (Peso {item.weight}%)
+                                    </span>
+                                  </span>
+                                  <span className="font-bold tabular-nums text-foreground">
+                                    {item.raw_score}%
+                                  </span>
+                                </div>
+                                <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-primary to-indigo-500 rounded-full transition-all duration-500"
+                                    style={{ width: `${item.raw_score}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          },
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {detail.total_cost > 0 && (
+                    <div className="text-[10px] text-muted-foreground/80 italic pt-1 border-t border-border/30 flex items-center justify-between">
+                      <span>Análisis generado por motor de IA</span>
+                      <span className="font-mono">Costo est. ${detail.total_cost.toFixed(4)}</span>
+                    </div>
+                  )}
+                </GlassCard>
+              )}
+
+              {/* Documentos CV */}
+              {(detail?.candidate.cv_url || detail?.candidate.normalized_cv_url) && (
+                <div className="space-y-2.5">
+                  <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">
+                    Documentos y Hoja de Vida
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-2.5">
                     {detail.candidate.cv_url && (
-                      <div className="flex items-center justify-between p-2 rounded-lg border border-border bg-background/60">
-                        <span className="text-xs font-medium pl-1 text-muted-foreground">
-                          CV original
-                        </span>
-                        <div className="flex gap-1">
+                      <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-card/40 hover:bg-accent/40 transition">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-xs font-semibold text-foreground truncate">
+                            CV Original
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
                           {onPreviewOriginal && (
                             <button
                               onClick={() => onPreviewOriginal(candidate)}
-                              className="inline-flex items-center justify-center h-7 px-2 rounded-md hover:bg-accent transition text-muted-foreground hover:text-foreground text-xs"
-                              title="Ver original"
+                              className="h-7 w-7 grid place-items-center rounded-lg hover:bg-background transition text-muted-foreground hover:text-foreground cursor-pointer"
+                              title="Ver vista previa"
                             >
                               <Eye className="h-3.5 w-3.5" />
                             </button>
@@ -1866,25 +1927,29 @@ function CandidatoDrawer({
                             href={`/dl/cv/${processId}/${candidate.process_candidate_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center h-7 px-2 rounded-md hover:bg-accent transition text-muted-foreground hover:text-foreground text-xs"
-                            title="Descargar"
+                            className="h-7 w-7 grid place-items-center rounded-lg hover:bg-background transition text-muted-foreground hover:text-foreground"
+                            title="Descargar PDF"
                           >
                             <Download className="h-3.5 w-3.5" />
                           </a>
                         </div>
                       </div>
                     )}
+
                     {detail.candidate.normalized_cv_url && (
-                      <div className="flex items-center justify-between p-2 rounded-lg border border-primary/20 bg-primary/5">
-                        <span className="text-xs font-medium pl-1 text-primary">
-                          CV normalizado
-                        </span>
-                        <div className="flex gap-1">
+                      <div className="flex items-center justify-between p-3 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/15 transition">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                          <span className="text-xs font-semibold text-primary truncate">
+                            CV Normalizado
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
                           {onPreviewNormalized && (
                             <button
                               onClick={() => onPreviewNormalized(candidate)}
-                              className="inline-flex items-center justify-center h-7 px-2 rounded-md hover:bg-primary/20 transition text-primary text-xs"
-                              title="Ver normalizado"
+                              className="h-7 w-7 grid place-items-center rounded-lg bg-primary/20 hover:bg-primary/30 transition text-primary cursor-pointer"
+                              title="Ver formato estructurado"
                             >
                               <FileText className="h-3.5 w-3.5" />
                             </button>
@@ -1893,8 +1958,8 @@ function CandidatoDrawer({
                             href={`/dl/cv-normalized/${processId}/${candidate.process_candidate_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center h-7 px-2 rounded-md hover:bg-primary/20 transition text-primary text-xs"
-                            title="Descargar"
+                            className="h-7 w-7 grid place-items-center rounded-lg bg-primary/20 hover:bg-primary/30 transition text-primary"
+                            title="Descargar PDF estructurado"
                           >
                             <Download className="h-3.5 w-3.5" />
                           </a>
@@ -1902,99 +1967,116 @@ function CandidatoDrawer({
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+            </div>
 
-              {/* ── Columna derecha: profiling + override ── */}
-              <div className="space-y-4">
-                <GlassCard className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold flex items-center gap-1.5">
-                      <PhoneCall className="h-3.5 w-3.5" /> Profiling
+            {/* ── Columna derecha: profiling + override ── */}
+            <div className="space-y-5">
+              {/* Card Profiling */}
+              <GlassCard className="p-5 space-y-4 border border-border/50 bg-card/40 rounded-2xl">
+                <div className="flex items-center justify-between pb-2 border-b border-border/30">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500">
+                      <PhoneCall className="h-4 w-4" />
                     </div>
-                    {latestRun?.status === "COMPLETED" && (
-                      <button
-                        onClick={() => onOpenProfilingModal(latestRun)}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Transcripción y costos
-                      </button>
-                    )}
+                    <div>
+                      <div className="text-sm font-bold text-foreground">
+                        Respuestas de Profiling (Voz)
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        Estado: {CANDIDATE_STATUS_LABEL[candidate.status] ?? candidate.status}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Estado: {CANDIDATE_STATUS_LABEL[candidate.status] ?? candidate.status}
-                  </div>
-
-                  {!latestRun ? (
-                    <div className="text-xs text-muted-foreground py-2">
-                      Sin llamada de profiling todavía.
-                    </div>
-                  ) : latestRun.status !== "COMPLETED" ? (
-                    <div className="text-xs text-muted-foreground py-2">
-                      La llamada aún no ha finalizado.
-                    </div>
-                  ) : answersLoading ? (
-                    <div className="text-xs text-muted-foreground py-4 text-center">
-                      Cargando respuestas…
-                    </div>
-                  ) : !answersData?.answers.length ? (
-                    <div className="text-xs text-muted-foreground py-4 text-center">
-                      Sin respuestas registradas.
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {answersData.answers.map((a) => (
-                        <details
-                          key={a.id}
-                          className="rounded-xl bg-background/40 border border-border/40 p-3"
-                        >
-                          <summary className="cursor-pointer text-sm font-medium flex items-center justify-between gap-2">
-                            <span className="flex items-center gap-1.5">
-                              {a.question.is_critical && (
-                                <ShieldAlert className="h-3.5 w-3.5 text-warning shrink-0" />
-                              )}
-                              {a.question.text}
-                            </span>
-                            <span
-                              className={cn(
-                                "shrink-0 text-xs px-2 py-0.5 rounded",
-                                a.requires_review
-                                  ? "bg-warning/20 text-warning-foreground"
-                                  : "bg-success/15 text-success",
-                              )}
-                            >
-                              {a.requires_review ? "Revisar" : "✓"}
-                            </span>
-                          </summary>
-                          <div className="mt-3 text-sm text-muted-foreground">
-                            {a.transcription ?? a.normalized_answer ?? "—"}
-                          </div>
-                          {a.confidence_score !== null && (
-                            <div className="mt-2 flex items-center gap-2 text-[11px]">
-                              <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                                <div
-                                  className={cn(
-                                    "h-full",
-                                    a.confidence_score < 0.7 ? "bg-warning" : "bg-success",
-                                  )}
-                                  style={{ width: `${a.confidence_score * 100}%` }}
-                                />
-                              </div>
-                              <span className="text-muted-foreground">
-                                Confianza {Math.round(a.confidence_score * 100)}%
-                              </span>
-                            </div>
-                          )}
-                        </details>
-                      ))}
-                    </div>
+                  {latestRun?.status === "COMPLETED" && (
+                    <button
+                      onClick={() => onOpenProfilingModal(latestRun)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition cursor-pointer"
+                    >
+                      <Sparkles className="h-3 w-3" /> Transcripción
+                    </button>
                   )}
-                </GlassCard>
+                </div>
 
-                <GlassCard className="p-4 space-y-3">
-                  <div className="text-sm font-semibold">Override del recruiter</div>
+                {!latestRun ? (
+                  <div className="text-xs text-muted-foreground py-6 text-center border border-dashed border-border/60 rounded-xl">
+                    Sin llamada de profiling ejecutada todavía.
+                  </div>
+                ) : latestRun.status !== "COMPLETED" ? (
+                  <div className="text-xs text-muted-foreground py-6 text-center border border-dashed border-border/60 rounded-xl">
+                    La llamada de profiling aún no ha finalizado.
+                  </div>
+                ) : answersLoading ? (
+                  <div className="text-xs text-muted-foreground py-6 text-center flex items-center justify-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary animate-spin" />
+                    <span>Cargando respuestas…</span>
+                  </div>
+                ) : !answersData?.answers.length ? (
+                  <div className="text-xs text-muted-foreground py-6 text-center border border-dashed border-border/60 rounded-xl">
+                    Sin respuestas registradas en esta sesión.
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                    {answersData.answers.map((a) => (
+                      <details
+                        key={a.id}
+                        className="rounded-xl bg-background/50 border border-border/50 p-3.5 group transition [&[open]]:bg-background/80"
+                      >
+                        <summary className="cursor-pointer text-xs font-semibold flex items-center justify-between gap-2 select-none">
+                          <span className="flex items-center gap-1.5 text-foreground leading-snug">
+                            {a.question.is_critical && (
+                              <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                            )}
+                            {a.question.text}
+                          </span>
+                          <span
+                            className={cn(
+                              "shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md border",
+                              a.requires_review
+                                ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
+                                : "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400",
+                            )}
+                          >
+                            {a.requires_review ? "Revisión" : "✓ OK"}
+                          </span>
+                        </summary>
+                        <div className="mt-3 pt-2.5 border-t border-border/30 text-xs text-muted-foreground leading-relaxed">
+                          {a.transcription ?? a.normalized_answer ?? "Sin transcripción disponible."}
+                        </div>
+                        {a.confidence_score !== null && (
+                          <div className="mt-2.5 flex items-center gap-2 text-[10px]">
+                            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full transition-all duration-300",
+                                  a.confidence_score < 0.7 ? "bg-amber-500" : "bg-emerald-500",
+                                )}
+                                style={{ width: `${a.confidence_score * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-muted-foreground font-medium">
+                              Confianza {Math.round(a.confidence_score * 100)}%
+                            </span>
+                          </div>
+                        )}
+                      </details>
+                    ))}
+                  </div>
+                )}
+              </GlassCard>
+
+              {/* Card Override del Recruiter */}
+              <GlassCard className="p-5 space-y-4 border border-border/50 bg-card/40 rounded-2xl">
+                <div className="text-sm font-bold text-foreground pb-2 border-b border-border/30">
+                  Evaluación Manual y Notas del Recruiter
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground">Score manual (0-100)</label>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Score Manual Overrride (0 - 100)
+                    </label>
                     <input
                       type="number"
                       min={0}
@@ -2002,45 +2084,74 @@ function CandidatoDrawer({
                       value={overrideScore}
                       onChange={(e) => setOverrideScore(e.target.value)}
                       placeholder="Usar score de IA"
-                      className="mt-1 w-full px-3 py-1.5 rounded-lg bg-background/70 border border-border text-xs"
+                      className="mt-1 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   </div>
+
+                  <div className="flex items-end">
+                    <button
+                      onClick={() => overrideMutation.mutate()}
+                      disabled={overrideMutation.isPending}
+                      className="w-full py-2 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-semibold shadow-sm hover:bg-primary/90 transition cursor-pointer disabled:opacity-50"
+                    >
+                      {overrideMutation.isPending ? "Guardando…" : "Guardar Evaluación"}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Observaciones y notas internas
+                  </label>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Observaciones del recruiter…"
-                    className="w-full min-h-[70px] px-3 py-2 rounded-lg bg-background/70 border border-border text-xs"
+                    placeholder="Escribe comentarios u observaciones sobre la entrevista…"
+                    className="mt-1 w-full min-h-[75px] px-3 py-2 rounded-xl bg-background/70 border border-border text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
-                  <button
-                    onClick={() => overrideMutation.mutate()}
-                    disabled={overrideMutation.isPending}
-                    className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-50"
-                  >
-                    {overrideMutation.isPending ? "Guardando…" : "Guardar"}
-                  </button>
+                </div>
 
-                  <div className="flex items-center gap-2 pt-2 border-t border-border text-xs">
-                    <span className="text-muted-foreground shrink-0">¿El análisis de IA fue…?</span>
+                <div className="pt-3 border-t border-border/30 space-y-2">
+                  <div className="text-[11px] font-medium text-muted-foreground">
+                    ¿Qué tan preciso fue el análisis de IA?
+                  </div>
+                  <div className="flex items-center gap-2">
                     {(["CORRECT", "PARTIAL", "INCORRECT"] as const).map((ev) => (
                       <button
                         key={ev}
                         onClick={() => feedbackMutation.mutate(ev)}
                         disabled={feedbackMutation.isPending}
-                        className="flex-1 px-2 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-accent transition disabled:opacity-50"
+                        className={cn(
+                          "flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl border text-xs font-semibold transition cursor-pointer disabled:opacity-50 shadow-xs",
+                          ev === "CORRECT"
+                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
+                            : ev === "PARTIAL"
+                              ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
+                              : "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20",
+                        )}
                       >
-                        {ev === "CORRECT"
-                          ? "Correcto"
-                          : ev === "PARTIAL"
-                            ? "Parcial"
-                            : "Incorrecto"}
+                        {ev === "CORRECT" ? (
+                          <>
+                            <ThumbsUp className="h-3.5 w-3.5" /> Correcto
+                          </>
+                        ) : ev === "PARTIAL" ? (
+                          <>
+                            <Sparkles className="h-3.5 w-3.5" /> Parcial
+                          </>
+                        ) : (
+                          <>
+                            <ThumbsDown className="h-3.5 w-3.5" /> Incorrecto
+                          </>
+                        )}
                       </button>
                     ))}
                   </div>
-                </GlassCard>
-              </div>
+                </div>
+              </GlassCard>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+    </div>
   );
 }
