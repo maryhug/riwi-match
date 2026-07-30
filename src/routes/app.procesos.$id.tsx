@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   PlayCircle,
@@ -29,6 +29,8 @@ import {
   Mail,
   ThumbsUp,
   ThumbsDown,
+  Pencil,
+  Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -62,6 +64,8 @@ import {
   getCandidates,
   getCandidateDetail,
   overrideCandidate,
+  updateCandidate,
+  deleteCandidate,
 } from "@/lib/api/candidates.functions";
 import { triggerMatch, getMatchStatus } from "@/lib/api/match.functions";
 import {
@@ -88,7 +92,7 @@ import type {
   ParseJDResponse,
   ProfilingRunOut,
 } from "@/lib/types/api";
-import { cn } from "@/lib/utils";
+import { cn, cleanAnswerText } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/procesos/$id")({
   head: () => ({ meta: [{ title: "Detalle de proceso · RIWI MATCH" }] }),
@@ -192,6 +196,9 @@ function Detalle() {
   const [profilingModalRun, setProfilingModalRun] = useState<ProfilingRunOut | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [previewData, setPreviewData] = useState<{ title: string; url: string } | null>(null);
+  const [editingCandidate, setEditingCandidate] = useState<CandidateListItem | null>(null);
+  const [deletingCandidate, setDeletingCandidate] = useState<CandidateListItem | null>(null);
+  const [closeProcessModalOpen, setCloseProcessModalOpen] = useState(false);
   const [pollStart] = useState(() => Date.now());
 
   const { data: process, isLoading: processLoading } = useQuery({
@@ -334,10 +341,10 @@ function Detalle() {
             </button>
             {isActive ? (
               <button
-                onClick={() => statusMutation.mutate("CLOSED")}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-background/60 text-sm"
+                onClick={() => setCloseProcessModalOpen(true)}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20 text-sm font-semibold transition cursor-pointer shadow-xs"
               >
-                <XCircle className="h-3.5 w-3.5" /> Cerrar proceso
+                <XCircle className="h-4 w-4 text-rose-500" /> Cerrar proceso
               </button>
             ) : process.status === "CLOSED" ? (
               <button
@@ -367,28 +374,37 @@ function Detalle() {
           </div>
         )}
 
-        {process.budget_max_usd > 0 && (
-          <div className="mt-4 flex items-center gap-4">
-            <div className="flex-1 max-w-xs">
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-muted-foreground">Presupuesto máximo</span>
-                <span className="font-medium">${process.budget_max_usd.toFixed(2)}</span>
-              </div>
+        <div className="mt-5 pt-4 border-t border-border/40 flex flex-wrap items-center justify-between gap-3">
+          {process.budget_max_usd > 0 ? (
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-border/60 bg-muted/30 text-xs">
+              <span className="text-muted-foreground font-medium">Presupuesto máximo:</span>
+              <span className="font-bold text-foreground font-mono">
+                ${process.budget_max_usd.toFixed(2)} USD
+              </span>
             </div>
+          ) : (
+            <div />
+          )}
+
+          <div className="flex items-center gap-2">
             <a
               href={`/dl/export/ranking/${id}`}
-              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-border/60 bg-background/80 hover:bg-accent text-xs font-semibold text-foreground transition cursor-pointer shadow-xs"
             >
-              <FileDown className="h-3.5 w-3.5" /> Exportar ranking
+              <FileDown className="h-3.5 w-3.5 text-primary" /> Exportar ranking
             </a>
             <a
               href={`/dl/export/costs/${id}`}
-              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-border/60 bg-background/80 hover:bg-accent text-xs font-semibold text-foreground transition cursor-pointer shadow-xs"
             >
-              <FileDown className="h-3.5 w-3.5" /> Exportar costos
+              <FileDown className="h-3.5 w-3.5 text-primary" /> Exportar costos
             </a>
           </div>
-        )}
+        </div>
       </GlassCard>
 
       <div className="flex items-center gap-1 border-b border-border/50">
@@ -434,6 +450,8 @@ function Detalle() {
               url: `/dl/cv-normalized/${id}/${c.process_candidate_id}`,
             });
           }}
+          onEditCandidate={setEditingCandidate}
+          onDeleteCandidate={setDeletingCandidate}
         />
       )}
 
@@ -466,8 +484,36 @@ function Detalle() {
               url: `/dl/cv/${id}/${c.process_candidate_id}`,
             });
           }}
+          onEditCandidate={setEditingCandidate}
+          onDeleteCandidate={setDeletingCandidate}
         />
       )}
+
+      <EditCandidateModal
+        isOpen={!!editingCandidate}
+        onClose={() => setEditingCandidate(null)}
+        processId={id}
+        candidate={editingCandidate}
+      />
+
+      <DeleteCandidateModal
+        isOpen={!!deletingCandidate}
+        onClose={() => setDeletingCandidate(null)}
+        processId={id}
+        candidate={deletingCandidate}
+      />
+
+      <CloseProcessConfirmModal
+        isOpen={closeProcessModalOpen}
+        onClose={() => setCloseProcessModalOpen(false)}
+        onConfirm={() => {
+          statusMutation.mutate("CLOSED", {
+            onSuccess: () => setCloseProcessModalOpen(false),
+          });
+        }}
+        isPending={statusMutation.isPending}
+        processName={process?.name ?? "este proceso"}
+      />
 
       <ProfilingResultModal
         run={profilingModalRun}
@@ -690,6 +736,307 @@ function DashboardTab({
   );
 }
 
+// ─── Edit & Delete Candidate Modals ─────────────────────────────────────────
+
+function EditCandidateModal({
+  isOpen,
+  onClose,
+  processId,
+  candidate,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  processId: string;
+  candidate: CandidateListItem | null;
+}) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+
+  useEffect(() => {
+    if (candidate) {
+      setName(candidate.name ?? "");
+      setEmail(candidate.email ?? "");
+      setPhone(candidate.phone ?? "");
+      setCity(candidate.city ?? "");
+    }
+  }, [candidate]);
+
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      updateCandidate({
+        data: {
+          processId,
+          pcId: candidate!.process_candidate_id,
+          name,
+          email,
+          phone,
+          city,
+        },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["candidates", processId] });
+      qc.invalidateQueries({
+        queryKey: ["candidate-detail", processId, candidate?.process_candidate_id],
+      });
+      toast.success("Candidato actualizado con éxito");
+      onClose();
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "Error al actualizar candidato");
+    },
+  });
+
+  if (!isOpen || !candidate) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-lg rounded-3xl bg-white text-slate-900 shadow-2xl border border-slate-200 cursor-default p-6 space-y-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+              <Pencil className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Editar Candidato</h3>
+              <p className="text-xs text-slate-500">Actualiza la información del perfil</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="h-8 w-8 grid place-items-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 cursor-pointer transition"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            updateMutation.mutate();
+          }}
+          className="space-y-4"
+        >
+          <div>
+            <label className="text-xs font-semibold text-slate-600 block mb-1">
+              Nombre Completo
+            </label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ej. Juan Pérez"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-600 block mb-1">
+              Correo Electrónico
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="ejemplo@correo.com"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-600 block mb-1">Teléfono</label>
+              <input
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+57 300 000 0000"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-600 block mb-1">Ubicación</label>
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Ej. Medellín, Colombia"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={updateMutation.isPending}
+              className="px-5 py-2 rounded-xl text-xs font-semibold bg-primary text-white hover:bg-primary/90 transition cursor-pointer disabled:opacity-50 shadow-xs"
+            >
+              {updateMutation.isPending ? "Guardando…" : "Guardar Cambios"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function DeleteCandidateModal({
+  isOpen,
+  onClose,
+  processId,
+  candidate,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  processId: string;
+  candidate: CandidateListItem | null;
+}) {
+  const qc = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: () =>
+      deleteCandidate({
+        data: {
+          processId,
+          pcId: candidate!.process_candidate_id,
+        },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["candidates", processId] });
+      toast.success("Candidato eliminado del proceso");
+      onClose();
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "Error al eliminar candidato");
+    },
+  });
+
+  if (!isOpen || !candidate) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-md rounded-3xl bg-white text-slate-900 shadow-2xl border border-slate-200 cursor-default p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3">
+          <div className="p-2.5 rounded-2xl bg-rose-50 text-rose-600 shrink-0 mt-0.5">
+            <Trash2 className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">¿Eliminar candidato?</h3>
+            <p className="text-xs text-slate-500 leading-relaxed mt-1">
+              ¿Estás seguro de que deseas eliminar a{" "}
+              <strong className="text-slate-800">{candidate.name}</strong> de este proceso de
+              selección? Esta acción no se puede deshacer.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => deleteMutation.mutate()}
+            disabled={deleteMutation.isPending}
+            className="px-5 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 transition cursor-pointer disabled:opacity-50 shadow-xs"
+          >
+            {deleteMutation.isPending ? "Eliminando…" : "Sí, eliminar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CloseProcessConfirmModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  isPending,
+  processName,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  isPending: boolean;
+  processName: string;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-md rounded-3xl bg-white text-slate-900 shadow-2xl border border-slate-200 cursor-default p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3">
+          <div className="p-2.5 rounded-2xl bg-rose-50 text-rose-600 shrink-0 mt-0.5">
+            <XCircle className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">¿Cerrar este proceso?</h3>
+            <p className="text-xs text-slate-500 leading-relaxed mt-1">
+              Estás a punto de cerrar el proceso{" "}
+              <strong className="text-slate-800">{processName}</strong>. Al cerrarlo no se podrán
+              ejecutar más análisis de match ni llamadas de profiling automáticamente.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isPending}
+            className="px-5 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 transition cursor-pointer disabled:opacity-50 shadow-xs"
+          >
+            {isPending ? "Cerrando…" : "Sí, cerrar proceso"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Ranking Tab ────────────────────────────────────────────────────────────
 
 const RANKING_PAGE_SIZE = 10;
@@ -706,6 +1053,8 @@ function RankingTab({
   onActivateProfiling,
   activating,
   onPreviewNormalized,
+  onEditCandidate,
+  onDeleteCandidate,
 }: {
   processId: string;
   candidates: CandidateListItem[];
@@ -718,6 +1067,8 @@ function RankingTab({
   onActivateProfiling: (ids: string[]) => void;
   activating: boolean;
   onPreviewNormalized?: (c: CandidateListItem) => void;
+  onEditCandidate?: (c: CandidateListItem) => void;
+  onDeleteCandidate?: (c: CandidateListItem) => void;
 }) {
   const [subView, setSubView] = useState<"match" | "profiling">("match");
   const [search, setSearch] = useState("");
@@ -955,6 +1306,24 @@ function RankingTab({
                                 >
                                   <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                                 </button>
+                                {onEditCandidate && (
+                                   <button
+                                     onClick={() => onEditCandidate(c)}
+                                     className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition cursor-pointer text-muted-foreground hover:text-foreground"
+                                     title="Editar candidato"
+                                   >
+                                     <Pencil className="h-3.5 w-3.5" />
+                                   </button>
+                                 )}
+                                 {onDeleteCandidate && (
+                                   <button
+                                     onClick={() => onDeleteCandidate(c)}
+                                     className="h-7 w-7 grid place-items-center rounded-md hover:bg-rose-500/10 transition cursor-pointer text-muted-foreground hover:text-rose-600"
+                                     title="Eliminar candidato del proceso"
+                                   >
+                                     <Trash2 className="h-3.5 w-3.5" />
+                                   </button>
+                                 )}
                               </div>
                             </td>
                           </tr>
@@ -1634,6 +2003,8 @@ function CandidatoDrawer({
   onOpenProfilingModal,
   onPreviewNormalized,
   onPreviewOriginal,
+  onEditCandidate,
+  onDeleteCandidate,
 }: {
   processId: string;
   candidate: CandidateListItem;
@@ -1642,6 +2013,8 @@ function CandidatoDrawer({
   onOpenProfilingModal: (r: ProfilingRunOut) => void;
   onPreviewNormalized?: (c: CandidateListItem) => void;
   onPreviewOriginal?: (c: CandidateListItem) => void;
+  onEditCandidate?: (c: CandidateListItem) => void;
+  onDeleteCandidate?: (c: CandidateListItem) => void;
 }) {
   const qc = useQueryClient();
   const [notes, setNotes] = useState("");
@@ -1709,30 +2082,180 @@ function CandidatoDrawer({
       ? (detail.match.breakdown as MatchBreakdown)
       : null;
 
+  const handleExportPDF = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("No se pudo abrir la ventana de exportación PDF.");
+      return;
+    }
+
+    const strengthsHtml = detail?.match?.strengths.length
+      ? detail.match.strengths.map((s) => `<li style="margin-bottom:4px;">${s}</li>`).join("")
+      : "<li style='color:#64748b;'>No especificadas</li>";
+
+    const gapsHtml = detail?.match?.gaps.length
+      ? detail.match.gaps.map((g) => `<li style="margin-bottom:4px;">${g}</li>`).join("")
+      : "<li style='color:#64748b;'>Sin brechas destacadas</li>";
+
+    const breakdownHtml = breakdown
+      ? (Object.keys(BREAKDOWN_LABELS) as (keyof MatchBreakdown)[])
+          .map((key) => {
+            const item = breakdown[key];
+            if (!item) return "";
+            return `
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px 12px; font-weight: 500; color: #334155;">${BREAKDOWN_LABELS[key]}</td>
+                <td style="padding: 8px 12px; text-align: center; color: #64748b;">${item.weight}%</td>
+                <td style="padding: 8px 12px; text-align: right; font-weight: 700; color: #4338ca;">${item.raw_score}%</td>
+              </tr>
+            `;
+          })
+          .join("")
+      : "<tr><td colspan='3' style='padding:10px; color:#64748b;'>Sin desglose disponible</td></tr>";
+
+    const answersHtml = answersData?.answers.length
+      ? answersData.answers
+          .map(
+            (a) => `
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 10px; background-color: #ffffff;">
+          <div style="font-weight: 700; font-size: 13px; color: #0f172a; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+            <span>${a.question.is_critical ? "[CRÍTICA] " : ""}${a.question.text}</span>
+            <span style="font-size: 10px; font-weight: 700; color: ${a.requires_review ? "#b45309" : "#166534"}; border: 1px solid ${a.requires_review ? "#fde68a" : "#a7f3d0"}; padding: 2px 6px; border-radius: 4px; background: transparent;">
+              ${a.requires_review ? "Revisión" : "✓ OK"}
+            </span>
+          </div>
+          <div style="font-size: 12px; color: #334155; background-color: #f8fafc; padding: 8px 12px; border-radius: 6px; line-height: 1.5;">
+            <strong>Respuesta:</strong> ${cleanAnswerText(a.normalized_answer, a.transcription)}
+          </div>
+        </div>
+      `,
+          )
+          .join("")
+      : "<p style='color: #64748b; font-size: 12px;'>Sin respuestas de profiling registradas.</p>";
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <title>Reporte de Match - ${candidate.name}</title>
+        <style>
+          @page { size: A4; margin: 15mm; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; line-height: 1.4; font-size: 12px; padding: 10px; }
+          .header { border-bottom: 2px solid #6366f1; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
+          .title { font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; }
+          .subtitle { font-size: 12px; color: #64748b; margin: 0; }
+          .badge-category { font-weight: 700; color: #4338ca; background: #e0e7ff; padding: 4px 12px; border-radius: 9999px; font-size: 12px; display: inline-block; }
+          .match-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+          .match-score { font-size: 32px; font-weight: 800; color: #4338ca; }
+          .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin: 20px 0 10px 0; }
+          .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+          .box-green { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+          .box-red { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+          ul { margin: 4px 0 0 16px; padding: 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; }
+          th { background: #f1f5f9; border-bottom: 1px solid #cbd5e1; font-size: 11px; text-transform: uppercase; color: #475569; padding: 8px 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <h1 class="title">${candidate.name}</h1>
+            <p class="subtitle">${candidate.email} ${candidate.phone ? " • " + candidate.phone : ""} ${candidate.city ? " • " + candidate.city : ""}</p>
+          </div>
+          <div>
+            <span class="badge-category">
+              ${candidate.match_category ? (MATCH_CATEGORY_LABEL[candidate.match_category] ?? candidate.match_category) : "Sin Categoría"}
+            </span>
+          </div>
+        </div>
+
+        <div class="match-card">
+          <div style="flex: 1; padding-right: 16px;">
+            <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #4338ca; margin-bottom: 2px;">Análisis de Compatibilidad AI</div>
+            <div style="font-size: 12px; color: #334155;">${detail?.match?.summary ?? "Compatibilidad calculada con base en el perfil del cargo."}</div>
+          </div>
+          <div class="match-score">${detail?.match?.percentage ?? 0}%</div>
+        </div>
+
+        <div class="grid-2">
+          <div class="box-green">
+            <div style="font-weight: 700; color: #166534; font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">Fortalezas Principales</div>
+            <ul style="color: #334155;">${strengthsHtml}</ul>
+          </div>
+          <div class="box-red">
+            <div style="font-weight: 700; color: #dc2626; font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">Brechas Identificadas</div>
+            <ul style="color: #334155;">${gapsHtml}</ul>
+          </div>
+        </div>
+
+        <div class="section-title">Desglose por Criterios de Evaluación</div>
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align: left;">Criterio</th>
+              <th style="text-align: center;">Peso Ponderado</th>
+              <th style="text-align: right;">Puntaje</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${breakdownHtml}
+          </tbody>
+        </table>
+
+        ${
+          latestRun
+            ? `
+          <div class="section-title">Entrevista de Profiling de Voz</div>
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+            <div style="font-weight: 700; color: #0f172a; margin-bottom: 4px;">Dictamen de Evaluación:</div>
+            <div style="color: #334155; margin-bottom: 6px;">${latestRun.advancement_explanation ?? "Entrevista completada."}</div>
+            <div style="font-size: 11px; color: #64748b;">
+              <strong>Estado de Avance:</strong> ${latestRun.advancement_probability ? (ADVANCEMENT_PROBABILITY_LABEL[latestRun.advancement_probability] ?? latestRun.advancement_probability) : "—"}
+            </div>
+          </div>
+
+          <div class="section-title">Respuestas Evaluadas de Entrevista</div>
+          ${answersHtml}
+        `
+            : ""
+        }
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 300);
+  };
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border/60 bg-background/95 backdrop-blur-2xl shadow-2xl cursor-default p-0"
+        className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white text-slate-900 shadow-2xl border border-slate-200 cursor-default p-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sticky Header Banner */}
-        <div className="flex items-start justify-between gap-4 p-6 border-b border-border/50 bg-muted/40 sticky top-0 backdrop-blur-xl z-20 rounded-t-3xl">
+        <div className="flex items-start justify-between gap-4 p-6 border-b border-slate-100 bg-white sticky top-0 z-20 rounded-t-3xl">
           <div className="flex items-center gap-4 min-w-0">
-            <div className="h-14 w-14 shrink-0 rounded-2xl bg-primary text-primary-foreground grid place-items-center font-bold text-xl shadow-md">
+            <div className="h-14 w-14 shrink-0 rounded-2xl bg-primary text-white grid place-items-center font-bold text-xl shadow-md">
               {initials(candidate.name)}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground truncate">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900 truncate">
                   {candidate.name}
                 </h2>
                 {candidate.match_category && (
                   <span
                     className={cn(
-                      "px-2.5 py-0.5 rounded-full text-xs font-bold shadow-xs",
+                      "px-2.5 py-0.5 rounded-full text-xs font-bold",
                       CATEGORY_COLOR[candidate.match_category].bg,
                       CATEGORY_COLOR[candidate.match_category].text,
                     )}
@@ -1743,7 +2266,7 @@ function CandidatoDrawer({
                 {latestRun?.advancement_probability && (
                   <span
                     className={cn(
-                      "px-2.5 py-0.5 rounded-full text-xs font-semibold shadow-xs",
+                      "px-2.5 py-0.5 rounded-full text-xs font-semibold",
                       ADVANCE_COLOR[latestRun.advancement_probability],
                     )}
                   >
@@ -1752,53 +2275,86 @@ function CandidatoDrawer({
                 )}
               </div>
 
-              <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 font-medium">
+              <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 font-medium">
                 <span className="flex items-center gap-1">
-                  <Mail className="h-3.5 w-3.5 text-primary/70" /> {candidate.email}
+                  <Mail className="h-3.5 w-3.5 text-primary" /> {candidate.email}
                 </span>
                 {candidate.phone && (
                   <span className="flex items-center gap-1">
-                    <Phone className="h-3.5 w-3.5 text-primary/70" /> {candidate.phone}
+                    <Phone className="h-3.5 w-3.5 text-primary" /> {candidate.phone}
                   </span>
                 )}
                 {candidate.city && (
                   <span className="flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5 text-primary/70" /> {candidate.city}
+                    <MapPin className="h-3.5 w-3.5 text-primary" /> {candidate.city}
                   </span>
                 )}
               </div>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="h-9 w-9 shrink-0 grid place-items-center rounded-full bg-background hover:bg-accent border border-border/60 text-muted-foreground hover:text-foreground transition cursor-pointer shadow-sm"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleExportPDF}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition cursor-pointer shadow-xs"
+              title="Descargar reporte completo en PDF"
+            >
+              <Download className="h-3.5 w-3.5" /> Descargar PDF
+            </button>
+            {onEditCandidate && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onEditCandidate(candidate);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer shadow-xs"
+                title="Editar candidato"
+              >
+                <Pencil className="h-3.5 w-3.5 text-slate-500" /> Editar
+              </button>
+            )}
+            {onDeleteCandidate && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onDeleteCandidate(candidate);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 text-xs font-semibold transition cursor-pointer shadow-xs"
+                title="Eliminar del proceso"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-rose-500" /> Eliminar
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="h-9 w-9 grid place-items-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition cursor-pointer shadow-xs ml-1"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
-          <div className="py-20 text-center text-sm text-muted-foreground flex flex-col items-center justify-center gap-2">
+          <div className="py-20 text-center text-sm text-slate-500 flex flex-col items-center justify-center gap-2">
             <Sparkles className="h-6 w-6 text-primary animate-pulse" />
-            <span>Cargando expediente completo del candidato…</span>
+            <span>Cargando expediente del candidato…</span>
           </div>
         ) : (
-          <div className="p-6 grid md:grid-cols-2 gap-6">
+          <div className="p-6 grid md:grid-cols-2 gap-6 bg-slate-50/50">
             {/* ── Columna izquierda: análisis de match ── */}
             <div className="space-y-5">
               {detail?.match && (
-                <GlassCard className="p-5 space-y-4 border border-border/50 bg-card/80 rounded-2xl shadow-xs">
-                  <div className="flex items-center justify-between pb-2 border-b border-border/30">
+                <div className="p-5 space-y-4 rounded-2xl border border-slate-200 bg-white shadow-xs">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                         <Sparkles className="h-4 w-4" />
                       </div>
                       <div>
-                        <div className="text-sm font-bold text-foreground">
+                        <div className="text-sm font-bold text-slate-900">
                           Análisis de Match IA
                         </div>
-                        <div className="text-[10px] text-muted-foreground">
+                        <div className="text-[10px] text-slate-500">
                           Compatibilidad automatizada con el perfil
                         </div>
                       </div>
@@ -1811,23 +2367,23 @@ function CandidatoDrawer({
                   </div>
 
                   {detail.match.summary && (
-                    <div className="text-xs text-foreground/90 leading-relaxed p-3.5 rounded-xl border border-primary/20 bg-primary/5 font-normal">
+                    <div className="text-xs text-slate-700 leading-relaxed font-normal border-l-2 border-primary pl-3 py-0.5">
                       {detail.match.summary}
                     </div>
                   )}
 
-                  {/* Fortalezas y Brechas - Soft clean 5% tint with border */}
-                  <div className="grid sm:grid-cols-2 gap-3">
+                  {/* Fortalezas y Brechas - Clean boxes with border */}
+                  <div className="grid sm:grid-cols-2 gap-3 pt-1">
                     {detail.match.strengths.length > 0 && (
-                      <div className="p-3 rounded-xl border border-emerald-500/25 bg-emerald-500/5 space-y-2">
-                        <div className="text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                      <div className="p-3.5 rounded-xl border border-emerald-200/80 bg-white space-y-2">
+                        <div className="text-[11px] uppercase tracking-wider text-emerald-600 font-bold flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                           Fortalezas
                         </div>
-                        <ul className="text-xs space-y-1.5 text-foreground/80 font-medium">
+                        <ul className="text-xs space-y-1.5 text-slate-700 font-medium">
                           {detail.match.strengths.map((s, i) => (
                             <li key={i} className="flex items-start gap-1.5 leading-snug">
-                              <span className="text-emerald-500 font-bold">•</span> {s}
+                              <span className="text-emerald-600 font-bold">•</span> {s}
                             </li>
                           ))}
                         </ul>
@@ -1835,15 +2391,15 @@ function CandidatoDrawer({
                     )}
 
                     {detail.match.gaps.length > 0 && (
-                      <div className="p-3 rounded-xl border border-rose-500/25 bg-rose-500/5 space-y-2">
-                        <div className="text-[11px] uppercase tracking-wider text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1.5">
-                          <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                      <div className="p-3.5 rounded-xl border border-rose-200/80 bg-white space-y-2">
+                        <div className="text-[11px] uppercase tracking-wider text-rose-600 font-bold flex items-center gap-1.5">
+                          <AlertCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
                           Brechas
                         </div>
-                        <ul className="text-xs space-y-1.5 text-foreground/80 font-medium">
+                        <ul className="text-xs space-y-1.5 text-slate-700 font-medium">
                           {detail.match.gaps.map((g, i) => (
                             <li key={i} className="flex items-start gap-1.5 leading-snug">
-                              <span className="text-rose-500 font-bold">•</span> {g}
+                              <span className="text-rose-600 font-bold">•</span> {g}
                             </li>
                           ))}
                         </ul>
@@ -1853,8 +2409,8 @@ function CandidatoDrawer({
 
                   {/* Breakdown */}
                   {breakdown && (
-                    <div className="pt-2 border-t border-border/30">
-                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold mb-2.5">
+                    <div className="pt-3 border-t border-slate-100">
+                      <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-2.5">
                         Desglose Por Criterio (Breakdown)
                       </div>
                       <div className="space-y-2.5">
@@ -1865,17 +2421,17 @@ function CandidatoDrawer({
                             return (
                               <div key={key} className="text-xs space-y-1">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-muted-foreground font-medium">
+                                  <span className="text-slate-600 font-medium">
                                     {BREAKDOWN_LABELS[key]}{" "}
-                                    <span className="text-[10px] text-muted-foreground/70 font-normal">
+                                    <span className="text-[10px] text-slate-400 font-normal">
                                       (Peso {item.weight}%)
                                     </span>
                                   </span>
-                                  <span className="font-bold tabular-nums text-foreground">
+                                  <span className="font-bold tabular-nums text-slate-900">
                                     {item.raw_score}%
                                   </span>
                                 </div>
-                                <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
+                                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
                                   <div
                                     className="h-full bg-primary rounded-full transition-all duration-500"
                                     style={{ width: `${item.raw_score}%` }}
@@ -1889,27 +2445,21 @@ function CandidatoDrawer({
                     </div>
                   )}
 
-                  {detail.total_cost > 0 && (
-                    <div className="text-[10px] text-muted-foreground/80 italic pt-1 border-t border-border/30 flex items-center justify-between">
-                      <span>Análisis generado por motor de IA</span>
-                      <span className="font-mono">Costo est. ${detail.total_cost.toFixed(4)}</span>
-                    </div>
-                  )}
-                </GlassCard>
+                </div>
               )}
 
               {/* Documentos CV */}
               {(detail?.candidate.cv_url || detail?.candidate.normalized_cv_url) && (
-                <div className="space-y-2.5">
-                  <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">
+                <div className="p-5 space-y-3 rounded-2xl border border-slate-200 bg-white shadow-xs">
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                     Documentos y Hoja de Vida
                   </div>
                   <div className="grid sm:grid-cols-2 gap-2.5">
                     {detail.candidate.cv_url && (
-                      <div className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/30 hover:bg-muted/50 transition">
+                      <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition">
                         <div className="flex items-center gap-2 min-w-0">
-                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="text-xs font-semibold text-foreground truncate">
+                          <FileText className="h-4 w-4 text-slate-500 shrink-0" />
+                          <span className="text-xs font-semibold text-slate-800 truncate">
                             CV Original
                           </span>
                         </div>
@@ -1917,7 +2467,7 @@ function CandidatoDrawer({
                           {onPreviewOriginal && (
                             <button
                               onClick={() => onPreviewOriginal(candidate)}
-                              className="h-7 w-7 grid place-items-center rounded-lg hover:bg-background transition text-muted-foreground hover:text-foreground cursor-pointer"
+                              className="h-7 w-7 grid place-items-center rounded-lg hover:bg-slate-100 transition text-slate-500 hover:text-slate-900 cursor-pointer"
                               title="Ver vista previa"
                             >
                               <Eye className="h-3.5 w-3.5" />
@@ -1927,7 +2477,7 @@ function CandidatoDrawer({
                             href={`/dl/cv/${processId}/${candidate.process_candidate_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="h-7 w-7 grid place-items-center rounded-lg hover:bg-background transition text-muted-foreground hover:text-foreground"
+                            className="h-7 w-7 grid place-items-center rounded-lg hover:bg-slate-100 transition text-slate-500 hover:text-slate-900"
                             title="Descargar PDF"
                           >
                             <Download className="h-3.5 w-3.5" />
@@ -1937,7 +2487,7 @@ function CandidatoDrawer({
                     )}
 
                     {detail.candidate.normalized_cv_url && (
-                      <div className="flex items-center justify-between p-3 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition">
+                      <div className="flex items-center justify-between p-3 rounded-xl border border-primary/40 bg-white hover:bg-primary/5 transition">
                         <div className="flex items-center gap-2 min-w-0">
                           <Sparkles className="h-4 w-4 text-primary shrink-0" />
                           <span className="text-xs font-semibold text-primary truncate">
@@ -1948,7 +2498,7 @@ function CandidatoDrawer({
                           {onPreviewNormalized && (
                             <button
                               onClick={() => onPreviewNormalized(candidate)}
-                              className="h-7 w-7 grid place-items-center rounded-lg bg-primary/15 hover:bg-primary/25 transition text-primary cursor-pointer"
+                              className="h-7 w-7 grid place-items-center rounded-lg bg-primary/10 hover:bg-primary/20 transition text-primary cursor-pointer"
                               title="Ver formato estructurado"
                             >
                               <FileText className="h-3.5 w-3.5" />
@@ -1958,7 +2508,7 @@ function CandidatoDrawer({
                             href={`/dl/cv-normalized/${processId}/${candidate.process_candidate_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="h-7 w-7 grid place-items-center rounded-lg bg-primary/15 hover:bg-primary/25 transition text-primary"
+                            className="h-7 w-7 grid place-items-center rounded-lg bg-primary/10 hover:bg-primary/20 transition text-primary"
                             title="Descargar PDF estructurado"
                           >
                             <Download className="h-3.5 w-3.5" />
@@ -1974,17 +2524,17 @@ function CandidatoDrawer({
             {/* ── Columna derecha: profiling + override ── */}
             <div className="space-y-5">
               {/* Card Profiling */}
-              <GlassCard className="p-5 space-y-4 border border-border/50 bg-card/80 rounded-2xl shadow-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-border/30">
+              <div className="p-5 space-y-4 rounded-2xl border border-slate-200 bg-white shadow-xs">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500">
+                    <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
                       <PhoneCall className="h-4 w-4" />
                     </div>
                     <div>
-                      <div className="text-sm font-bold text-foreground">
+                      <div className="text-sm font-bold text-slate-900">
                         Respuestas de Profiling (Voz)
                       </div>
-                      <div className="text-[10px] text-muted-foreground">
+                      <div className="text-[10px] text-slate-500">
                         Estado: {CANDIDATE_STATUS_LABEL[candidate.status] ?? candidate.status}
                       </div>
                     </div>
@@ -2000,20 +2550,20 @@ function CandidatoDrawer({
                 </div>
 
                 {!latestRun ? (
-                  <div className="text-xs text-muted-foreground py-6 text-center border border-dashed border-border/50 rounded-xl">
+                  <div className="text-xs text-slate-400 py-6 text-center border border-dashed border-slate-200 rounded-xl">
                     Sin llamada de profiling ejecutada todavía.
                   </div>
                 ) : latestRun.status !== "COMPLETED" ? (
-                  <div className="text-xs text-muted-foreground py-6 text-center border border-dashed border-border/50 rounded-xl">
+                  <div className="text-xs text-slate-400 py-6 text-center border border-dashed border-slate-200 rounded-xl">
                     La llamada de profiling aún no ha finalizado.
                   </div>
                 ) : answersLoading ? (
-                  <div className="text-xs text-muted-foreground py-6 text-center flex items-center justify-center gap-2">
+                  <div className="text-xs text-slate-500 py-6 text-center flex items-center justify-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary animate-spin" />
                     <span>Cargando respuestas…</span>
                   </div>
                 ) : !answersData?.answers.length ? (
-                  <div className="text-xs text-muted-foreground py-6 text-center border border-dashed border-border/50 rounded-xl">
+                  <div className="text-xs text-slate-400 py-6 text-center border border-dashed border-slate-200 rounded-xl">
                     Sin respuestas registradas en esta sesión.
                   </div>
                 ) : (
@@ -2021,10 +2571,10 @@ function CandidatoDrawer({
                     {answersData.answers.map((a) => (
                       <details
                         key={a.id}
-                        className="rounded-xl bg-muted/20 border border-border/50 p-3.5 group transition [&[open]]:bg-muted/40"
+                        className="rounded-xl border border-slate-200 bg-white p-3.5 group transition [&[open]]:bg-slate-50"
                       >
                         <summary className="cursor-pointer text-xs font-semibold flex items-center justify-between gap-2 select-none">
-                          <span className="flex items-center gap-1.5 text-foreground leading-snug">
+                          <span className="flex items-center gap-1.5 text-slate-800 leading-snug">
                             {a.question.is_critical && (
                               <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                             )}
@@ -2034,19 +2584,19 @@ function CandidatoDrawer({
                             className={cn(
                               "shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md border",
                               a.requires_review
-                                ? "border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/5"
-                                : "border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5",
+                                ? "border-amber-200 text-amber-700 bg-amber-50"
+                                : "border-emerald-200 text-emerald-700 bg-transparent",
                             )}
                           >
                             {a.requires_review ? "Revisión" : "✓ OK"}
                           </span>
                         </summary>
-                        <div className="mt-3 pt-2.5 border-t border-border/30 text-xs text-muted-foreground leading-relaxed">
-                          {a.transcription ?? a.normalized_answer ?? "Sin transcripción disponible."}
+                        <div className="mt-3 pt-2.5 border-t border-slate-100 text-xs text-slate-600 leading-relaxed font-medium">
+                          {cleanAnswerText(a.normalized_answer, a.transcription)}
                         </div>
                         {a.confidence_score !== null && (
                           <div className="mt-2.5 flex items-center gap-2 text-[11px]">
-                            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
                               <div
                                 className={cn(
                                   "h-full rounded-full transition-all duration-300",
@@ -2055,7 +2605,7 @@ function CandidatoDrawer({
                                 style={{ width: `${a.confidence_score * 100}%` }}
                               />
                             </div>
-                            <span className="text-muted-foreground font-medium">
+                            <span className="text-slate-400 font-medium">
                               Confianza {Math.round(a.confidence_score * 100)}%
                             </span>
                           </div>
@@ -2064,17 +2614,17 @@ function CandidatoDrawer({
                     ))}
                   </div>
                 )}
-              </GlassCard>
+              </div>
 
               {/* Card Override del Recruiter */}
-              <GlassCard className="p-5 space-y-4 border border-border/50 bg-card/80 rounded-2xl shadow-xs">
-                <div className="text-sm font-bold text-foreground pb-2 border-b border-border/30">
+              <div className="p-5 space-y-4 rounded-2xl border border-slate-200 bg-white shadow-xs">
+                <div className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">
                   Evaluación Manual y Notas del Recruiter
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-xs font-medium text-slate-500">
                       Score Manual Override (0 - 100)
                     </label>
                     <input
@@ -2084,7 +2634,7 @@ function CandidatoDrawer({
                       value={overrideScore}
                       onChange={(e) => setOverrideScore(e.target.value)}
                       placeholder="Usar score de IA"
-                      className="mt-1 w-full px-3 py-2 rounded-xl bg-background border border-border/60 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
 
@@ -2092,7 +2642,7 @@ function CandidatoDrawer({
                     <button
                       onClick={() => overrideMutation.mutate()}
                       disabled={overrideMutation.isPending}
-                      className="w-full py-2 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-semibold shadow-sm hover:bg-primary/90 transition cursor-pointer disabled:opacity-50"
+                      className="w-full py-2 px-4 rounded-xl bg-primary text-white text-xs font-semibold shadow-sm hover:bg-primary/90 transition cursor-pointer disabled:opacity-50"
                     >
                       {overrideMutation.isPending ? "Guardando…" : "Guardar Evaluación"}
                     </button>
@@ -2100,19 +2650,19 @@ function CandidatoDrawer({
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <label className="text-xs font-medium text-slate-500">
                     Observaciones y notas internas
                   </label>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Escribe comentarios u observaciones sobre la entrevista…"
-                    className="mt-1 w-full min-h-[75px] px-3 py-2 rounded-xl bg-background border border-border/60 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="mt-1 w-full min-h-[75px] px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 leading-relaxed focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
 
-                <div className="pt-3 border-t border-border/30 space-y-2">
-                  <div className="text-[11px] font-medium text-muted-foreground">
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <div className="text-[11px] font-medium text-slate-500">
                     ¿Qué tan preciso fue el análisis de IA?
                   </div>
                   <div className="flex items-center gap-2">
@@ -2122,32 +2672,32 @@ function CandidatoDrawer({
                         onClick={() => feedbackMutation.mutate(ev)}
                         disabled={feedbackMutation.isPending}
                         className={cn(
-                          "flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl border text-xs font-semibold transition cursor-pointer disabled:opacity-50 shadow-xs",
+                          "flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold transition cursor-pointer disabled:opacity-50 text-slate-700",
                           ev === "CORRECT"
-                            ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15"
+                            ? "hover:border-emerald-500 hover:text-emerald-600"
                             : ev === "PARTIAL"
-                              ? "border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400 hover:bg-amber-500/15"
-                              : "border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400 hover:bg-rose-500/15",
+                              ? "hover:border-amber-500 hover:text-amber-600"
+                              : "hover:border-rose-500 hover:text-rose-600",
                         )}
                       >
                         {ev === "CORRECT" ? (
                           <>
-                            <ThumbsUp className="h-3.5 w-3.5 text-emerald-500" /> Correcto
+                            <ThumbsUp className="h-3.5 w-3.5 text-emerald-600" /> Correcto
                           </>
                         ) : ev === "PARTIAL" ? (
                           <>
-                            <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Parcial
+                            <Sparkles className="h-3.5 w-3.5 text-amber-600" /> Parcial
                           </>
                         ) : (
                           <>
-                            <ThumbsDown className="h-3.5 w-3.5 text-rose-500" /> Incorrecto
+                            <ThumbsDown className="h-3.5 w-3.5 text-rose-600" /> Incorrecto
                           </>
                         )}
                       </button>
                     ))}
                   </div>
                 </div>
-              </GlassCard>
+              </div>
             </div>
           </div>
         )}

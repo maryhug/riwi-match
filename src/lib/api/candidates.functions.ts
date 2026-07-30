@@ -62,3 +62,41 @@ export const sendWhatsAppConsent = createServerFn({ method: "POST" })
       { method: "POST" },
     );
   });
+
+export const updateCandidate = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      processId: z.string(),
+      pcId: z.string(),
+      name: z.string().optional(),
+      email: z.string().optional(),
+      phone: z.string().optional(),
+      city: z.string().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { processId, pcId, ...body } = data;
+    return apiCall<{
+      status: string;
+      candidate: {
+        process_candidate_id: string;
+        name: string;
+        email: string;
+        phone?: string | null;
+        city?: string | null;
+      };
+    }>(`/api/v1/processes/${processId}/candidates/${pcId}`, {
+      method: "PATCH",
+      body,
+    });
+  });
+
+export const deleteCandidate = createServerFn({ method: "POST" })
+  .validator(z.object({ processId: z.string(), pcId: z.string() }))
+  .handler(async ({ data }) => {
+    return apiCall<{ status: string; process_candidate_id: string }>(
+      `/api/v1/processes/${data.processId}/candidates/${data.pcId}`,
+      { method: "DELETE" },
+    );
+  });
+

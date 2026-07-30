@@ -12,6 +12,7 @@ import {
   Line,
   CartesianGrid,
 } from "recharts";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getTADashboard } from "@/lib/api/reports.functions";
 import { getDashboardMetrics } from "@/lib/api/metrics.functions";
 import { getProcesses } from "@/lib/api/processes.functions";
@@ -22,8 +23,11 @@ export const Route = createFileRoute("/app/equipo")({
   component: Equipo,
 });
 
+const PAGE_SIZE = 10;
+
 function Equipo() {
   const [reclutadorFilter, setReclutadorFilter] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const { data: ta, isLoading: taLoading } = useQuery({
     queryKey: ["ta-dashboard"],
@@ -47,13 +51,21 @@ function Equipo() {
     return m;
   }, [metrics]);
 
-  const rows = (processesData?.processes ?? [])
-    .filter((p) => !reclutadorFilter || p.recruiter_name === reclutadorFilter)
-    .map((p) => ({
-      ...p,
-      cost: processCostMap.get(p.process_id)?.total_cost ?? 0,
-      candidates: processCostMap.get(p.process_id)?.candidate_count ?? 0,
-    }));
+  const rows = useMemo(() => {
+    return (processesData?.processes ?? [])
+      .filter((p) => !reclutadorFilter || p.recruiter_name === reclutadorFilter)
+      .map((p) => ({
+        ...p,
+        cost: processCostMap.get(p.process_id)?.total_cost ?? 0,
+        candidates: processCostMap.get(p.process_id)?.candidate_count ?? 0,
+      }));
+  }, [processesData, reclutadorFilter, processCostMap]);
+
+  const totalPages = Math.ceil(rows.length / PAGE_SIZE) || 1;
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return rows.slice(start, start + PAGE_SIZE);
+  }, [rows, page]);
 
   const isLoading = taLoading || metricsLoading;
 
@@ -71,7 +83,10 @@ function Equipo() {
         </div>
         <select
           value={reclutadorFilter ?? ""}
-          onChange={(e) => setReclutadorFilter(e.target.value || null)}
+          onChange={(e) => {
+            setReclutadorFilter(e.target.value || null);
+            setPage(1);
+          }}
           className="px-3 py-2 text-sm rounded-xl bg-background/70 border border-border"
         >
           <option value="">Todo el equipo</option>
@@ -171,28 +186,68 @@ function Equipo() {
             {rows.length === 0 ? (
               <div className="p-6 text-center text-xs text-muted-foreground">Sin procesos.</div>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
-                    <th className="text-left px-5 py-3 font-medium">Proceso</th>
-                    <th className="text-left px-3 py-3 font-medium">Reclutador</th>
-                    <th className="text-left px-3 py-3 font-medium">Estado</th>
-                    <th className="text-right px-3 py-3 font-medium">Candidatos</th>
-                    <th className="text-right px-3 py-3 font-medium">Costo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((p) => (
-                    <tr key={p.process_id} className="border-t border-border/30">
-                      <td className="px-5 py-3 font-medium">{p.name}</td>
-                      <td className="px-3 py-3 text-muted-foreground">{p.recruiter_name}</td>
-                      <td className="px-3 py-3 text-xs">{PROCESS_STATUS_LABEL[p.status]}</td>
-                      <td className="px-3 py-3 text-right tabular-nums">{p.candidates}</td>
-                      <td className="px-3 py-3 text-right tabular-nums">${p.cost.toFixed(2)}</td>
+              <>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
+                      <th className="text-left px-5 py-3 font-medium">Proceso</th>
+                      <th className="text-left px-3 py-3 font-medium">Reclutador</th>
+                      <th className="text-left px-3 py-3 font-medium">Estado</th>
+                      <th className="text-right px-3 py-3 font-medium">Candidatos</th>
+                      <th className="text-right px-3 py-3 font-medium">Costo</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {paginatedRows.map((p) => (
+                      <tr key={p.process_id} className="border-t border-border/30">
+                        <td className="px-5 py-3 font-medium">{p.name}</td>
+                        <td className="px-3 py-3 text-muted-foreground">{p.recruiter_name}</td>
+                        <td className="px-3 py-3 text-xs">{PROCESS_STATUS_LABEL[p.status]}</td>
+                        <td className="px-3 py-3 text-right tabular-nums">{p.candidates}</td>
+                        <td className="px-3 py-3 text-right tabular-nums">${p.cost.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between px-5 py-3 border-t border-border/40 text-xs text-muted-foreground">
+                    <div>
+                      Mostrando{" "}
+                      <span className="font-semibold text-foreground">
+                        {(page - 1) * PAGE_SIZE + 1}
+                      </span>{" "}
+                      -{" "}
+                      <span className="font-semibold text-foreground">
+                        {Math.min(page * PAGE_SIZE, rows.length)}
+                      </span>{" "}
+                      de <span className="font-semibold text-foreground">{rows.length}</span>{" "}
+                      procesos
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="h-8 w-8 grid place-items-center rounded-lg border border-border/60 hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                        title="Página anterior"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <span className="px-3 py-1 text-xs font-medium">
+                        Página {page} de {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        className="h-8 w-8 grid place-items-center rounded-lg border border-border/60 hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                        title="Página siguiente"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </>

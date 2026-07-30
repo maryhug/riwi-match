@@ -472,6 +472,7 @@ export interface GlobalSettingOut {
 export interface AuditLogOut {
   id: string;
   user_id: string | null;
+  user_name: string | null;
   action: string;
   entity_type: string;
   entity_id: string | null;

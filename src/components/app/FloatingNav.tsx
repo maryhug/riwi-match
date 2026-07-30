@@ -76,6 +76,17 @@ export function FloatingNav() {
 
   const bubbleBtn = "grid h-11 w-11 shrink-0 place-items-center rounded-full transition";
 
+  const dropdownSide =
+    navPosition === "left"
+      ? "right"
+      : navPosition === "right"
+        ? "left"
+        : navPosition === "bottom"
+          ? "top"
+          : "bottom";
+
+  const dropdownAlign = navPosition === "right" ? "end" : "start";
+
   return (
     <div
       className={cn(
@@ -185,9 +196,23 @@ export function FloatingNav() {
           >
             {user ? `${user.name[0] ?? ""}${user.last_name[0] ?? ""}`.toUpperCase() : "?"}
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Mover a
+          <DropdownMenuContent
+            side={dropdownSide}
+            align={dropdownAlign}
+            sideOffset={10}
+            className="w-56 p-1.5 shadow-xl border border-border bg-card/95 backdrop-blur-md"
+          >
+            <div className="px-2.5 py-2 mb-1 rounded-lg bg-muted/50 border border-border/50">
+              <p className="text-xs font-bold text-foreground truncate">
+                {user ? `${user.name} ${user.last_name}` : "Usuario"}
+              </p>
+              <p className="text-[11px] text-muted-foreground truncate">{user?.email ?? ""}</p>
+              <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                {USER_ROLE_LABEL[role]}
+              </span>
+            </div>
+            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 pt-1">
+              Mover barra a
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {moveOptions.map((o) => {
@@ -197,22 +222,22 @@ export function FloatingNav() {
                   key={o.pos}
                   onClick={() => setNavPosition(o.pos)}
                   className={cn(
-                    "cursor-pointer gap-2",
-                    navPosition === o.pos && "text-primary font-semibold",
+                    "cursor-pointer gap-2 text-xs",
+                    navPosition === o.pos && "text-primary font-semibold bg-primary/10",
                   )}
                 >
-                  <OIcon className="h-4 w-4" /> {o.label}
+                  <OIcon className="h-3.5 w-3.5" /> {o.label}
                 </DropdownMenuItem>
               );
             })}
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+              className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
               onClick={() => {
                 void logout().then(() => navigate({ to: "/" }));
               }}
             >
-              <LogOut className="h-4 w-4" /> Cerrar sesión
+              <LogOut className="h-3.5 w-3.5" /> Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

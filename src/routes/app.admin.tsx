@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useState, type ReactNode } from "react";
 import { GlassCard } from "@/components/app/GlassCard";
-import { Settings, Plus, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Settings, Plus, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Trash2, User2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -905,18 +905,25 @@ function IntegracionesTab() {
 
 // ─── Auditoría ──────────────────────────────────────────────────────────────
 
+const AUDIT_PAGE_SIZE = 10;
+
 function AuditoriaTab() {
   const [offset, setOffset] = useState(0);
   const [action, setAction] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
-  const limit = 20;
 
   const { data, isLoading } = useQuery({
     queryKey: ["audit-logs", offset, action],
-    queryFn: () => getAuditLogs({ data: { limit, offset, action: action || undefined } }),
+    queryFn: () =>
+      getAuditLogs({
+        data: { limit: AUDIT_PAGE_SIZE, offset, action: action || undefined },
+      }),
   });
 
   const logs = data?.logs ?? [];
+  const hasNext = logs.length === AUDIT_PAGE_SIZE;
+  const hasPrev = offset > 0;
+  const currentPage = Math.floor(offset / AUDIT_PAGE_SIZE) + 1;
 
   return (
     <div className="space-y-4">
@@ -942,93 +949,118 @@ function AuditoriaTab() {
             Sin registros de auditoría.
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
-                <th className="text-left px-5 py-3 font-medium">Fecha</th>
-                <th className="text-left px-3 py-3 font-medium">Acción</th>
-                <th className="text-left px-3 py-3 font-medium">Entidad</th>
-                <th className="px-3 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((log) => {
-                const hasDiff = log.old_value || log.new_value;
-                const isOpen = expanded === log.id;
-                return (
-                  <Fragment key={log.id}>
-                    <tr className="border-t border-border/30">
-                      <td className="px-5 py-3 text-xs text-muted-foreground">
-                        {new Date(log.created_at).toLocaleString("es-CO")}
-                      </td>
-                      <td className="px-3 py-3 text-xs font-medium">{log.action}</td>
-                      <td className="px-3 py-3 text-xs text-muted-foreground">
-                        {log.entity_type}
-                        {log.entity_id ? ` · ${log.entity_id.slice(0, 8)}…` : ""}
-                      </td>
-                      <td className="px-3 py-3">
-                        {hasDiff && (
-                          <button
-                            onClick={() => setExpanded(isOpen ? null : log.id)}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            {isOpen ? (
-                              <ChevronUp className="h-3.5 w-3.5" />
-                            ) : (
-                              <ChevronDown className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                    {isOpen && hasDiff && (
-                      <tr className="bg-background/30">
-                        <td colSpan={4} className="px-5 py-3">
-                          <div className="grid grid-cols-2 gap-4 text-xs">
-                            <div>
-                              <div className="text-[10px] uppercase text-muted-foreground mb-1">
-                                Antes
-                              </div>
-                              <pre className="whitespace-pre-wrap font-mono text-[11px] bg-background/60 rounded-lg p-2">
-                                {JSON.stringify(log.old_value, null, 2) ?? "—"}
-                              </pre>
-                            </div>
-                            <div>
-                              <div className="text-[10px] uppercase text-muted-foreground mb-1">
-                                Después
-                              </div>
-                              <pre className="whitespace-pre-wrap font-mono text-[11px] bg-background/60 rounded-lg p-2">
-                                {JSON.stringify(log.new_value, null, 2) ?? "—"}
-                              </pre>
-                            </div>
-                          </div>
+          <>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
+                  <th className="text-left px-5 py-3 font-medium">Fecha</th>
+                  <th className="text-left px-3 py-3 font-medium">Usuario</th>
+                  <th className="text-left px-3 py-3 font-medium">Acción</th>
+                  <th className="text-left px-3 py-3 font-medium">Entidad</th>
+                  <th className="px-3 py-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((log) => {
+                  const hasDiff = log.old_value || log.new_value;
+                  const isOpen = expanded === log.id;
+                  return (
+                    <Fragment key={log.id}>
+                      <tr className="border-t border-border/30 hover:bg-background/20 transition">
+                        <td className="px-5 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(log.created_at).toLocaleString("es-CO")}
+                        </td>
+                        <td className="px-3 py-3 text-xs">
+                          {log.user_name ? (
+                            <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                              <User2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              {log.user_name}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground italic">Sistema</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-xs font-medium">{log.action}</td>
+                        <td className="px-3 py-3 text-xs text-muted-foreground">
+                          {log.entity_type}
+                          {log.entity_id ? ` · ${log.entity_id.slice(0, 8)}…` : ""}
+                        </td>
+                        <td className="px-3 py-3">
+                          {hasDiff && (
+                            <button
+                              onClick={() => setExpanded(isOpen ? null : log.id)}
+                              className="text-muted-foreground hover:text-foreground cursor-pointer transition"
+                            >
+                              {isOpen ? (
+                                <ChevronUp className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          )}
                         </td>
                       </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                      {isOpen && hasDiff && (
+                        <tr className="bg-background/30">
+                          <td colSpan={5} className="px-5 py-3">
+                            <div className="grid grid-cols-2 gap-4 text-xs">
+                              <div>
+                                <div className="text-[10px] uppercase text-muted-foreground mb-1">
+                                  Antes
+                                </div>
+                                <pre className="whitespace-pre-wrap font-mono text-[11px] bg-background/60 rounded-lg p-2">
+                                  {JSON.stringify(log.old_value, null, 2) ?? "—"}
+                                </pre>
+                              </div>
+                              <div>
+                                <div className="text-[10px] uppercase text-muted-foreground mb-1">
+                                  Después
+                                </div>
+                                <pre className="whitespace-pre-wrap font-mono text-[11px] bg-background/60 rounded-lg p-2">
+                                  {JSON.stringify(log.new_value, null, 2) ?? "—"}
+                                </pre>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {(hasPrev || hasNext) && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-border/40 text-xs text-muted-foreground">
+                <div>
+                  Página <span className="font-semibold text-foreground">{currentPage}</span>
+                  {" · "}mostrando{" "}
+                  <span className="font-semibold text-foreground">{logs.length}</span> registros
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setOffset(Math.max(0, offset - AUDIT_PAGE_SIZE))}
+                    disabled={!hasPrev}
+                    className="h-8 w-8 grid place-items-center rounded-lg border border-border/60 hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                    title="Página anterior"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="px-3 py-1 text-xs font-medium">Página {currentPage}</span>
+                  <button
+                    onClick={() => setOffset(offset + AUDIT_PAGE_SIZE)}
+                    disabled={!hasNext}
+                    className="h-8 w-8 grid place-items-center rounded-lg border border-border/60 hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                    title="Página siguiente"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </GlassCard>
-      <div className="flex items-center justify-between text-xs">
-        <button
-          onClick={() => setOffset(Math.max(0, offset - limit))}
-          disabled={offset === 0}
-          className="px-3 py-1.5 rounded-lg border border-border disabled:opacity-40"
-        >
-          Anterior
-        </button>
-        <span className="text-muted-foreground">Mostrando desde {offset + 1}</span>
-        <button
-          onClick={() => setOffset(offset + limit)}
-          disabled={logs.length < limit}
-          className="px-3 py-1.5 rounded-lg border border-border disabled:opacity-40"
-        >
-          Siguiente
-        </button>
-      </div>
     </div>
   );
 }

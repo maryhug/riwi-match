@@ -53,9 +53,17 @@ export async function handleDownloadRequest(request: Request): Promise<Response 
   const accessToken = parseCookie(request.headers.get("cookie"), "rm_access");
   if (!accessToken) return new Response("No autenticado", { status: 401 });
 
+  const reqHeaders: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+  };
+  const rangeHeader = request.headers.get("range");
+  if (rangeHeader) {
+    reqHeaders["Range"] = rangeHeader;
+  }
+
   const baseUrl = process.env.API_BASE_URL ?? "http://localhost:8000";
   const backendResponse = await fetch(`${baseUrl}${route.backendPath(match)}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: reqHeaders,
     redirect: "manual",
   });
 
