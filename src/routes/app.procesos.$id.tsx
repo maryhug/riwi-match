@@ -1719,9 +1719,9 @@ function CandidatoDrawer({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sticky Header Banner */}
-        <div className="flex items-start justify-between gap-4 p-6 border-b border-border/40 bg-gradient-to-r from-primary/10 via-card/50 to-card/20 sticky top-0 backdrop-blur-xl z-20 rounded-t-3xl">
+        <div className="flex items-start justify-between gap-4 p-6 border-b border-border/40 bg-background/60 sticky top-0 backdrop-blur-xl z-20 rounded-t-3xl">
           <div className="flex items-center gap-4 min-w-0">
-            <div className="h-14 w-14 shrink-0 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white grid place-items-center font-bold text-xl shadow-lg shadow-primary/20">
+            <div className="h-14 w-14 shrink-0 rounded-2xl bg-primary text-primary-foreground grid place-items-center font-bold text-xl shadow-md">
               {initials(candidate.name)}
             </div>
             <div className="min-w-0">
@@ -1788,7 +1788,7 @@ function CandidatoDrawer({
             {/* ── Columna izquierda: análisis de match ── */}
             <div className="space-y-5">
               {detail?.match && (
-                <GlassCard className="p-5 space-y-4 border border-border/50 bg-card/40 rounded-2xl">
+                <GlassCard className="p-5 space-y-4 border border-border/40 bg-transparent rounded-2xl shadow-none">
                   <div className="flex items-center justify-between pb-2 border-b border-border/30">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -1811,15 +1811,15 @@ function CandidatoDrawer({
                   </div>
 
                   {detail.match.summary && (
-                    <div className="text-xs text-foreground/90 leading-relaxed bg-primary/5 border border-primary/10 rounded-xl p-3.5 font-normal">
+                    <div className="text-xs text-foreground/90 leading-relaxed border-l-2 border-primary pl-3 py-1 font-normal">
                       {detail.match.summary}
                     </div>
                   )}
 
-                  {/* Fortalezas y Brechas */}
+                  {/* Fortalezas y Brechas - Clean transparent borders without colored box fill */}
                   <div className="grid sm:grid-cols-2 gap-3">
                     {detail.match.strengths.length > 0 && (
-                      <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 space-y-2">
+                      <div className="p-3 rounded-xl border border-emerald-500/30 bg-transparent space-y-2">
                         <div className="text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
                           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                           Fortalezas
@@ -1835,7 +1835,7 @@ function CandidatoDrawer({
                     )}
 
                     {detail.match.gaps.length > 0 && (
-                      <div className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 space-y-2">
+                      <div className="p-3 rounded-xl border border-rose-500/30 bg-transparent space-y-2">
                         <div className="text-[11px] uppercase tracking-wider text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1.5">
                           <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
                           Brechas
@@ -1877,7 +1877,7 @@ function CandidatoDrawer({
                                 </div>
                                 <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
                                   <div
-                                    className="h-full bg-gradient-to-r from-primary to-indigo-500 rounded-full transition-all duration-500"
+                                    className="h-full bg-primary rounded-full transition-all duration-500"
                                     style={{ width: `${item.raw_score}%` }}
                                   />
                                 </div>
@@ -1906,7 +1906,7 @@ function CandidatoDrawer({
                   </div>
                   <div className="grid sm:grid-cols-2 gap-2.5">
                     {detail.candidate.cv_url && (
-                      <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-card/40 hover:bg-accent/40 transition">
+                      <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-transparent hover:bg-accent/20 transition">
                         <div className="flex items-center gap-2 min-w-0">
                           <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                           <span className="text-xs font-semibold text-foreground truncate">
@@ -1917,7 +1917,7 @@ function CandidatoDrawer({
                           {onPreviewOriginal && (
                             <button
                               onClick={() => onPreviewOriginal(candidate)}
-                              className="h-7 w-7 grid place-items-center rounded-lg hover:bg-background transition text-muted-foreground hover:text-foreground cursor-pointer"
+                              className="h-7 w-7 grid place-items-center rounded-lg hover:bg-accent transition text-muted-foreground hover:text-foreground cursor-pointer"
                               title="Ver vista previa"
                             >
                               <Eye className="h-3.5 w-3.5" />
@@ -1927,7 +1927,7 @@ function CandidatoDrawer({
                             href={`/dl/cv/${processId}/${candidate.process_candidate_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="h-7 w-7 grid place-items-center rounded-lg hover:bg-background transition text-muted-foreground hover:text-foreground"
+                            className="h-7 w-7 grid place-items-center rounded-lg hover:bg-accent transition text-muted-foreground hover:text-foreground"
                             title="Descargar PDF"
                           >
                             <Download className="h-3.5 w-3.5" />
@@ -1937,7 +1937,7 @@ function CandidatoDrawer({
                     )}
 
                     {detail.candidate.normalized_cv_url && (
-                      <div className="flex items-center justify-between p-3 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/15 transition">
+                      <div className="flex items-center justify-between p-3 rounded-xl border border-primary/40 bg-transparent hover:bg-primary/5 transition">
                         <div className="flex items-center gap-2 min-w-0">
                           <Sparkles className="h-4 w-4 text-primary shrink-0" />
                           <span className="text-xs font-semibold text-primary truncate">
@@ -1948,7 +1948,7 @@ function CandidatoDrawer({
                           {onPreviewNormalized && (
                             <button
                               onClick={() => onPreviewNormalized(candidate)}
-                              className="h-7 w-7 grid place-items-center rounded-lg bg-primary/20 hover:bg-primary/30 transition text-primary cursor-pointer"
+                              className="h-7 w-7 grid place-items-center rounded-lg bg-primary/10 hover:bg-primary/20 transition text-primary cursor-pointer"
                               title="Ver formato estructurado"
                             >
                               <FileText className="h-3.5 w-3.5" />
@@ -1958,7 +1958,7 @@ function CandidatoDrawer({
                             href={`/dl/cv-normalized/${processId}/${candidate.process_candidate_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="h-7 w-7 grid place-items-center rounded-lg bg-primary/20 hover:bg-primary/30 transition text-primary"
+                            className="h-7 w-7 grid place-items-center rounded-lg bg-primary/10 hover:bg-primary/20 transition text-primary"
                             title="Descargar PDF estructurado"
                           >
                             <Download className="h-3.5 w-3.5" />
@@ -1974,7 +1974,7 @@ function CandidatoDrawer({
             {/* ── Columna derecha: profiling + override ── */}
             <div className="space-y-5">
               {/* Card Profiling */}
-              <GlassCard className="p-5 space-y-4 border border-border/50 bg-card/40 rounded-2xl">
+              <GlassCard className="p-5 space-y-4 border border-border/40 bg-transparent rounded-2xl shadow-none">
                 <div className="flex items-center justify-between pb-2 border-b border-border/30">
                   <div className="flex items-center gap-2">
                     <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500">
@@ -2000,11 +2000,11 @@ function CandidatoDrawer({
                 </div>
 
                 {!latestRun ? (
-                  <div className="text-xs text-muted-foreground py-6 text-center border border-dashed border-border/60 rounded-xl">
+                  <div className="text-xs text-muted-foreground py-6 text-center border border-dashed border-border/50 rounded-xl">
                     Sin llamada de profiling ejecutada todavía.
                   </div>
                 ) : latestRun.status !== "COMPLETED" ? (
-                  <div className="text-xs text-muted-foreground py-6 text-center border border-dashed border-border/60 rounded-xl">
+                  <div className="text-xs text-muted-foreground py-6 text-center border border-dashed border-border/50 rounded-xl">
                     La llamada de profiling aún no ha finalizado.
                   </div>
                 ) : answersLoading ? (
@@ -2013,7 +2013,7 @@ function CandidatoDrawer({
                     <span>Cargando respuestas…</span>
                   </div>
                 ) : !answersData?.answers.length ? (
-                  <div className="text-xs text-muted-foreground py-6 text-center border border-dashed border-border/60 rounded-xl">
+                  <div className="text-xs text-muted-foreground py-6 text-center border border-dashed border-border/50 rounded-xl">
                     Sin respuestas registradas en esta sesión.
                   </div>
                 ) : (
@@ -2021,7 +2021,7 @@ function CandidatoDrawer({
                     {answersData.answers.map((a) => (
                       <details
                         key={a.id}
-                        className="rounded-xl bg-background/50 border border-border/50 p-3.5 group transition [&[open]]:bg-background/80"
+                        className="rounded-xl bg-transparent border border-border/40 p-3.5 group transition [&[open]]:bg-accent/20"
                       >
                         <summary className="cursor-pointer text-xs font-semibold flex items-center justify-between gap-2 select-none">
                           <span className="flex items-center gap-1.5 text-foreground leading-snug">
@@ -2034,8 +2034,8 @@ function CandidatoDrawer({
                             className={cn(
                               "shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md border",
                               a.requires_review
-                                ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
-                                : "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400",
+                                ? "border-amber-500/40 text-amber-600 dark:text-amber-400 bg-transparent"
+                                : "border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-transparent",
                             )}
                           >
                             {a.requires_review ? "Revisión" : "✓ OK"}
@@ -2067,7 +2067,7 @@ function CandidatoDrawer({
               </GlassCard>
 
               {/* Card Override del Recruiter */}
-              <GlassCard className="p-5 space-y-4 border border-border/50 bg-card/40 rounded-2xl">
+              <GlassCard className="p-5 space-y-4 border border-border/40 bg-transparent rounded-2xl shadow-none">
                 <div className="text-sm font-bold text-foreground pb-2 border-b border-border/30">
                   Evaluación Manual y Notas del Recruiter
                 </div>
@@ -2075,7 +2075,7 @@ function CandidatoDrawer({
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">
-                      Score Manual Overrride (0 - 100)
+                      Score Manual Override (0 - 100)
                     </label>
                     <input
                       type="number"
@@ -2084,7 +2084,7 @@ function CandidatoDrawer({
                       value={overrideScore}
                       onChange={(e) => setOverrideScore(e.target.value)}
                       placeholder="Usar score de IA"
-                      className="mt-1 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      className="mt-1 w-full px-3 py-2 rounded-xl bg-transparent border border-border/60 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   </div>
 
@@ -2107,7 +2107,7 @@ function CandidatoDrawer({
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Escribe comentarios u observaciones sobre la entrevista…"
-                    className="mt-1 w-full min-h-[75px] px-3 py-2 rounded-xl bg-background/70 border border-border text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="mt-1 w-full min-h-[75px] px-3 py-2 rounded-xl bg-transparent border border-border/60 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                 </div>
 
@@ -2122,25 +2122,25 @@ function CandidatoDrawer({
                         onClick={() => feedbackMutation.mutate(ev)}
                         disabled={feedbackMutation.isPending}
                         className={cn(
-                          "flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl border text-xs font-semibold transition cursor-pointer disabled:opacity-50 shadow-xs",
+                          "flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl border text-xs font-semibold transition cursor-pointer disabled:opacity-50 shadow-xs bg-transparent",
                           ev === "CORRECT"
-                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
+                            ? "border-border/60 text-muted-foreground hover:text-emerald-500 hover:border-emerald-500/50 hover:bg-emerald-500/5"
                             : ev === "PARTIAL"
-                              ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
-                              : "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20",
+                              ? "border-border/60 text-muted-foreground hover:text-amber-500 hover:border-amber-500/50 hover:bg-amber-500/5"
+                              : "border-border/60 text-muted-foreground hover:text-rose-500 hover:border-rose-500/50 hover:bg-rose-500/5",
                         )}
                       >
                         {ev === "CORRECT" ? (
                           <>
-                            <ThumbsUp className="h-3.5 w-3.5" /> Correcto
+                            <ThumbsUp className="h-3.5 w-3.5 text-emerald-500" /> Correcto
                           </>
                         ) : ev === "PARTIAL" ? (
                           <>
-                            <Sparkles className="h-3.5 w-3.5" /> Parcial
+                            <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Parcial
                           </>
                         ) : (
                           <>
-                            <ThumbsDown className="h-3.5 w-3.5" /> Incorrecto
+                            <ThumbsDown className="h-3.5 w-3.5 text-rose-500" /> Incorrecto
                           </>
                         )}
                       </button>
