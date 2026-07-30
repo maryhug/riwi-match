@@ -10,6 +10,8 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Search,
   Phone,
   Eye,
@@ -683,6 +685,8 @@ function DashboardTab({
 
 // ─── Ranking Tab ────────────────────────────────────────────────────────────
 
+const RANKING_PAGE_SIZE = 10;
+
 function RankingTab({
   processId,
   candidates,
@@ -711,6 +715,22 @@ function RankingTab({
   const [subView, setSubView] = useState<"match" | "profiling">("match");
   const [search, setSearch] = useState("");
   const [quickFilter, setQuickFilter] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  const handleSubViewChange = (v: "match" | "profiling") => {
+    setSubView(v);
+    setPage(1);
+  };
+
+  const handleSearchChange = (v: string) => {
+    setSearch(v);
+    setPage(1);
+  };
+
+  const handleQuickFilterChange = (v: string | null) => {
+    setQuickFilter(v);
+    setPage(1);
+  };
 
   const toggleSelect = (pcId: string) => {
     const next = new Set(selected);
@@ -719,30 +739,42 @@ function RankingTab({
     setSelected(next);
   };
 
-  const matchFiltered = candidates.filter((c) => {
-    if (
-      search &&
-      !c.name.toLowerCase().includes(search.toLowerCase()) &&
-      !c.email.toLowerCase().includes(search.toLowerCase())
-    )
-      return false;
-    if (quickFilter === "high" && c.match_category !== "HIGH") return false;
-    if (quickFilter === "medium" && c.match_category !== "MEDIUM") return false;
-    if (quickFilter === "calling" && !["PROFILING_CALLING", "PROFILING_QUEUED"].includes(c.status))
-      return false;
-    if (quickFilter === "completed" && c.status !== "PROFILING_COMPLETED") return false;
-    return true;
-  });
+  const matchFiltered = useMemo(() => {
+    return candidates.filter((c) => {
+      if (
+        search &&
+        !c.name.toLowerCase().includes(search.toLowerCase()) &&
+        !c.email.toLowerCase().includes(search.toLowerCase())
+      )
+        return false;
+      if (quickFilter === "high" && c.match_category !== "HIGH") return false;
+      if (quickFilter === "medium" && c.match_category !== "MEDIUM") return false;
+      if (quickFilter === "calling" && !["PROFILING_CALLING", "PROFILING_QUEUED"].includes(c.status))
+        return false;
+      if (quickFilter === "completed" && c.status !== "PROFILING_COMPLETED") return false;
+      return true;
+    });
+  }, [candidates, search, quickFilter]);
 
-  const profilingCandidates = candidates.filter((c) =>
-    [
-      "SELECTED_FOR_PROFILING",
-      "PROFILING_QUEUED",
-      "PROFILING_CALLING",
-      "PROFILING_COMPLETED",
-      "PROFILING_FAILED",
-    ].includes(c.status),
-  );
+  const profilingCandidates = useMemo(() => {
+    return candidates.filter((c) =>
+      [
+        "SELECTED_FOR_PROFILING",
+        "PROFILING_QUEUED",
+        "PROFILING_CALLING",
+        "PROFILING_COMPLETED",
+        "PROFILING_FAILED",
+      ].includes(c.status),
+    );
+  }, [candidates]);
+
+  const currentList = subView === "match" ? matchFiltered : profilingCandidates;
+  const totalPages = Math.ceil(currentList.length / RANKING_PAGE_SIZE) || 1;
+
+  const paginatedCandidates = useMemo(() => {
+    const start = (page - 1) * RANKING_PAGE_SIZE;
+    return currentList.slice(start, start + RANKING_PAGE_SIZE);
+  }, [currentList, page]);
 
   return (
     <div className="space-y-4">
@@ -750,12 +782,12 @@ function RankingTab({
         {(["match", "profiling"] as const).map((v) => (
           <button
             key={v}
-            onClick={() => setSubView(v)}
+            onClick={() => handleSubViewChange(v)}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-semibold transition",
+              "px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer",
               subView === v
                 ? "bg-primary text-primary-foreground"
-                : "bg-background/60 border border-border text-muted-foreground",
+                : "bg-background/60 border border-border text-muted-foreground hover:text-foreground",
             )}
           >
             {v === "match" ? "Match" : "Profiling"}
@@ -770,7 +802,7 @@ function RankingTab({
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder="Buscar candidato…"
                 className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-background/60 border border-border focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
@@ -783,12 +815,12 @@ function RankingTab({
             ].map((f) => (
               <button
                 key={f.k}
-                onClick={() => setQuickFilter(quickFilter === f.k ? null : f.k)}
+                onClick={() => handleQuickFilterChange(quickFilter === f.k ? null : f.k)}
                 className={cn(
-                  "px-2.5 py-1.5 rounded-lg text-xs font-medium border transition",
+                  "px-2.5 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer",
                   quickFilter === f.k
                     ? "bg-primary/10 border-primary text-primary"
-                    : "bg-background/60 border-border text-muted-foreground",
+                    : "bg-background/60 border-border text-muted-foreground hover:text-foreground",
                 )}
               >
                 {f.l}
@@ -803,7 +835,7 @@ function RankingTab({
                   ? "Asigna un set de preguntas al proceso para habilitar profiling"
                   : undefined
               }
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 cursor-pointer"
             >
               <Phone className="h-3.5 w-3.5" /> Activar profiling ({selected.size})
             </button>
@@ -822,107 +854,138 @@ function RankingTab({
                   : "Sin resultados para los filtros aplicados."}
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
-                      <th className="px-4 py-3"></th>
-                      <th className="text-left font-medium px-3 py-3">Candidato</th>
-                      <th className="text-left font-medium px-3 py-3">Match</th>
-                      <th className="text-left font-medium px-3 py-3">Categoría</th>
-                      <th className="text-left font-medium px-3 py-3">Ciudad</th>
-                      <th className="text-left font-medium px-3 py-3">Profiling</th>
-                      <th className="text-left font-medium px-3 py-3">Avance</th>
-                      <th className="text-right font-medium px-3 py-3">Costo</th>
-                      <th className="px-3 py-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {matchFiltered.map((c) => {
-                      const run = latestRunByPc.get(c.process_candidate_id);
-                      return (
-                        <tr
-                          key={c.process_candidate_id}
-                          onClick={() => onOpenDrawer(c)}
-                          className="cursor-pointer border-t border-border/30 hover:bg-accent/30 transition"
-                        >
-                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selected.has(c.process_candidate_id)}
-                              onChange={() => toggleSelect(c.process_candidate_id)}
-                              className="h-3.5 w-3.5"
-                            />
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="h-8 w-8 rounded-full bg-muted grid place-items-center text-[10px] font-bold">
-                                {initials(c.name)}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="font-medium truncate">{c.name}</div>
-                                <div className="text-xs text-muted-foreground truncate">
-                                  {c.email}
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
+                        <th className="px-4 py-3"></th>
+                        <th className="text-left font-medium px-3 py-3">Candidato</th>
+                        <th className="text-left font-medium px-3 py-3">Match</th>
+                        <th className="text-left font-medium px-3 py-3">Categoría</th>
+                        <th className="text-left font-medium px-3 py-3">Ciudad</th>
+                        <th className="text-left font-medium px-3 py-3">Profiling</th>
+                        <th className="text-left font-medium px-3 py-3">Avance</th>
+                        <th className="text-right font-medium px-3 py-3">Costo</th>
+                        <th className="px-3 py-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedCandidates.map((c) => {
+                        const run = latestRunByPc.get(c.process_candidate_id);
+                        return (
+                          <tr
+                            key={c.process_candidate_id}
+                            onClick={() => onOpenDrawer(c)}
+                            className="cursor-pointer border-t border-border/30 hover:bg-accent/30 transition"
+                          >
+                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selected.has(c.process_candidate_id)}
+                                onChange={() => toggleSelect(c.process_candidate_id)}
+                                className="h-3.5 w-3.5"
+                              />
+                            </td>
+                            <td className="px-3 py-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="h-8 w-8 rounded-full bg-muted grid place-items-center text-[10px] font-bold">
+                                  {initials(c.name)}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-medium truncate">{c.name}</div>
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    {c.email}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-3 py-3">
-                            <MatchRing pct={c.match_percentage} category={c.match_category} />
-                          </td>
-                          <td className="px-3 py-3">
-                            {c.match_category ? (
-                              <span
-                                className={cn(
-                                  "px-2 py-1 rounded-md text-[10px] font-semibold",
-                                  CATEGORY_COLOR[c.match_category].bg,
-                                  CATEGORY_COLOR[c.match_category].text,
-                                )}
-                              >
-                                {MATCH_CATEGORY_LABEL[c.match_category]}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 text-muted-foreground text-xs">
-                            {c.city ?? "—"}
-                          </td>
-                          <td className="px-3 py-3 text-xs">{CANDIDATE_STATUS_LABEL[c.status]}</td>
-                          <td className="px-3 py-3 text-xs">
-                            {run?.advancement_probability
-                              ? ADVANCEMENT_PROBABILITY_LABEL[run.advancement_probability]
-                              : "—"}
-                          </td>
-                          <td className="px-3 py-3 text-xs text-right tabular-nums text-muted-foreground">
-                            {c.total_cost > 0 ? `$${c.total_cost.toFixed(4)}` : "—"}
-                          </td>
-                          <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center gap-1">
-                              {c.normalized_cv_url && onPreviewNormalized && (
-                                <button
-                                  onClick={() => onPreviewNormalized(c)}
-                                  className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition"
-                                  title="Ver CV normalizado (PDF)"
+                            </td>
+                            <td className="px-3 py-3">
+                              <MatchRing pct={c.match_percentage} category={c.match_category} />
+                            </td>
+                            <td className="px-3 py-3">
+                              {c.match_category ? (
+                                <span
+                                  className={cn(
+                                    "px-2 py-1 rounded-md text-[10px] font-semibold",
+                                    CATEGORY_COLOR[c.match_category].bg,
+                                    CATEGORY_COLOR[c.match_category].text,
+                                  )}
                                 >
-                                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                                </button>
+                                  {MATCH_CATEGORY_LABEL[c.match_category]}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
                               )}
-                              <button
-                                onClick={() => onOpenDrawer(c)}
-                                className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition"
-                                title="Ver detalles"
-                              >
-                                <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            </td>
+                            <td className="px-3 py-3 text-muted-foreground text-xs">
+                              {c.city ?? "—"}
+                            </td>
+                            <td className="px-3 py-3 text-xs">{CANDIDATE_STATUS_LABEL[c.status]}</td>
+                            <td className="px-3 py-3 text-xs">
+                              {run?.advancement_probability
+                                ? ADVANCEMENT_PROBABILITY_LABEL[run.advancement_probability]
+                                : "—"}
+                            </td>
+                            <td className="px-3 py-3 text-xs text-right tabular-nums text-muted-foreground">
+                              {c.total_cost > 0 ? `$${c.total_cost.toFixed(4)}` : "—"}
+                            </td>
+                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-1">
+                                {c.normalized_cv_url && onPreviewNormalized && (
+                                  <button
+                                    onClick={() => onPreviewNormalized(c)}
+                                    className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition cursor-pointer"
+                                    title="Ver CV normalizado (PDF)"
+                                  >
+                                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => onOpenDrawer(c)}
+                                  className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition cursor-pointer"
+                                  title="Ver detalles"
+                                >
+                                  <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between px-5 py-3 border-t border-border/40 text-xs text-muted-foreground">
+                    <div>
+                      Mostrando {(page - 1) * RANKING_PAGE_SIZE + 1} -{" "}
+                      {Math.min(page * RANKING_PAGE_SIZE, currentList.length)} de {currentList.length} candidatos
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background/60 hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed transition font-medium text-foreground cursor-pointer"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+                      </button>
+                      <span className="px-2 font-semibold text-foreground">
+                        Página {page} de {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={page >= totalPages}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background/60 hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed transition font-medium text-foreground cursor-pointer"
+                      >
+                        Siguiente <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </GlassCard>
         </>
@@ -933,56 +996,87 @@ function RankingTab({
               Aún no hay candidatos en profiling.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
-                    <th className="text-left font-medium px-4 py-3">Candidato</th>
-                    <th className="text-left font-medium px-3 py-3">Estado de llamada</th>
-                    <th className="text-left font-medium px-3 py-3">Insights</th>
-                    <th className="text-left font-medium px-3 py-3">Avance</th>
-                    <th className="text-right font-medium px-3 py-3">Costo</th>
-                    <th className="px-3 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {profilingCandidates.map((c) => {
-                    const run = latestRunByPc.get(c.process_candidate_id);
-                    return (
-                      <tr
-                        key={c.process_candidate_id}
-                        onClick={() => onOpenDrawer(c)}
-                        className="cursor-pointer border-t border-border/30 hover:bg-accent/30 transition"
-                      >
-                        <td className="px-4 py-3 font-medium">{c.name}</td>
-                        <td className="px-3 py-3 text-xs">{CANDIDATE_STATUS_LABEL[c.status]}</td>
-                        <td className="px-3 py-3 text-xs text-muted-foreground max-w-xs truncate">
-                          {run?.transcript_summary ?? "—"}
-                        </td>
-                        <td className="px-3 py-3 text-xs">
-                          {run?.advancement_probability
-                            ? ADVANCEMENT_PROBABILITY_LABEL[run.advancement_probability]
-                            : "—"}
-                        </td>
-                        <td className="px-3 py-3 text-xs text-right tabular-nums text-muted-foreground">
-                          {c.total_cost > 0 ? `$${c.total_cost.toFixed(4)}` : "—"}
-                        </td>
-                        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                          {run && run.status === "COMPLETED" && (
-                            <button
-                              onClick={() => onOpenProfilingModal(run)}
-                              className="text-xs text-primary hover:underline flex items-center gap-1"
-                            >
-                              <Sparkles className="h-3 w-3" /> Ver resultado
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
+                      <th className="text-left font-medium px-4 py-3">Candidato</th>
+                      <th className="text-left font-medium px-3 py-3">Estado de llamada</th>
+                      <th className="text-left font-medium px-3 py-3">Insights</th>
+                      <th className="text-left font-medium px-3 py-3">Avance</th>
+                      <th className="text-right font-medium px-3 py-3">Costo</th>
+                      <th className="px-3 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedCandidates.map((c) => {
+                      const run = latestRunByPc.get(c.process_candidate_id);
+                      return (
+                        <tr
+                          key={c.process_candidate_id}
+                          onClick={() => onOpenDrawer(c)}
+                          className="cursor-pointer border-t border-border/30 hover:bg-accent/30 transition"
+                        >
+                          <td className="px-4 py-3 font-medium">{c.name}</td>
+                          <td className="px-3 py-3 text-xs">{CANDIDATE_STATUS_LABEL[c.status]}</td>
+                          <td className="px-3 py-3 text-xs text-muted-foreground max-w-xs truncate">
+                            {run?.transcript_summary ?? "—"}
+                          </td>
+                          <td className="px-3 py-3 text-xs">
+                            {run?.advancement_probability
+                              ? ADVANCEMENT_PROBABILITY_LABEL[run.advancement_probability]
+                              : "—"}
+                          </td>
+                          <td className="px-3 py-3 text-xs text-right tabular-nums text-muted-foreground">
+                            {c.total_cost > 0 ? `$${c.total_cost.toFixed(4)}` : "—"}
+                          </td>
+                          <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                            {run && run.status === "COMPLETED" && (
+                              <button
+                                onClick={() => onOpenProfilingModal(run)}
+                                className="text-xs text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                              >
+                                <Sparkles className="h-3 w-3" /> Ver resultado
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-5 py-3 border-t border-border/40 text-xs text-muted-foreground">
+                  <div>
+                    Mostrando {(page - 1) * RANKING_PAGE_SIZE + 1} -{" "}
+                    {Math.min(page * RANKING_PAGE_SIZE, currentList.length)} de {currentList.length} candidatos
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background/60 hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed transition font-medium text-foreground cursor-pointer"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+                    </button>
+                    <span className="px-2 font-semibold text-foreground">
+                      Página {page} de {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background/60 hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed transition font-medium text-foreground cursor-pointer"
+                    >
+                      Siguiente <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </GlassCard>
       )}
