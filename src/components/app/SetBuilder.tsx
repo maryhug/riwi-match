@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { GripVertical, Star, Pencil, Trash2, Plus, Archive, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
+import { LoadingIndicator } from "@/components/app/LoadingIndicator";
 import { QuestionFormDialog, type QuestionDraft } from "@/components/app/QuestionFormDialog";
 import {
   getQuestionSet,
@@ -112,7 +113,7 @@ export function SetBuilder({ setId, processId }: { setId: string; processId?: st
   };
 
   if (isLoading)
-    return <div className="py-16 text-center text-sm text-muted-foreground">Cargando set…</div>;
+    return <LoadingIndicator className="py-16" label="Cargando set…" />;
   if (!set)
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">Set no encontrado.</div>

@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { AppSelect, AppSelectItem } from "@/components/app/AppSelect";
 import type { QuestionOut } from "@/lib/types/api";
 import type { QuestionType } from "@/lib/types/enums";
 
@@ -92,17 +93,17 @@ export function QuestionFormDialog({
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Tipo de respuesta
               </label>
-              <select
+              <AppSelect
                 value={draft.type}
-                onChange={(e) => setDraft({ ...draft, type: e.target.value as QuestionType })}
-                className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+                onValueChange={(value) => setDraft({ ...draft, type: value as QuestionType })}
+                className="mt-1.5 w-full"
               >
-                <option value="YES_NO">Sí/No</option>
-                <option value="OPEN">Abierta</option>
-                <option value="NUMERIC">Numérica</option>
-                <option value="CLOSED">Cerrada</option>
-                <option value="MULTIPLE_CHOICE">Opción múltiple</option>
-              </select>
+                <AppSelectItem value="YES_NO">Sí/No</AppSelectItem>
+                <AppSelectItem value="OPEN">Abierta</AppSelectItem>
+                <AppSelectItem value="NUMERIC">Numérica</AppSelectItem>
+                <AppSelectItem value="CLOSED">Cerrada</AppSelectItem>
+                <AppSelectItem value="MULTIPLE_CHOICE">Opción múltiple</AppSelectItem>
+              </AppSelect>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">

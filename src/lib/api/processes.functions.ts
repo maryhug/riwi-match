@@ -33,6 +33,7 @@ export const createProcess = createServerFn({ method: "POST" })
       area: z.string().min(1),
       seniority: z.string().min(1),
       budget_max_usd: z.number().optional(),
+      recruiter_id: z.string().uuid().optional(),
       match_weights_override: z
         .object({
           technical_skills: z.number(),

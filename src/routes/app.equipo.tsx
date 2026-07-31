@@ -13,10 +13,12 @@ import {
   CartesianGrid,
 } from "recharts";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { LoadingIndicator } from "@/components/app/LoadingIndicator";
+import { AppSelect, AppSelectItem } from "@/components/app/AppSelect";
 import { getTADashboard } from "@/lib/api/reports.functions";
 import { getDashboardMetrics } from "@/lib/api/metrics.functions";
 import { getProcesses } from "@/lib/api/processes.functions";
-import { PROCESS_STATUS_LABEL } from "@/lib/types/enums";
+import { PROCESS_STATUS_LABEL, USER_ROLE_LABEL } from "@/lib/types/enums";
 
 export const Route = createFileRoute("/app/equipo")({
   head: () => ({ meta: [{ title: "Dashboard de Equipo · RIWI MATCH" }] }),
@@ -26,7 +28,7 @@ export const Route = createFileRoute("/app/equipo")({
 const PAGE_SIZE = 10;
 
 function Equipo() {
-  const [reclutadorFilter, setReclutadorFilter] = useState<string | null>(null);
+  const [teamMemberFilter, setTeamMemberFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
   const { data: ta, isLoading: taLoading } = useQuery({
@@ -53,13 +55,13 @@ function Equipo() {
 
   const rows = useMemo(() => {
     return (processesData?.processes ?? [])
-      .filter((p) => !reclutadorFilter || p.recruiter_name === reclutadorFilter)
+      .filter((p) => !teamMemberFilter || p.recruiter_id === teamMemberFilter)
       .map((p) => ({
         ...p,
         cost: processCostMap.get(p.process_id)?.total_cost ?? 0,
         candidates: processCostMap.get(p.process_id)?.candidate_count ?? 0,
       }));
-  }, [processesData, reclutadorFilter, processCostMap]);
+  }, [processesData, teamMemberFilter, processCostMap]);
 
   const totalPages = Math.ceil(rows.length / PAGE_SIZE) || 1;
   const paginatedRows = useMemo(() => {
@@ -81,27 +83,25 @@ function Equipo() {
             Vista consolidada del equipo de Talent Acquisition.
           </p>
         </div>
-        <select
-          value={reclutadorFilter ?? ""}
-          onChange={(e) => {
-            setReclutadorFilter(e.target.value || null);
+        <AppSelect
+          value={teamMemberFilter ?? "all"}
+          onValueChange={(value) => {
+            setTeamMemberFilter(value === "all" ? null : value);
             setPage(1);
           }}
-          className="px-3 py-2 text-sm rounded-xl bg-background/70 border border-border"
+          className="w-full sm:w-64"
         >
-          <option value="">Todo el equipo</option>
-          {(metrics?.cost_by_user ?? []).map((u) => (
-            <option key={u.user_id} value={u.user_name}>
-              {u.user_name}
-            </option>
+          <AppSelectItem value="all">Todo el equipo</AppSelectItem>
+          {(ta?.team_members ?? []).map((member) => (
+            <AppSelectItem key={member.id} value={member.id}>
+              {member.name} · {USER_ROLE_LABEL[member.role]}
+            </AppSelectItem>
           ))}
-        </select>
+        </AppSelect>
       </div>
 
       {isLoading ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">
-          Cargando métricas del equipo…
-        </div>
+        <LoadingIndicator className="py-16" label="Cargando métricas del equipo…" />
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">

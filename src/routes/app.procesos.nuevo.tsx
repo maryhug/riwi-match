@@ -13,6 +13,7 @@ import {
   FileText,
 } from "lucide-react";
 import { GlassCard } from "@/components/app/GlassCard";
+import { AppSelect, AppSelectItem } from "@/components/app/AppSelect";
 import { toast } from "sonner";
 import {
   createProcess,
@@ -23,6 +24,7 @@ import {
 } from "@/lib/api/processes.functions";
 import { uploadCVs } from "@/lib/api/candidates.functions";
 import { getQuestionSets } from "@/lib/api/question-sets.functions";
+import { getUsers } from "@/lib/api/users.functions";
 import { useAuth } from "@/lib/auth-context";
 import type { ParseJDResponse } from "@/lib/types/api";
 
@@ -80,6 +82,7 @@ function Wizard() {
   const [area, setArea] = useState(AREAS[0]);
   const [seniority, setSeniority] = useState(SENIORITIES[0]);
   const [budget, setBudget] = useState("");
+  const [recruiterId, setRecruiterId] = useState("");
   const [showWeights, setShowWeights] = useState(false);
   const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
 
@@ -98,7 +101,16 @@ function Wizard() {
   const totalWeights = Object.values(weights).reduce((a, b) => a + b, 0);
   const hasNegativeWeight = Object.values(weights).some((w) => w < 0);
   const weightsValid = !showWeights || (totalWeights === 100 && !hasNegativeWeight);
-  const step0Valid = name.trim().length > 0 && jobTitle.trim().length > 0 && weightsValid;
+  const isLeader = user?.role === "TA_LEADER";
+  const step0Valid = name.trim().length > 0 && jobTitle.trim().length > 0 && weightsValid && (!isLeader || Boolean(recruiterId));
+  const { data: usersData } = useQuery({
+    queryKey: ["users"],
+    queryFn: () => getUsers(),
+    enabled: isLeader,
+  });
+  const recruiters = (usersData ?? []).filter(
+    (candidate) => candidate.role === "RECRUITER" && candidate.status === "ACTIVE",
+  );
 
   const createProcessMutation = useMutation({
     mutationFn: () =>
@@ -121,6 +133,7 @@ function Wizard() {
               seniority,
               budget_max_usd: budget ? Number(budget) : undefined,
               match_weights_override: showWeights ? weights : undefined,
+              recruiter_id: isLeader ? recruiterId : undefined,
             },
           }),
     onSuccess: (res) => {
@@ -277,37 +290,52 @@ function Wizard() {
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Área
                 </label>
-                <select
+                <AppSelect
                   value={area}
-                  onChange={(e) => setArea(e.target.value)}
-                  className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+                  onValueChange={setArea}
+                  className="mt-1.5 w-full"
                 >
                   {AREAS.map((a) => (
-                    <option key={a}>{a}</option>
+                    <AppSelectItem key={a} value={a}>{a}</AppSelectItem>
                   ))}
-                </select>
+                </AppSelect>
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Seniority
                 </label>
-                <select
+                <AppSelect
                   value={seniority}
-                  onChange={(e) => setSeniority(e.target.value)}
-                  className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+                  onValueChange={setSeniority}
+                  className="mt-1.5 w-full"
                 >
                   {SENIORITIES.map((s) => (
-                    <option key={s}>{s}</option>
+                    <AppSelectItem key={s} value={s}>{s}</AppSelectItem>
                   ))}
-                </select>
+                </AppSelect>
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Reclutador responsable
                 </label>
-                <div className="mt-1.5 w-full px-3 py-2 rounded-xl bg-muted/50 border border-border text-sm text-muted-foreground">
-                  {user ? `${user.name} ${user.last_name} (tú)` : "…"}
-                </div>
+                {isLeader ? (
+                  <AppSelect
+                    value={recruiterId || "none"}
+                    onValueChange={(value) => setRecruiterId(value === "none" ? "" : value)}
+                    className="mt-1.5 w-full"
+                  >
+                    <AppSelectItem value="none">Selecciona un recruiter</AppSelectItem>
+                    {recruiters.map((recruiter) => (
+                      <AppSelectItem key={recruiter.id} value={recruiter.id}>
+                        {recruiter.name} {recruiter.last_name}
+                      </AppSelectItem>
+                    ))}
+                  </AppSelect>
+                ) : (
+                  <div className="mt-1.5 w-full px-3 py-2 rounded-xl bg-muted/50 border border-border text-sm text-muted-foreground">
+                    {user ? `${user.name} ${user.last_name} (tú)` : "…"}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -645,23 +673,24 @@ function Wizard() {
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Set de preguntas (opcional)
               </label>
-              <select
-                value={selectedQuestionSetId}
-                onChange={(e) => {
-                  setSelectedQuestionSetId(e.target.value);
-                  if (e.target.value) assignSetMutation.mutate(e.target.value);
+              <AppSelect
+                value={selectedQuestionSetId || "none"}
+                onValueChange={(value) => {
+                  const setId = value === "none" ? "" : value;
+                  setSelectedQuestionSetId(setId);
+                  if (setId) assignSetMutation.mutate(setId);
                 }}
-                className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+                className="mt-1.5 w-full"
               >
-                <option value="">— Asignar después —</option>
+                <AppSelectItem value="none">— Asignar después —</AppSelectItem>
                 {(questionSets?.question_sets ?? [])
                   .filter((qs) => qs.status === "ACTIVE")
                   .map((qs) => (
-                    <option key={qs.id} value={qs.id}>
+                    <AppSelectItem key={qs.id} value={qs.id}>
                       {qs.name}
-                    </option>
+                    </AppSelectItem>
                   ))}
-              </select>
+              </AppSelect>
             </div>
           </div>
         )}

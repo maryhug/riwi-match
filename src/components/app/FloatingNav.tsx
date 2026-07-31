@@ -38,7 +38,7 @@ const items: { to: string; label: string; icon: typeof Briefcase; roles: UserRol
     icon: DollarSign,
     roles: ["ADMIN", "RECRUITER", "TA_LEADER"],
   },
-  { to: "/app/admin", label: "Admin", icon: Settings, roles: ["ADMIN"] },
+  { to: "/app/admin", label: "Admin", icon: Settings, roles: ["ADMIN", "TA_LEADER"] },
 ];
 
 const wrapperPos: Record<NavPosition, string> = {

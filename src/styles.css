@@ -219,6 +219,23 @@
   70% { box-shadow: 0 0 0 12px hsl(248 100% 68% / 0); }
   100% { box-shadow: 0 0 0 0 hsl(248 100% 68% / 0); }
 }
+
+@keyframes login-logo-entrance {
+  from {
+    clip-path: inset(0 86% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.login-logo-entrance {
+  animation: login-logo-entrance 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.login-logo-loading {
+  animation: login-logo-entrance 1.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
 @utility pulse-ring {
   animation: pulse-ring 1.8s cubic-bezier(0.66, 0, 0, 1) infinite;
 }

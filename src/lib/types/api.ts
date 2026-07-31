@@ -44,6 +44,7 @@ export interface CreateProcessRequest {
   area: string;
   seniority: string;
   budget_max_usd?: number;
+  recruiter_id?: string;
   match_weights_override?: MatchWeights;
 }
 
@@ -495,6 +496,11 @@ export interface TADashboardResponse {
   active_processes: number;
   total_candidates: number;
   total_cost_usd: number;
+  team_members: {
+    id: string;
+    name: string;
+    role: "RECRUITER" | "TA_LEADER";
+  }[];
 }
 
 // ─── System / Integrations ───────────────────────────────────────────────────

@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { GlassCard } from "@/components/app/GlassCard";
-import { Settings, Plus, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Trash2, User2 } from "lucide-react";
+import { AppSelect, AppSelectItem } from "@/components/app/AppSelect";
+import { useAuth } from "@/lib/auth-context";
+import { Settings, Plus, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Trash2, User2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -40,9 +42,16 @@ export const Route = createFileRoute("/app/admin")({
 });
 
 const TABS = ["Usuarios", "Parámetros de IA", "Integraciones", "Auditoría"] as const;
+const USERS_PAGE_SIZE = 10;
+const AUDIT_ACTION_LABEL: Record<string, string> = {
+  USER_LOGIN: "Inicio de sesión",
+  USER_MANAGEMENT: "Gestión de usuarios",
+};
 
 function Admin() {
+  const { user } = useAuth();
   const [tab, setTab] = useState<(typeof TABS)[number]>("Usuarios");
+  const availableTabs = user?.role === "TA_LEADER" ? (["Usuarios"] as const) : TABS;
   return (
     <div className="space-y-6">
       <div>
@@ -53,7 +62,7 @@ function Admin() {
       </div>
 
       <div className="glass rounded-2xl p-1.5 inline-flex gap-1">
-        {TABS.map((t) => (
+        {availableTabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -75,10 +84,21 @@ function Admin() {
 // ─── Usuarios ───────────────────────────────────────────────────────────────
 
 function UsuariosTab() {
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === "ADMIN";
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [userToEdit, setUserToEdit] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [page, setPage] = useState(1);
   const { data: users, isLoading } = useQuery({ queryKey: ["users"], queryFn: () => getUsers() });
+
+  const totalPages = Math.max(1, Math.ceil((users?.length ?? 0) / USERS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageUsers = (users ?? []).slice(
+    (currentPage - 1) * USERS_PAGE_SIZE,
+    currentPage * USERS_PAGE_SIZE,
+  );
 
   const updateRoleMutation = useMutation({
     mutationFn: (vars: { userId: string; role: UserRole }) => updateUser({ data: vars }),
@@ -149,13 +169,14 @@ function UsuariosTab() {
           onClick={() => setCreateOpen(true)}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold"
         >
-          <Plus className="h-4 w-4" /> Crear usuario
+          <Plus className="h-4 w-4" /> Crear recruiter
         </button>
       </div>
       <GlassCard className="p-0 overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">Cargando usuarios…</div>
         ) : (
+          <>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs uppercase tracking-wider text-muted-foreground bg-background/30">
@@ -167,9 +188,10 @@ function UsuariosTab() {
               </tr>
             </thead>
             <tbody>
-              {(users ?? []).map((u) => {
+              {pageUsers.map((u) => {
                 const isUpdatingRole = updateRoleMutation.isPending && updateRoleMutation.variables?.userId === u.id;
                 const isUpdatingStatus = toggleStatusMutation.isPending && toggleStatusMutation.variables?.userId === u.id;
+                const canManageUser = isAdmin || u.role !== "ADMIN";
                 
                 return (
                 <tr key={u.id} className="border-t border-border/30">
@@ -178,59 +200,93 @@ function UsuariosTab() {
                   </td>
                   <td className="px-3 py-3 text-muted-foreground">{u.email}</td>
                   <td className="px-3 py-3">
-                    <select
+                    <AppSelect
                       value={u.role}
-                      disabled={isUpdatingRole}
-                      onChange={(e) =>
+                      disabled={isUpdatingRole || !canManageUser}
+                      onValueChange={(value) =>
                         updateRoleMutation.mutate({
                           userId: u.id,
-                          role: e.target.value as UserRole,
+                          role: value as UserRole,
                         })
                       }
-                      className={`px-2 py-1 rounded-md bg-background/70 border border-border text-xs ${isUpdatingRole ? "opacity-50 cursor-not-allowed" : ""}`}
+                      className="h-8 min-w-28 text-xs"
                     >
                       {(Object.keys(USER_ROLE_LABEL) as UserRole[]).map((r) => (
-                        <option key={r} value={r}>
+                        <AppSelectItem key={r} value={r}>
                           {USER_ROLE_LABEL[r]}
-                        </option>
+                        </AppSelectItem>
                       ))}
-                    </select>
+                    </AppSelect>
                   </td>
                   <td className="px-3 py-3">
-                    <select
+                    <AppSelect
                       value={u.status}
-                      disabled={isUpdatingStatus}
-                      onChange={(e) =>
+                      disabled={isUpdatingStatus || !canManageUser}
+                      onValueChange={(value) =>
                         toggleStatusMutation.mutate({
                           userId: u.id,
-                          status: e.target.value as UserStatus,
+                          status: value as UserStatus,
                         })
                       }
-                      className={`px-2 py-1 rounded-md bg-background/70 border text-xs text-foreground transition-colors ${
-                        isUpdatingStatus ? "opacity-50 cursor-not-allowed " : ""
-                      }${u.status === "ACTIVE" ? "border-success hover:border-success/80 focus:border-success focus:ring-success" : "border-destructive hover:border-destructive/80 focus:border-destructive focus:ring-destructive"}`}
+                      className="h-8 min-w-28 text-xs"
                     >
-                      <option value="ACTIVE">{USER_STATUS_LABEL["ACTIVE"]}</option>
-                      <option value="SUSPENDED">{USER_STATUS_LABEL["SUSPENDED"]}</option>
-                    </select>
+                      <AppSelectItem value="ACTIVE">{USER_STATUS_LABEL["ACTIVE"]}</AppSelectItem>
+                      <AppSelectItem value="SUSPENDED">{USER_STATUS_LABEL["SUSPENDED"]}</AppSelectItem>
+                    </AppSelect>
                   </td>
                   <td className="px-3 py-3">
-                    <button
+                    {canManageUser && <button
+                      onClick={() => setUserToEdit(u)}
+                      className="mr-1 p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition"
+                      title="Editar usuario"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>}
+                    {isAdmin && <button
                       onClick={() => setUserToDelete(u)}
                       className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition"
                       title="Eliminar usuario"
                     >
                       <Trash2 className="h-4 w-4" />
-                    </button>
+                    </button>}
                   </td>
                 </tr>
                 );
               })}
             </tbody>
           </table>
+          {users && users.length > USERS_PAGE_SIZE && (
+            <div className="flex items-center justify-between px-5 py-3 border-t border-border/40 text-xs text-muted-foreground">
+              <div>
+                Página <span className="font-semibold text-foreground">{currentPage}</span>
+                {" de "}{totalPages} · mostrando {pageUsers.length} de {users.length} usuarios
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 w-8 grid place-items-center rounded-lg border border-border/60 hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                  title="Página anterior"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="px-3 py-1 text-xs font-medium">Página {currentPage}</span>
+                <button
+                  onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-8 w-8 grid place-items-center rounded-lg border border-border/60 hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                  title="Página siguiente"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+          </>
         )}
       </GlassCard>
       <CreateUserDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <EditUserDialog user={userToEdit} onClose={() => setUserToEdit(null)} />
       <DeleteUserDialog
         user={userToDelete}
         onClose={() => setUserToDelete(null)}
@@ -311,6 +367,8 @@ function CreateUserDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -370,17 +428,19 @@ function CreateUserDialog({
             placeholder="Contraseña (mín. 8 caracteres)"
             className="w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm"
           />
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as UserRole)}
-            className="w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm"
-          >
-            {(Object.keys(USER_ROLE_LABEL) as UserRole[]).map((r) => (
-              <option key={r} value={r}>
-                {USER_ROLE_LABEL[r]}
-              </option>
-            ))}
-          </select>
+          {isAdmin && (
+            <AppSelect
+              value={role}
+              onValueChange={(value) => setRole(value as UserRole)}
+              className="w-full"
+            >
+              {(Object.keys(USER_ROLE_LABEL) as UserRole[]).map((r) => (
+                <AppSelectItem key={r} value={r}>
+                  {USER_ROLE_LABEL[r]}
+                </AppSelectItem>
+              ))}
+            </AppSelect>
+          )}
         </div>
         <DialogFooter>
           <button
@@ -396,6 +456,51 @@ function CreateUserDialog({
           >
             {createMutation.isPending ? "Creando…" : "Crear"}
           </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditUserDialog({ user, onClose }: { user: User | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    setName(user?.name ?? "");
+    setLastName(user?.last_name ?? "");
+    setEmail(user?.email ?? "");
+  }, [user]);
+
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      updateUser({ data: { userId: user!.id, name: name.trim(), last_name: lastName.trim(), email: email.trim() } }),
+    onSuccess: () => {
+      toast.success("Usuario actualizado");
+      qc.invalidateQueries({ queryKey: ["users"] });
+      onClose();
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo actualizar el usuario"),
+  });
+
+  const canSave = Boolean(name.trim() && lastName.trim() && email.trim());
+  return (
+    <Dialog open={Boolean(user)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Editar usuario</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" className="px-3 py-2 rounded-xl bg-background/70 border border-border text-sm" />
+            <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Apellido" className="px-3 py-2 rounded-xl bg-background/70 border border-border text-sm" />
+          </div>
+          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Correo" className="w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm" />
+        </div>
+        <DialogFooter>
+          <button onClick={onClose} className="px-4 py-2 rounded-xl border border-border text-sm">Cancelar</button>
+          <button onClick={() => updateMutation.mutate()} disabled={!canSave || updateMutation.isPending} className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40">Guardar</button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -498,21 +603,21 @@ function TaskTypeConfigCard({
       <div className="text-sm font-semibold">{AI_TASK_TYPE_LABEL[taskType]}</div>
       <div className="flex items-center justify-between gap-3">
         <div className="text-xs text-muted-foreground">Modelo activo</div>
-        <select
-          value={activeModel?.id ?? ""}
-          onChange={(e) => e.target.value && onActivateModel(e.target.value)}
-          className="px-3 py-1.5 rounded-lg bg-background/70 border border-border text-xs"
+        <AppSelect
+          value={activeModel?.id ?? "none"}
+          onValueChange={(value) => value !== "none" && onActivateModel(value)}
+          className="h-8 min-w-44 text-xs"
         >
-          <option value="" disabled>
+          <AppSelectItem value="none">
             {models.length === 0 ? "Sin modelos configurados" : "Seleccionar…"}
-          </option>
+          </AppSelectItem>
           {models.map((m) => (
-            <option key={m.id} value={m.id}>
+            <AppSelectItem key={m.id} value={m.id}>
               {m.provider} · {m.model_name}
               {m.is_active ? " (activo)" : ""}
-            </option>
+            </AppSelectItem>
           ))}
-        </select>
+        </AppSelect>
       </div>
       <div className="flex items-center justify-between gap-3">
         <div className="text-xs text-muted-foreground">Prompt activo</div>
@@ -928,18 +1033,18 @@ function AuditoriaTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <select
-          value={action}
-          onChange={(e) => {
-            setAction(e.target.value);
+        <AppSelect
+          value={action || "all"}
+          onValueChange={(value) => {
+            setAction(value === "all" ? "" : value);
             setOffset(0);
           }}
-          className="px-3 py-1.5 rounded-lg bg-background/70 border border-border text-xs"
+          className="w-48"
         >
-          <option value="">Todas las acciones</option>
-          <option value="USER_LOGIN">Login</option>
-          <option value="USER_MANAGEMENT">Gestión de usuarios</option>
-        </select>
+          <AppSelectItem value="all">Todas las acciones</AppSelectItem>
+          <AppSelectItem value="USER_LOGIN">Login</AppSelectItem>
+          <AppSelectItem value="USER_MANAGEMENT">Gestión de usuarios</AppSelectItem>
+        </AppSelect>
       </div>
       <GlassCard className="p-0 overflow-hidden">
         {isLoading ? (
@@ -956,8 +1061,7 @@ function AuditoriaTab() {
                   <th className="text-left px-5 py-3 font-medium">Fecha</th>
                   <th className="text-left px-3 py-3 font-medium">Usuario</th>
                   <th className="text-left px-3 py-3 font-medium">Acción</th>
-                  <th className="text-left px-3 py-3 font-medium">Entidad</th>
-                  <th className="px-3 py-3"></th>
+                <th className="px-3 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -980,10 +1084,8 @@ function AuditoriaTab() {
                             <span className="text-muted-foreground italic">Sistema</span>
                           )}
                         </td>
-                        <td className="px-3 py-3 text-xs font-medium">{log.action}</td>
-                        <td className="px-3 py-3 text-xs text-muted-foreground">
-                          {log.entity_type}
-                          {log.entity_id ? ` · ${log.entity_id.slice(0, 8)}…` : ""}
+                        <td className="px-3 py-3 text-xs font-medium">
+                          {AUDIT_ACTION_LABEL[log.action] ?? log.action.toLowerCase().replaceAll("_", " ")}
                         </td>
                         <td className="px-3 py-3">
                           {hasDiff && (
@@ -1002,7 +1104,7 @@ function AuditoriaTab() {
                       </tr>
                       {isOpen && hasDiff && (
                         <tr className="bg-background/30">
-                          <td colSpan={5} className="px-5 py-3">
+                          <td colSpan={4} className="px-5 py-3">
                             <div className="grid grid-cols-2 gap-4 text-xs">
                               <div>
                                 <div className="text-[10px] uppercase text-muted-foreground mb-1">

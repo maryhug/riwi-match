@@ -5,6 +5,7 @@ import React from "react";
 import { PhoneCall, Clock, CheckCircle2, XCircle, X, RefreshCw, ListTodo, Calendar, ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
+import { LoadingIndicator } from "@/components/app/LoadingIndicator";
 import { ProfilingResultModal } from "@/components/app/ProfilingResultModal";
 import { getAllProfilingRuns, cancelProfilingRun } from "@/lib/api/profiling.functions";
 import type { ProfilingRunOut } from "@/lib/types/api";
@@ -190,7 +191,7 @@ function Profiling() {
       </div>
 
       {isLoading ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">Cargando llamadas…</div>
+        <LoadingIndicator className="py-16" label="Cargando llamadas…" />
       ) : runs.length === 0 ? (
         <div className="py-16 text-center text-sm text-muted-foreground">
           No hay llamadas registradas para el período seleccionado.

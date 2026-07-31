@@ -35,6 +35,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
+import { AppSelect, AppSelectItem } from "@/components/app/AppSelect";
+import { LoadingIndicator } from "@/components/app/LoadingIndicator";
 import { UploadCvsModal } from "@/components/app/UploadCvsModal";
 import { ProfilingResultModal } from "@/components/app/ProfilingResultModal";
 import PdfPreviewModal from "@/components/ui/PdfPreviewModal";
@@ -286,7 +288,7 @@ function Detalle() {
   });
 
   if (processLoading) {
-    return <div className="py-20 text-center text-sm text-muted-foreground">Cargando proceso…</div>;
+    return <LoadingIndicator className="py-20" label="Cargando proceso…" />;
   }
   if (!process) {
     return (
@@ -558,7 +560,7 @@ function DashboardTab({
 
   if (isLoading || !metrics) {
     return (
-      <div className="py-16 text-center text-sm text-muted-foreground">Cargando métricas…</div>
+      <LoadingIndicator className="py-16" label="Cargando métricas…" />
     );
   }
 
@@ -1919,21 +1921,21 @@ function ConfigTab({
             {process.question_set_id ? "Reemplazar con otra plantilla base:" : "Seleccionar plantilla base:"}
           </div>
           <div className="flex items-center gap-2">
-            <select
-              value={selectedSetId === process.question_set_id ? "" : selectedSetId}
-              onChange={(e) => setSelectedSetId(e.target.value)}
+            <AppSelect
+              value={selectedSetId === process.question_set_id || !selectedSetId ? "none" : selectedSetId}
+              onValueChange={(value) => setSelectedSetId(value === "none" ? "" : value)}
               disabled={!isActive}
-              className="flex-1 px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
+              className="flex-1"
             >
-              <option value="">— Selecciona una plantilla —</option>
+              <AppSelectItem value="none">— Selecciona una plantilla —</AppSelectItem>
               {(questionSets?.question_sets ?? [])
                 .filter((qs) => qs.status === "ACTIVE")
                 .map((qs) => (
-                  <option key={qs.id} value={qs.id}>
+                  <AppSelectItem key={qs.id} value={qs.id}>
                     {qs.name}
-                  </option>
+                  </AppSelectItem>
                 ))}
-            </select>
+            </AppSelect>
             <button
               onClick={() => assignSetMutation.mutate()}
               disabled={

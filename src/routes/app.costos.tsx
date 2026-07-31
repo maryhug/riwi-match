@@ -13,7 +13,9 @@ import {
 import { DollarSign, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
-import { getDashboardMetrics } from "@/lib/api/metrics.functions";
+import { LoadingIndicator } from "@/components/app/LoadingIndicator";
+import { AppSelect, AppSelectItem } from "@/components/app/AppSelect";
+import { getDashboardMetrics, getProcessDashboardMetrics } from "@/lib/api/metrics.functions";
 import { getGlobalSettings, updateGlobalSetting } from "@/lib/api/ai-config.functions";
 import { getProcesses } from "@/lib/api/processes.functions";
 import { useAuth } from "@/lib/auth-context";
@@ -46,35 +48,36 @@ function groupByPeriod(daily: { date: string; cost: number }[], period: Period) 
     .map(([label, costo]) => ({ label, costo }));
 }
 
-const LIMIT_FIELDS: { key: string; label: string; placeholder: string }[] = [
-  {
-    key: "budget_max_per_process",
-    label: "Presupuesto máximo por proceso (USD)",
-    placeholder: "Sin límite",
-  },
-  { key: "monthly_budget", label: "Presupuesto mensual (USD)", placeholder: "Sin límite" },
-  { key: "daily_call_limit", label: "Límite de llamadas/día", placeholder: "Sin límite" },
-];
+const TOTAL_BUDGET_KEY = "platform_total_budget";
 
 function Costos() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [period, setPeriod] = useState<Period>("daily");
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const [processFilter, setProcessFilter] = useState<string | null>(null);
 
-  const { data: metrics, isLoading } = useQuery({
+  const { data: globalMetrics, isLoading: isLoadingGlobalMetrics } = useQuery({
     queryKey: ["dashboard-metrics"],
     queryFn: () => getDashboardMetrics(),
   });
 
-  const { data: settingsData } = useQuery({
-    queryKey: ["global-settings"],
-    queryFn: () => getGlobalSettings(),
+  const { data: filteredMetrics, isLoading: isLoadingFilteredMetrics } = useQuery({
+    queryKey: ["dashboard-metrics", processFilter],
+    queryFn: () => getProcessDashboardMetrics({ data: { processId: processFilter! } }),
+    enabled: Boolean(processFilter),
   });
 
   const { data: processesData } = useQuery({
     queryKey: ["processes"],
     queryFn: () => getProcesses(),
+  });
+
+  const metrics = processFilter ? filteredMetrics : globalMetrics;
+
+  const { data: settingsData } = useQuery({
+    queryKey: ["global-settings"],
+    queryFn: () => getGlobalSettings(),
   });
 
   const settingsMap = useMemo(() => {
@@ -94,8 +97,8 @@ function Costos() {
       toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
   });
 
-  if (isLoading || !metrics) {
-    return <div className="py-16 text-center text-sm text-muted-foreground">Cargando costos…</div>;
+  if (isLoadingGlobalMetrics || (processFilter && isLoadingFilteredMetrics) || !metrics || !globalMetrics) {
+    return <LoadingIndicator className="py-16" label="Cargando costos…" />;
   }
 
   const now = new Date();
@@ -110,31 +113,37 @@ function Costos() {
 
   const chartData = groupByPeriod(metrics.daily_costs, period);
 
-  const processesWithBudget = (processesData?.processes ?? []).filter((p) => p.budget_max_usd > 0);
-  // No tenemos costo por proceso individual aquí sin N+1 — usamos cost_by_process del dashboard,
-  // cruzado con el presupuesto de cada proceso, para mostrar alertas reales de consumo.
-  const budgetAlerts = metrics.cost_by_process
-    .map((cp) => {
-      const proc = processesWithBudget.find((p) => p.process_id === cp.process_id);
-      if (!proc) return null;
-      const pct = Math.round((cp.total_cost / proc.budget_max_usd) * 100);
-      return { name: cp.process_name, pct };
-    })
-    .filter((a): a is { name: string; pct: number } => a !== null && a.pct >= 80)
-    .sort((a, b) => b.pct - a.pct);
-
   const isAdmin = user?.role === "ADMIN";
+  const configuredBudget = settingsMap.get(TOTAL_BUDGET_KEY) as { amount?: number } | undefined;
+  const totalBudget = configuredBudget?.amount ?? 0;
+  const budgetUsage = totalBudget > 0 ? (globalMetrics.total_cost_usd / totalBudget) * 100 : 0;
+  const totalBudgetEdit = edits[TOTAL_BUDGET_KEY] ?? (totalBudget > 0 ? String(totalBudget) : "");
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">
-          Finanzas
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">
+            Finanzas
+          </div>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">Costos y consumo</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Seguimiento por operación, proceso y recruiter.
+          </p>
         </div>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight">Costos y consumo</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Seguimiento por operación, proceso y recruiter.
-        </p>
+        <AppSelect
+          value={processFilter ?? "all"}
+          onValueChange={(value) => setProcessFilter(value === "all" ? null : value)}
+          className="w-full sm:w-72"
+          placeholder="Filtrar por proceso"
+        >
+          <AppSelectItem value="all">Todos los procesos</AppSelectItem>
+          {(processesData?.processes ?? []).map((process) => (
+            <AppSelectItem key={process.process_id} value={process.process_id}>
+              {process.name}
+            </AppSelectItem>
+          ))}
+        </AppSelect>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -222,74 +231,115 @@ function Costos() {
         )}
       </GlassCard>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <GlassCard className="p-0 overflow-hidden">
-          <div className="p-4 border-b border-border/40 text-sm font-semibold">Por operación</div>
-          {metrics.cost_by_operation.length === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">Sin datos aún.</div>
-          ) : (
-            <table className="w-full text-sm">
-              <tbody>
-                {metrics.cost_by_operation.map((r) => (
-                  <tr key={r.operation_type} className="border-t border-border/30">
-                    <td className="px-5 py-3 font-medium">
-                      {OPERATION_TYPE_LABEL[
-                        r.operation_type as keyof typeof OPERATION_TYPE_LABEL
-                      ] ?? r.operation_type}
-                    </td>
-                    <td className="px-3 py-3 text-xs text-muted-foreground">
-                      {r.count} operación(es)
-                    </td>
-                    <td className="px-3 py-3 text-right font-semibold tabular-nums">
-                      ${r.total_cost.toFixed(4)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </GlassCard>
-
-        <GlassCard>
-          <div className="text-sm font-semibold mb-3">Límites y alertas</div>
-          {isAdmin ? (
-            <div className="space-y-3 text-sm">
-              {LIMIT_FIELDS.map(({ key, label, placeholder }) => {
-                const stored = settingsMap.get(key) as { amount?: number } | undefined;
-                const value = edits[key] ?? (stored?.amount != null ? String(stored.amount) : "");
-                return (
-                  <div key={key} className="flex items-center gap-3">
-                    <div className="flex-1 text-xs text-muted-foreground">{label}</div>
-                    <input
-                      value={value}
-                      onChange={(e) => setEdits({ ...edits, [key]: e.target.value })}
-                      onBlur={() => {
-                        const num = Number(edits[key]);
-                        if (edits[key] !== undefined && !Number.isNaN(num))
-                          saveMutation.mutate({ key, value: num });
-                      }}
-                      placeholder={placeholder}
-                      className="w-28 px-2.5 py-1.5 text-sm text-right rounded-lg bg-background/70 border border-border"
-                    />
-                  </div>
-                );
-              })}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <GlassCard className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-0">
+        <div className="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                <DollarSign className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Control financiero</div>
+                <h2 className="mt-0.5 text-lg font-bold tracking-tight">Presupuesto global</h2>
+              </div>
             </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Solo un administrador puede editar los límites globales.
+            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+              Define el máximo acumulado de todos los procesos. Al alcanzarlo, no será posible crear nuevos procesos.
             </p>
-          )}
-          <div className="mt-4 space-y-2">
-            {budgetAlerts.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                Ningún proceso ha alcanzado el 80% de su presupuesto.
-              </p>
+          </div>
+
+          <div className="sm:w-40">
+            <div className="mb-2 text-xs font-medium text-muted-foreground">Límite total (USD)</div>
+            {isAdmin ? (
+              <>
+                <input
+                  value={totalBudgetEdit}
+                  inputMode="decimal"
+                  onChange={(e) => setEdits({ ...edits, [TOTAL_BUDGET_KEY]: e.target.value })}
+                  onBlur={() => {
+                    if (edits[TOTAL_BUDGET_KEY] === undefined) return;
+                    const value = edits[TOTAL_BUDGET_KEY].trim();
+                    const num = value === "" ? 0 : Number(value);
+                    if (!Number.isNaN(num) && num >= 0)
+                      saveMutation.mutate({ key: TOTAL_BUDGET_KEY, value: num });
+                  }}
+                  placeholder="Sin límite"
+                  className="h-10 w-full rounded-lg border border-primary/25 bg-background/80 px-3 text-right text-base font-semibold tabular-nums shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+                {totalBudget > 0 && (
+                  <div className="mt-2 text-right text-[11px] text-muted-foreground">
+                    Llevas ${globalMetrics.total_cost_usd.toFixed(2)} de ${totalBudget.toFixed(2)}
+                  </div>
+                )}
+              </>
             ) : (
-              budgetAlerts.map((a) => <Alert key={a.name} pct={a.pct} label={a.name} />)
+              <div className="flex h-10 items-center rounded-lg border border-border bg-background/60 px-3 text-base font-semibold tabular-nums">
+                {totalBudget > 0 ? `$${totalBudget.toFixed(2)}` : "Sin límite"}
+              </div>
             )}
           </div>
-        </GlassCard>
+        </div>
+
+        <div className="border-t border-primary/15 bg-background/30 px-5 py-4">
+          {totalBudget <= 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Aún no hay un presupuesto global configurado. Déjalo vacío si no deseas limitar la creación de procesos.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <div className="text-xl font-bold tabular-nums">${globalMetrics.total_cost_usd.toFixed(2)}</div>
+                  <div className="text-xs text-muted-foreground">consumidos de ${totalBudget.toFixed(2)} USD</div>
+                </div>
+                <div className="text-sm font-semibold text-primary">{budgetUsage.toFixed(1)}% utilizado</div>
+              </div>
+              <div className="h-2.5 overflow-hidden rounded-full bg-primary/10">
+                <div
+                  className={budgetUsage >= 100 ? "h-full bg-destructive" : budgetUsage >= 80 ? "h-full bg-warning" : "h-full bg-primary"}
+                  style={{ width: `${Math.min(budgetUsage, 100)}%` }}
+                />
+              </div>
+              {budgetUsage >= 100 ? (
+                <Alert pct={budgetUsage} label="Presupuesto total alcanzado" />
+              ) : budgetUsage >= 80 ? (
+                <Alert pct={budgetUsage} label="Presupuesto total próximo al límite" />
+              ) : null}
+            </div>
+          )}
+          {!isAdmin && (
+            <p className="mt-3 text-xs text-muted-foreground">Solo un administrador puede editar el presupuesto global.</p>
+          )}
+        </div>
+      </GlassCard>
+
+      <GlassCard className="p-0 overflow-hidden">
+        <div className="p-4 border-b border-border/40 text-sm font-semibold">Por operación</div>
+        {metrics.cost_by_operation.length === 0 ? (
+          <div className="p-6 text-center text-xs text-muted-foreground">Sin datos aún.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <tbody>
+              {metrics.cost_by_operation.map((r) => (
+                <tr key={r.operation_type} className="border-t border-border/30">
+                  <td className="px-5 py-3 font-medium">
+                    {OPERATION_TYPE_LABEL[
+                      r.operation_type as keyof typeof OPERATION_TYPE_LABEL
+                    ] ?? r.operation_type}
+                  </td>
+                  <td className="px-3 py-3 text-xs text-muted-foreground">
+                    {r.count} operación(es)
+                  </td>
+                  <td className="px-3 py-3 text-right font-semibold tabular-nums">
+                    ${r.total_cost.toFixed(4)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </GlassCard>
       </div>
     </div>
   );

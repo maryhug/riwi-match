@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { Plus, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 import { GlassCard } from "@/components/app/GlassCard";
+import { LoadingIndicator } from "@/components/app/LoadingIndicator";
 import { getQuestionSets } from "@/lib/api/question-sets.functions";
 import { QUESTION_SET_STATUS_LABEL } from "@/lib/types/enums";
 
@@ -58,7 +59,7 @@ function Sets() {
       </div>
 
       {isLoading ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">Cargando sets…</div>
+        <LoadingIndicator className="py-16" label="Cargando sets…" />
       ) : sets.length === 0 ? (
         <div className="py-16 text-center text-sm text-muted-foreground">
           No hay sets de preguntas. Crea uno para configurar profiling.

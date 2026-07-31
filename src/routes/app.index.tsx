@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
+import { LoadingIndicator } from "@/components/app/LoadingIndicator";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { getProcesses, updateProcessStatus } from "@/lib/api/processes.functions";
 import { getDashboardMetrics } from "@/lib/api/metrics.functions";
@@ -310,7 +311,7 @@ function Inicio() {
         </div>
 
         {isLoading ? (
-          <div className="p-10 text-center text-sm text-muted-foreground">Cargando procesos…</div>
+          <LoadingIndicator className="p-10" label="Cargando procesos…" />
         ) : filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">
             {procesos.length === 0

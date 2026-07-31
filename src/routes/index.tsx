@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Sparkles } from "lucide-react";
-import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import curvaMatchLogo from "@/assets/CurvaMatch.svg";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -20,6 +22,13 @@ function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showLogoEntrance, setShowLogoEntrance] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    setShowLogoEntrance(true);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,28 +54,18 @@ function Login() {
 
       {/* Form */}
       <div className="relative z-10 flex items-center justify-center p-8 w-full">
-        <div className="w-full max-w-md">
-          <Link to="/" className="inline-flex items-center gap-2 mb-10">
-            <div className="grid h-11 w-11 place-items-center rounded-xl bg-primary shadow-md">
-              <Sparkles className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <div className="text-xl font-bold leading-none">
-                RIWI <span className="text-primary">MATCH</span>
-                <span className="text-primary">.</span>
-              </div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mt-1">
-                Talent Acquisition AI
-              </div>
-            </div>
+        <div className="w-full max-w-md text-center">
+          <Link to="/" className="mx-auto mb-10 block w-full max-w-[17rem]" aria-label="Match">
+            <img
+              src={curvaMatchLogo}
+              alt="Match"
+              className={showLogoEntrance ? "login-logo-entrance h-auto w-full" : "h-auto w-full"}
+            />
           </Link>
 
           <h1 className="text-3xl font-bold tracking-tight">Bienvenido de vuelta</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Inicia sesión con tu cuenta corporativa de Riwi para continuar.
-          </p>
 
-          <form onSubmit={handleSubmit} className="mt-8 glass rounded-2xl p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-8 glass rounded-2xl p-6 space-y-4 text-left">
             {error && (
               <div className="rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
                 {error}
@@ -89,16 +88,28 @@ function Login() {
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Contraseña
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                className="mt-1.5 w-full px-3 py-2.5 rounded-xl bg-background/70 border border-border focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-              <p className="mt-1.5 text-[11px] text-muted-foreground">
-                ¿Olvidaste tu contraseña? Contacta a un administrador para restablecerla.
+              <div className="relative mt-1.5">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="w-full rounded-xl border border-border bg-background/70 px-3 py-2.5 pr-11 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-xl text-muted-foreground transition hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
+                <span className="block">¿Olvidaste tu contraseña?</span>
+                <span className="block">Contacta a un administrador para restablecerla.</span>
               </p>
             </div>
             <button
