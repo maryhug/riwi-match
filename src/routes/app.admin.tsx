@@ -209,7 +209,7 @@ function UsuariosTab() {
                           role: value as UserRole,
                         })
                       }
-                      className="h-8 min-w-28 text-xs"
+                      className="h-8 w-32 text-xs"
                     >
                       {(Object.keys(USER_ROLE_LABEL) as UserRole[]).map((r) => (
                         <AppSelectItem key={r} value={r}>
@@ -228,7 +228,7 @@ function UsuariosTab() {
                           status: value as UserStatus,
                         })
                       }
-                      className="h-8 min-w-28 text-xs"
+                      className="h-8 w-32 text-xs"
                     >
                       <AppSelectItem value="ACTIVE">{USER_STATUS_LABEL["ACTIVE"]}</AppSelectItem>
                       <AppSelectItem value="SUSPENDED">{USER_STATUS_LABEL["SUSPENDED"]}</AppSelectItem>
@@ -467,16 +467,28 @@ function EditUserDialog({ user, onClose }: { user: User | null; onClose: () => v
   const [name, setName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
 
   useEffect(() => {
     setName(user?.name ?? "");
     setLastName(user?.last_name ?? "");
     setEmail(user?.email ?? "");
+    setPassword("");
+    setPasswordConfirmation("");
   }, [user]);
 
   const updateMutation = useMutation({
     mutationFn: () =>
-      updateUser({ data: { userId: user!.id, name: name.trim(), last_name: lastName.trim(), email: email.trim() } }),
+      updateUser({
+        data: {
+          userId: user!.id,
+          name: name.trim(),
+          last_name: lastName.trim(),
+          email: email.trim(),
+          ...(password ? { password } : {}),
+        },
+      }),
     onSuccess: () => {
       toast.success("Usuario actualizado");
       qc.invalidateQueries({ queryKey: ["users"] });
@@ -486,7 +498,8 @@ function EditUserDialog({ user, onClose }: { user: User | null; onClose: () => v
       toast.error(err instanceof Error ? err.message : "No se pudo actualizar el usuario"),
   });
 
-  const canSave = Boolean(name.trim() && lastName.trim() && email.trim());
+  const passwordIsValid = !password || (password.length >= 8 && password === passwordConfirmation);
+  const canSave = Boolean(name.trim() && lastName.trim() && email.trim() && passwordIsValid);
   return (
     <Dialog open={Boolean(user)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md">
@@ -497,6 +510,14 @@ function EditUserDialog({ user, onClose }: { user: User | null; onClose: () => v
             <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Apellido" className="px-3 py-2 rounded-xl bg-background/70 border border-border text-sm" />
           </div>
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Correo" className="w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm" />
+          <div className="border-t border-border/50 pt-3">
+            <div className="mb-2 text-xs font-medium text-muted-foreground">Nueva contraseña <span className="normal-case">(opcional)</span></div>
+            <div className="space-y-2">
+              <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="new-password" placeholder="Nueva contraseña (mín. 8 caracteres)" className="w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm" />
+              <input value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)} type="password" autoComplete="new-password" placeholder="Confirmar nueva contraseña" className="w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm" />
+              {passwordConfirmation && passwordConfirmation !== password && <p className="text-xs text-destructive">Las contraseñas no coinciden.</p>}
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <button onClick={onClose} className="px-4 py-2 rounded-xl border border-border text-sm">Cancelar</button>
