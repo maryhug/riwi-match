@@ -29,7 +29,7 @@ import {
 
 const items: { to: string; label: string; icon: typeof Briefcase; roles: UserRole[] }[] = [
   { to: "/app", label: "Inicio", icon: Briefcase, roles: ["ADMIN", "RECRUITER", "TA_LEADER"] },
-  { to: "/app/sets", label: "Sets", icon: ListChecks, roles: ["ADMIN", "RECRUITER"] },
+  { to: "/app/sets", label: "Sets", icon: ListChecks, roles: ["ADMIN", "RECRUITER", "TA_LEADER"] },
   { to: "/app/profiling", label: "Profiling", icon: PhoneCall, roles: ["ADMIN", "RECRUITER"] },
   { to: "/app/equipo", label: "Equipo", icon: Users, roles: ["ADMIN", "TA_LEADER"] },
   {

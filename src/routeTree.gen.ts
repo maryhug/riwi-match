@@ -16,6 +16,7 @@ import { Route as AppSetsRouteImport } from './routes/app.sets'
 import { Route as AppProfilingRouteImport } from './routes/app.profiling'
 import { Route as AppEquipoRouteImport } from './routes/app.equipo'
 import { Route as AppCostosRouteImport } from './routes/app.costos'
+import { Route as AppBuscarRouteImport } from './routes/app.buscar'
 import { Route as AppAdminRouteImport } from './routes/app.admin'
 import { Route as AppSetsIndexRouteImport } from './routes/app.sets.index'
 import { Route as AppSetsNuevoRouteImport } from './routes/app.sets.nuevo'
@@ -58,6 +59,11 @@ const AppCostosRoute = AppCostosRouteImport.update({
   path: '/costos',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBuscarRoute = AppBuscarRouteImport.update({
+  id: '/buscar',
+  path: '/buscar',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminRoute = AppAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/app/admin': typeof AppAdminRoute
+  '/app/buscar': typeof AppBuscarRoute
   '/app/costos': typeof AppCostosRoute
   '/app/equipo': typeof AppEquipoRoute
   '/app/profiling': typeof AppProfilingRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app/admin': typeof AppAdminRoute
+  '/app/buscar': typeof AppBuscarRoute
   '/app/costos': typeof AppCostosRoute
   '/app/equipo': typeof AppEquipoRoute
   '/app/profiling': typeof AppProfilingRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/app/admin': typeof AppAdminRoute
+  '/app/buscar': typeof AppBuscarRoute
   '/app/costos': typeof AppCostosRoute
   '/app/equipo': typeof AppEquipoRoute
   '/app/profiling': typeof AppProfilingRoute
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/app/admin'
+    | '/app/buscar'
     | '/app/costos'
     | '/app/equipo'
     | '/app/profiling'
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/app/admin'
+    | '/app/buscar'
     | '/app/costos'
     | '/app/equipo'
     | '/app/profiling'
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/app/admin'
+    | '/app/buscar'
     | '/app/costos'
     | '/app/equipo'
     | '/app/profiling'
@@ -235,6 +247,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCostosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/buscar': {
+      id: '/app/buscar'
+      path: '/buscar'
+      fullPath: '/app/buscar'
+      preLoaderRoute: typeof AppBuscarRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/admin': {
       id: '/app/admin'
       path: '/admin'
@@ -297,6 +316,7 @@ const AppSetsRouteWithChildren =
 
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
+  AppBuscarRoute: typeof AppBuscarRoute
   AppCostosRoute: typeof AppCostosRoute
   AppEquipoRoute: typeof AppEquipoRoute
   AppProfilingRoute: typeof AppProfilingRoute
@@ -308,6 +328,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
+  AppBuscarRoute: AppBuscarRoute,
   AppCostosRoute: AppCostosRoute,
   AppEquipoRoute: AppEquipoRoute,
   AppProfilingRoute: AppProfilingRoute,

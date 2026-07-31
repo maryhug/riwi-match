@@ -503,6 +503,15 @@ export interface TADashboardResponse {
   }[];
 }
 
+export interface GlobalSearchResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  processes: { id: string; name: string; job_title: string; area: string }[];
+  candidates: { process_id: string; process_candidate_id: string; name: string; email: string; process_name: string }[];
+  question_sets: { id: string; name: string; description: string | null }[];
+}
+
 // ─── System / Integrations ───────────────────────────────────────────────────
 
 export interface IntegrationHealthResponse {
