@@ -63,9 +63,8 @@ function Login() {
             />
           </Link>
 
-          <h1 className="text-3xl font-bold tracking-tight">Bienvenido de vuelta</h1>
-
           <form onSubmit={handleSubmit} className="mt-8 glass rounded-2xl p-6 space-y-4 text-left">
+            <h1 className="text-center text-2xl font-bold tracking-tight">Bienvenido de vuelta</h1>
             {error && (
               <div className="rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
                 {error}
@@ -115,7 +114,7 @@ function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold shadow-sm hover:bg-primary/90 transition disabled:opacity-60"
+              className="mx-auto block w-60 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold shadow-sm hover:bg-primary/90 transition disabled:opacity-60"
             >
               {loading ? "Ingresando…" : "Iniciar sesión"}
             </button>
