@@ -180,9 +180,17 @@ function Inicio() {
     (p) => p.status !== "CLOSED" && p.status !== "ARCHIVED",
   ).length;
 
-  const cvExtraction = metrics?.cost_by_operation.find((o) => o.operation_type === "CV_EXTRACTION");
-  const profilingsCompletados = metrics?.cost_by_operation.find(
-    (o) => o.operation_type === "ANSWER_EVALUATION",
+  const progressTotals = useMemo(
+    () =>
+      procesos.reduce(
+        (totals, process) => {
+          totals.cvProcessed += process.progress?.counts.cv_processed ?? 0;
+          totals.profilingCompleted += process.progress?.counts.profiling_completed ?? 0;
+          return totals;
+        },
+        { cvProcessed: 0, profilingCompleted: 0 },
+      ),
+    [procesos],
   );
 
   const now = new Date();
@@ -225,13 +233,13 @@ function Inicio() {
         <KPI
           icon={CheckCircle2}
           label="CVs procesados"
-          value={String(cvExtraction?.count ?? 0)}
+          value={String(progressTotals.cvProcessed)}
           accent="bg-success"
         />
         <KPI
           icon={PhoneCall}
           label="Profilings evaluados"
-          value={String(profilingsCompletados?.count ?? 0)}
+          value={String(progressTotals.profilingCompleted)}
           accent="bg-info text-info-foreground"
         />
         <KPI
@@ -361,7 +369,7 @@ function Inicio() {
                         <span
                           className={`inline-flex px-2 py-1 rounded-md text-[10px] font-semibold ${estadoColors[p.status]}`}
                         >
-                          {PROCESS_STATUS_LABEL[p.status]}
+                          {p.progress?.stage_label ?? PROCESS_STATUS_LABEL[p.status]}
                         </span>
                       </td>
                       <td className="px-3 py-3 text-right tabular-nums">

@@ -10,6 +10,7 @@ import type {
   ProcessListResponse,
   ProcessMetricsResponse,
   ProcessMutationResponse,
+  ProcessProgressResponse,
   UploadJDResponse,
   VoiceConfig,
 } from "../types/api";
@@ -157,4 +158,10 @@ export const getProcessMetrics = createServerFn({ method: "GET" })
   .validator(z.object({ processId: z.string() }))
   .handler(async ({ data }) => {
     return apiCall<ProcessMetricsResponse>(`/api/v1/processes/${data.processId}/metrics`);
+  });
+
+export const getProcessProgress = createServerFn({ method: "GET" })
+  .validator(z.object({ processId: z.string() }))
+  .handler(async ({ data }) => {
+    return apiCall<ProcessProgressResponse>(`/api/v1/processes/${data.processId}/progress`);
   });

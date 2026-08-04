@@ -80,6 +80,7 @@ export interface ProcessListItem {
   recruiter_id: string;
   recruiter_name: string;
   created_at: string;
+  progress: ProcessProgressResponse;
 }
 
 export interface ProcessListResponse {
@@ -176,6 +177,43 @@ export interface ProcessMetricsResponse {
   cost_by_category: { voz: number; twilio: number; whatsapp: number; llm: number };
 }
 
+export interface ProcessProgressResponse {
+  process_id: string;
+  process_status: ProcessStatus;
+  stage: ProcessStatus | "CV_PROCESSING" | "CV_ERROR" | "CVS_PROCESSED";
+  stage_label: string;
+  updated_at: string;
+  counts: {
+    total_cvs: number;
+    cv_pending: number;
+    cv_processing: number;
+    cv_processed: number;
+    cv_errors: number;
+    match_pending: number;
+    match_processing: number;
+    matched: number;
+    profiling_queued: number;
+    profiling_active: number;
+    calls_active: number;
+    profiling_runs: number;
+    profiling_runs_terminal: number;
+    profiling_completed: number;
+    profiling_failed: number;
+  };
+  active_calls: Array<{
+    run_id: string;
+    process_candidate_id: string;
+    status: ProfilingRunStatus;
+    candidate_status: CandidateStatus | "UNKNOWN";
+    call_attempts: number;
+    started_at: string | null;
+    elapsed_seconds: number;
+    is_stale: boolean;
+    twilio_status_detail: string | null;
+    twilio_call_sid: string | null;
+  }>;
+}
+
 // ─── Candidates ──────────────────────────────────────────────────────────────
 
 export interface MatchBreakdownItem {
@@ -198,13 +236,26 @@ export interface MatchBreakdown {
 
 export interface UploadCVsResponse {
   uploaded: number;
+  message: string;
   candidates: Array<{
     candidate_id: string;
     process_candidate_id: string;
     filename: string;
-    task_id: string;
-    status: "LOADED";
+    task_id: string | null;
+    status: CandidateStatus;
   }>;
+}
+
+export interface AnalyzeCVsResponse {
+  process_id: string;
+  queued: number;
+  tasks: Array<{ process_candidate_id: string; task_id: string }>;
+  skipped: Array<{
+    process_candidate_id: string;
+    status: CandidateStatus;
+    reason: string;
+  }>;
+  message: string;
 }
 
 /** Item dentro de GET /processes/{id}/candidates (lista, distinto del detalle) */
@@ -357,6 +408,8 @@ export interface ProfilingRunOut {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  elapsed_seconds: number | null;
+  is_stale: boolean;
 }
 
 export interface TriggerProfilingResponse {

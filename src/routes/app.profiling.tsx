@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import React from "react";
-import { PhoneCall, Clock, CheckCircle2, XCircle, X, RefreshCw, ListTodo, Calendar, ChevronDown, Loader2 } from "lucide-react";
+import { PhoneCall, Clock, CheckCircle2, XCircle, X, RefreshCw, ListTodo, Calendar, ChevronDown, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
 import { LoadingIndicator } from "@/components/app/LoadingIndicator";
@@ -35,10 +35,10 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-function duration(startedAt: string | null): string {
-  if (!startedAt) return "—";
-  const ms = Date.now() - new Date(startedAt).getTime();
-  const totalSec = Math.max(0, Math.floor(ms / 1000));
+function duration(elapsedSeconds: number | null, startedAt: string | null): string {
+  if (elapsedSeconds == null && !startedAt) return "—";
+  const totalSec =
+    elapsedSeconds ?? Math.max(0, Math.floor((Date.now() - new Date(startedAt!).getTime()) / 1000));
   const min = Math.floor(totalSec / 60);
   const sec = totalSec % 60;
   return `${min}:${String(sec).padStart(2, "0")}`;
@@ -252,7 +252,13 @@ function Profiling() {
                   </div>
                 </div>
                 <div className="flex items-center text-[10px] text-muted-foreground">
-                  <Clock className="h-3 w-3 text-primary shrink-0 mr-1" /> {duration(r.started_at)}
+                  <Clock className="h-3 w-3 text-primary shrink-0 mr-1" />{" "}
+                  {duration(r.elapsed_seconds, r.started_at)}
+                  {r.is_stale && (
+                    <span className="ml-2 inline-flex items-center gap-1 text-warning-foreground">
+                      <AlertTriangle className="h-3 w-3" /> Stale
+                    </span>
+                  )}
                 </div>
               </GlassCard>
             ))}

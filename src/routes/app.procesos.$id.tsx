@@ -54,6 +54,7 @@ import {
 import {
   getProcess,
   getProcessMetrics,
+  getProcessProgress,
   updateProcessStatus,
   updateProcess,
   assignQuestionSet,
@@ -64,6 +65,7 @@ import {
 } from "@/lib/api/processes.functions";
 import {
   getCandidates,
+  analyzeCVs,
   getCandidateDetail,
   overrideCandidate,
   updateCandidate,
@@ -91,6 +93,7 @@ import {
 import type {
   CandidateListItem,
   MatchBreakdown,
+  ProcessProgressResponse,
   ParseJDResponse,
   ProfilingRunOut,
 } from "@/lib/types/api";
@@ -208,6 +211,21 @@ function Detalle() {
     queryFn: () => getProcess({ data: { processId: id } }),
   });
 
+  const { data: progress } = useQuery({
+    queryKey: ["process-progress", id],
+    queryFn: () => getProcessProgress({ data: { processId: id } }),
+    refetchInterval: (q) => {
+      const stage = q.state.data?.stage;
+      const callsActive = q.state.data?.counts.calls_active ?? 0;
+      return stage === "CV_PROCESSING" ||
+        stage === "MATCH_PROCESSING" ||
+        stage === "PROFILING_ACTIVE" ||
+        callsActive > 0
+        ? 3000
+        : false;
+    },
+  });
+
   const { data: candidatesData } = useQuery({
     queryKey: ["candidates", id],
     queryFn: () => getCandidates({ data: { processId: id } }),
@@ -231,7 +249,7 @@ function Detalle() {
   const { data: matchStatus } = useQuery({
     queryKey: ["match-status", id],
     queryFn: () => getMatchStatus({ data: { processId: id } }),
-    enabled: process?.status === "MATCH_PROCESSING",
+    enabled: progress?.stage === "MATCH_PROCESSING",
     refetchInterval: (q) => (q.state.data?.is_complete ? false : 3000),
   });
 
@@ -249,12 +267,34 @@ function Detalle() {
     return map;
   }, [profilingRunsData]);
 
+  const analyzeMutation = useMutation({
+    mutationFn: () => analyzeCVs({ data: { processId: id } }),
+    onSuccess: (res) => {
+      toast.success(
+        res.queued > 0
+          ? `Análisis de CVs iniciado — ${res.queued} candidato(s) en cola`
+          : res.message,
+        {
+          description: res.skipped.length > 0 ? `${res.skipped.length} omitido(s)` : undefined,
+        },
+      );
+      qc.invalidateQueries({ queryKey: ["candidates", id] });
+      qc.invalidateQueries({ queryKey: ["process-progress", id] });
+      qc.invalidateQueries({ queryKey: ["process", id] });
+      qc.invalidateQueries({ queryKey: ["processes"] });
+      qc.invalidateQueries({ queryKey: ["match-status", id] });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo iniciar el análisis de CVs"),
+  });
+
   const matchMutation = useMutation({
     mutationFn: () => triggerMatch({ data: { processId: id } }),
     onSuccess: (res) => {
       if ("tasks" in res) toast.success(`Match iniciado — ${res.queued} candidato(s) en cola`);
       else toast.info(res.message);
       qc.invalidateQueries({ queryKey: ["process", id] });
+      qc.invalidateQueries({ queryKey: ["process-progress", id] });
       qc.invalidateQueries({ queryKey: ["candidates", id] });
     },
     onError: (err: unknown) =>
@@ -266,6 +306,7 @@ function Detalle() {
     onSuccess: () => {
       toast.success("Estado actualizado");
       qc.invalidateQueries({ queryKey: ["process", id] });
+      qc.invalidateQueries({ queryKey: ["process-progress", id] });
       qc.invalidateQueries({ queryKey: ["processes"] });
     },
     onError: (err: unknown) =>
@@ -282,6 +323,7 @@ function Detalle() {
       setSelected(new Set());
       qc.invalidateQueries({ queryKey: ["candidates", id] });
       qc.invalidateQueries({ queryKey: ["profiling-runs", id] });
+      qc.invalidateQueries({ queryKey: ["process-progress", id] });
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "No se pudo activar profiling"),
@@ -297,7 +339,12 @@ function Detalle() {
   }
 
   const isActive = process.status !== "CLOSED" && process.status !== "ARCHIVED";
-  const canRunMatch = !!process.job_description && isActive;
+  const hasUnanalyzedCVs = candidates.some((candidate) =>
+    ["LOADED", "CV_PROCESSING", "CV_ERROR"].includes(candidate.status),
+  );
+  const canAnalyzeCVs =
+    isActive && candidates.some((candidate) => ["LOADED", "CV_ERROR"].includes(candidate.status));
+  const canRunMatch = !!process.job_description && isActive && !hasUnanalyzedCVs;
 
   return (
     <div className="space-y-6">
@@ -314,7 +361,7 @@ function Detalle() {
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight">{process.name}</h1>
               <span className="px-2 py-1 rounded-md text-[10px] font-semibold bg-primary/15 text-primary">
-                {PROCESS_STATUS_LABEL[process.status]}
+                {progress?.stage_label ?? PROCESS_STATUS_LABEL[process.status]}
               </span>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
@@ -324,10 +371,27 @@ function Detalle() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => matchMutation.mutate()}
-              disabled={!canRunMatch || matchMutation.isPending}
+              onClick={() => analyzeMutation.mutate()}
+              disabled={!canAnalyzeCVs || analyzeMutation.isPending}
               title={
-                !process.job_description ? "El proceso necesita una Job Description" : undefined
+                !canAnalyzeCVs && hasUnanalyzedCVs
+                  ? "No hay CVs pendientes o con error para analizar"
+                  : undefined
+              }
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-primary/40 bg-primary/10 text-primary text-sm font-semibold disabled:opacity-40"
+            >
+              <Sparkles className="h-4 w-4" />{" "}
+              {analyzeMutation.isPending ? "Analizando CVs…" : "Analizar CVs"}
+            </button>
+            <button
+              onClick={() => matchMutation.mutate()}
+              disabled={!canRunMatch || matchMutation.isPending || analyzeMutation.isPending}
+              title={
+                !process.job_description
+                  ? "El proceso necesita una Job Description"
+                  : hasUnanalyzedCVs
+                    ? "Analiza todos los CVs antes de ejecutar el match"
+                    : undefined
               }
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
             >
@@ -373,6 +437,12 @@ function Detalle() {
                 style={{ width: `${matchStatus.progress_pct}%` }}
               />
             </div>
+          </div>
+        )}
+
+        {progress?.stage === "CV_PROCESSING" && (
+          <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
+            Analizando CVs… {progress.counts.cv_processed}/{progress.counts.total_cvs} completados
           </div>
         )}
 
@@ -431,6 +501,7 @@ function Detalle() {
           processId={id}
           budgetMax={process.budget_max_usd}
           profilingRuns={profilingRuns}
+          progress={progress}
         />
       )}
 
@@ -548,37 +619,28 @@ function DashboardTab({
   processId,
   budgetMax,
   profilingRuns,
+  progress,
 }: {
   processId: string;
   budgetMax: number;
   profilingRuns: ProfilingRunOut[];
+  progress?: ProcessProgressResponse;
 }) {
   const { data: metrics, isLoading } = useQuery({
     queryKey: ["process-metrics", processId],
     queryFn: () => getProcessMetrics({ data: { processId } }),
   });
 
-  if (isLoading || !metrics) {
+  if (isLoading || !metrics || !progress) {
     return (
       <LoadingIndicator className="py-16" label="Cargando métricas…" />
     );
   }
 
-  const sd = metrics.status_distribution;
-  const procesados =
-    (sd.MATCHED ?? 0) +
-    (sd.SELECTED_FOR_PROFILING ?? 0) +
-    (sd.PROFILING_QUEUED ?? 0) +
-    (sd.PROFILING_CALLING ?? 0) +
-    (sd.PROFILING_COMPLETED ?? 0) +
-    (sd.PROFILING_FAILED ?? 0) +
-    (sd.DISCARDED ?? 0);
-  const conError = sd.CV_ERROR ?? 0;
-  const pendientes =
-    (sd.LOADED ?? 0) +
-    (sd.CV_PROCESSING ?? 0) +
-    (sd.MATCH_PENDING ?? 0) +
-    (sd.MATCH_PROCESSING ?? 0);
+  const counts = progress?.counts;
+  const procesados = counts?.cv_processed ?? 0;
+  const conError = counts?.cv_errors ?? 0;
+  const pendientes = counts?.cv_pending ?? 0;
 
   const pieData = Object.entries(metrics.match_distribution).map(([k, v]) => ({
     name: MATCH_CATEGORY_LABEL[k as MatchCategory],
@@ -608,7 +670,7 @@ function DashboardTab({
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Total CVs", value: metrics.total_cvs },
+          { label: "Total CVs", value: counts?.total_cvs ?? metrics.total_cvs },
           { label: "Procesados", value: procesados },
           { label: "Con error", value: conError },
           { label: "Pendientes", value: pendientes },
@@ -1465,14 +1527,34 @@ function RankingTab({
 // ─── Kanban Tab ─────────────────────────────────────────────────────────────
 
 const PIPELINE_COLUMNS: { key: string; label: string; statuses: CandidateStatus[] }[] = [
-  { key: "cv", label: "CV Procesado", statuses: ["MATCHED"] },
+  {
+    key: "cv",
+    label: "CV / Match",
+    statuses: [
+      "LOADED",
+      "CV_PROCESSING",
+      "CV_ERROR",
+      "MATCH_PENDING",
+      "MATCH_PROCESSING",
+      "MATCHED",
+      "DISCARDED",
+    ],
+  },
   {
     key: "selected",
     label: "Seleccionado",
     statuses: ["SELECTED_FOR_PROFILING", "PROFILING_QUEUED"],
   },
-  { key: "calling", label: "En Profiling", statuses: ["PROFILING_CALLING"] },
-  { key: "done", label: "Completado", statuses: ["PROFILING_COMPLETED"] },
+  {
+    key: "calling",
+    label: "En Profiling",
+    statuses: ["PROFILING_CALLING"],
+  },
+  {
+    key: "done",
+    label: "Profiling finalizado",
+    statuses: ["PROFILING_COMPLETED", "PROFILING_FAILED"],
+  },
 ];
 
 const AVANCE_COLUMNS: { key: AdvancementProbability; label: string; color: string }[] = [
@@ -1640,6 +1722,7 @@ function ConfigTab({
     onSuccess: () => {
       toast.success("Datos actualizados");
       qc.invalidateQueries({ queryKey: ["process", processId] });
+      qc.invalidateQueries({ queryKey: ["process-progress", processId] });
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
@@ -1650,6 +1733,7 @@ function ConfigTab({
     onSuccess: () => {
       toast.success("Set de preguntas asignado");
       qc.invalidateQueries({ queryKey: ["process", processId] });
+      qc.invalidateQueries({ queryKey: ["process-progress", processId] });
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "No se pudo asignar"),
@@ -1667,6 +1751,7 @@ function ConfigTab({
     onSuccess: () => {
       toast.success("Configuración de voz guardada");
       qc.invalidateQueries({ queryKey: ["process", processId] });
+      qc.invalidateQueries({ queryKey: ["process-progress", processId] });
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
@@ -1692,6 +1777,7 @@ function ConfigTab({
       setJdAnalysis(null);
       qc.invalidateQueries({ queryKey: ["job-descriptions", processId] });
       qc.invalidateQueries({ queryKey: ["process", processId] });
+      qc.invalidateQueries({ queryKey: ["process-progress", processId] });
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "No se pudo guardar la JD"),

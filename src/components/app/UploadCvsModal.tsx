@@ -31,10 +31,12 @@ export function UploadCvsModal({
       return uploadCVs({ data: form });
     },
     onSuccess: (res) => {
-      toast.success(`${res.uploaded} CV(s) cargado(s) — se están procesando`);
+      toast.success(`${res.uploaded} CV(s) cargado(s); listos para analizar`);
       setFiles([]);
       qc.invalidateQueries({ queryKey: ["candidates", processId] });
       qc.invalidateQueries({ queryKey: ["process", processId] });
+      qc.invalidateQueries({ queryKey: ["process-progress", processId] });
+      qc.invalidateQueries({ queryKey: ["processes"] });
       onClose();
     },
     onError: (err: unknown) => {

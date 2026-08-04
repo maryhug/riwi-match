@@ -11,7 +11,11 @@ export const PROFILING_POLL_INTERVAL_MS = 10000;
 export const MAX_POLL_MS = 3 * 60_000;
 
 export const SETTLED_CANDIDATE_STATUSES: ReadonlySet<CandidateStatus> = new Set([
+  // LOADED requiere la acción manual "Analizar CVs"; no es trabajo activo.
+  "LOADED",
   "MATCHED",
+  // MATCH_PENDING está listo para la acción manual de matching.
+  "MATCH_PENDING",
   "CV_ERROR",
   "DISCARDED",
   "PROFILING_COMPLETED",

@@ -4,6 +4,7 @@ import { apiCall } from "./client.server";
 import type {
   CandidateDetailResponse,
   CandidateListResponse,
+  AnalyzeCVsResponse,
   OverrideCandidateRequest,
   UploadCVsResponse,
 } from "../types/api";
@@ -20,6 +21,14 @@ export const uploadCVs = createServerFn({ method: "POST" })
     return apiCall<UploadCVsResponse>(`/api/v1/processes/${processId}/candidates/upload`, {
       method: "POST",
       formData: form,
+    });
+  });
+
+export const analyzeCVs = createServerFn({ method: "POST" })
+  .validator(z.object({ processId: z.string() }))
+  .handler(async ({ data }) => {
+    return apiCall<AnalyzeCVsResponse>(`/api/v1/processes/${data.processId}/candidates/analyze`, {
+      method: "POST",
     });
   });
 
@@ -99,4 +108,3 @@ export const deleteCandidate = createServerFn({ method: "POST" })
       { method: "DELETE" },
     );
   });
-
