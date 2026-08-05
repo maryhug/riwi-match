@@ -68,6 +68,7 @@ import {
   analyzeCVs,
   getCandidateDetail,
   overrideCandidate,
+  updateCandidateAnalysisContext,
   updateCandidate,
   deleteCandidate,
 } from "@/lib/api/candidates.functions";
@@ -2106,8 +2107,10 @@ function CandidatoDrawer({
 }) {
   const qc = useQueryClient();
   const [notes, setNotes] = useState("");
+  const [analysisContext, setAnalysisContext] = useState("");
   const [overrideScore, setOverrideScore] = useState("");
   const [notesInit, setNotesInit] = useState(false);
+  const [analysisContextInit, setAnalysisContextInit] = useState(false);
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ["candidate-detail", processId, candidate.process_candidate_id],
@@ -2121,6 +2124,11 @@ function CandidatoDrawer({
       detail.human_override_match != null ? String(detail.human_override_match) : "",
     );
     setNotesInit(true);
+  }
+
+  if (detail && !analysisContextInit) {
+    setAnalysisContext(detail.analysis_context ?? "");
+    setAnalysisContextInit(true);
   }
 
   const overrideMutation = useMutation({
@@ -2142,6 +2150,25 @@ function CandidatoDrawer({
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
+  });
+
+  const analysisContextMutation = useMutation({
+    mutationFn: () =>
+      updateCandidateAnalysisContext({
+        data: {
+          processId,
+          pcId: candidate.process_candidate_id,
+          analysis_context: analysisContext.trim() || null,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Comentario guardado para el análisis");
+      qc.invalidateQueries({
+        queryKey: ["candidate-detail", processId, candidate.process_candidate_id],
+      });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo guardar el comentario"),
   });
 
   const feedbackMutation = useMutation({
@@ -2431,6 +2458,46 @@ function CandidatoDrawer({
           <div className="p-6 grid md:grid-cols-2 gap-6 bg-slate-50/50">
             {/* ── Columna izquierda: análisis de match ── */}
             <div className="space-y-5">
+              <div className="p-5 space-y-3 rounded-2xl border border-primary/20 bg-primary/5 shadow-xs">
+                <div>
+                  <div className="text-sm font-bold text-slate-900">
+                    Información adicional para el análisis
+                  </div>
+                  <div className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                    Escribe aquí cualquier dato que ayude a interpretar este CV. Se enviará a la IA
+                    junto con la hoja de vida cuando ejecutes el análisis.
+                  </div>
+                </div>
+                <textarea
+                  value={analysisContext}
+                  onChange={(e) => setAnalysisContext(e.target.value)}
+                  disabled={!!detail && !["LOADED", "CV_ERROR"].includes(detail.status)}
+                  maxLength={4000}
+                  placeholder="Ejemplo: el nombre correcto es Juan Pérez y su número es 3001234567; el documento no lo muestra claramente."
+                  className="w-full min-h-[110px] px-3 py-2.5 rounded-xl bg-white border border-primary/20 text-xs text-slate-900 leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] text-slate-500">
+                    {detail?.status === "LOADED" || detail?.status === "CV_ERROR"
+                      ? `${analysisContext.length}/4000 caracteres`
+                      : "El análisis ya comenzó; este comentario es de solo lectura."}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => analysisContextMutation.mutate()}
+                    disabled={
+                      analysisContextMutation.isPending ||
+                      !detail ||
+                      !["LOADED", "CV_ERROR"].includes(detail.status) ||
+                      analysisContext.trim() === (detail.analysis_context ?? "").trim()
+                    }
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {analysisContextMutation.isPending ? "Guardando…" : "Guardar comentario"}
+                  </button>
+                </div>
+              </div>
+
               {detail?.match && (
                 <div className="p-5 space-y-4 rounded-2xl border border-slate-200 bg-white shadow-xs">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100">

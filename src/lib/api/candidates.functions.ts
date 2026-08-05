@@ -6,6 +6,7 @@ import type {
   CandidateListResponse,
   AnalyzeCVsResponse,
   OverrideCandidateRequest,
+  UpdateCandidateAnalysisContextRequest,
   UploadCVsResponse,
 } from "../types/api";
 
@@ -60,6 +61,25 @@ export const overrideCandidate = createServerFn({ method: "POST" })
     return apiCall<{ status: string }>(
       `/api/v1/processes/${processId}/candidates/${pcId}/override`,
       { method: "PATCH", body: body satisfies OverrideCandidateRequest },
+    );
+  });
+
+export const updateCandidateAnalysisContext = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      processId: z.string(),
+      pcId: z.string(),
+      analysis_context: z.string().nullable(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { processId, pcId, ...body } = data;
+    return apiCall<{ status: string; analysis_context: string | null }>(
+      `/api/v1/processes/${processId}/candidates/${pcId}/analysis-context`,
+      {
+        method: "PATCH",
+        body: body satisfies UpdateCandidateAnalysisContextRequest,
+      },
     );
   });
 

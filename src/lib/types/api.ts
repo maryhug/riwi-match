@@ -303,6 +303,7 @@ export interface CandidateDetailResponse {
   };
   status: CandidateStatus;
   whatsapp_consent: WhatsAppConsentStatus;
+  analysis_context: string | null;
   human_notes: string | null;
   /** Ojo: el backend colapsa 0 a null (`if pc.human_override_match else None`). */
   human_override_match: number | null;
@@ -329,6 +330,10 @@ export interface CandidateDetailResponse {
 export interface OverrideCandidateRequest {
   human_notes?: string | null;
   human_override_match?: number | null;
+}
+
+export interface UpdateCandidateAnalysisContextRequest {
+  analysis_context: string | null;
 }
 
 // ─── Question Sets ───────────────────────────────────────────────────────────
