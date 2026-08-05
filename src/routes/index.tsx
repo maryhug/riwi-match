@@ -4,11 +4,10 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import curvaMatchLogo from "@/assets/CurvaMatch.svg";
 
-
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "RIWI MATCH — Iniciar sesión" },
+      { title: "Match" },
       { name: "description", content: "Plataforma interna de reclutamiento con IA de Riwi." },
     ],
   }),

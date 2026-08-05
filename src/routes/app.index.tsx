@@ -20,7 +20,8 @@ import { LoadingIndicator } from "@/components/app/LoadingIndicator";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { getProcesses, updateProcessStatus } from "@/lib/api/processes.functions";
 import { getDashboardMetrics } from "@/lib/api/metrics.functions";
-import { PROCESS_STATUS_LABEL, type ProcessStatus } from "@/lib/types/enums";
+import { PROCESS_STATUS_LABEL } from "@/lib/types/enums";
+import type { ProcessProgressResponse } from "@/lib/types/api";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,15 +29,25 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { LIVE_REFRESH_INTERVAL_MS } from "@/lib/polling";
 
 const PAGE_SIZE = 10;
 
 export const Route = createFileRoute("/app/")({
-  head: () => ({ meta: [{ title: "Procesos · RIWI MATCH" }] }),
+  head: () => ({ meta: [{ title: "Match" }] }),
   component: Inicio,
 });
 
-const estadoColors: Record<ProcessStatus, string> = {
+type ProcessStage = ProcessProgressResponse["stage"];
+
+const STAGE_LABEL: Record<ProcessStage, string> = {
+  ...PROCESS_STATUS_LABEL,
+  CV_PROCESSING: "Procesando CVs",
+  CV_ERROR: "CVs con errores",
+  CVS_PROCESSED: "CVs procesados",
+};
+
+const estadoColors: Record<ProcessStage, string> = {
   DRAFT: "bg-muted text-muted-foreground",
   CVS_UPLOADED: "bg-info/30 text-info-foreground",
   MATCH_PROCESSING: "bg-accent text-accent-foreground",
@@ -46,6 +57,9 @@ const estadoColors: Record<ProcessStatus, string> = {
   PROFILING_COMPLETED: "bg-success/20 text-success",
   CLOSED: "bg-foreground/10 text-foreground",
   ARCHIVED: "bg-muted text-muted-foreground/60",
+  CV_PROCESSING: "bg-info/30 text-info-foreground",
+  CV_ERROR: "bg-destructive/15 text-destructive",
+  CVS_PROCESSED: "bg-success/15 text-success",
 };
 
 function initials(name: string) {
@@ -104,12 +118,12 @@ function KPI({
 function Inicio() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [estadoFilter, setEstadoFilter] = useState<ProcessStatus | null>(null);
+  const [estadoFilter, setEstadoFilter] = useState<ProcessStage | null>(null);
   const [reclutadorFilter, setReclutadorFilter] = useState<string | null>(null);
   const [areaFilter, setAreaFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
-  const handleEstadoFilter = (val: ProcessStatus | null) => {
+  const handleEstadoFilter = (val: ProcessStage | null) => {
     setEstadoFilter(val);
     setPage(1);
   };
@@ -125,11 +139,13 @@ function Inicio() {
   const { data: processesData, isLoading } = useQuery({
     queryKey: ["processes"],
     queryFn: () => getProcesses(),
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
   });
 
   const { data: metrics } = useQuery({
     queryKey: ["dashboard-metrics"],
     queryFn: () => getDashboardMetrics(),
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
   });
 
   const statusMutation = useMutation({
@@ -144,7 +160,7 @@ function Inicio() {
     },
   });
 
-  const procesos = processesData?.processes ?? [];
+  const procesos = useMemo(() => processesData?.processes ?? [], [processesData]);
 
   const { reclutadores, areas } = useMemo(() => {
     const r = new Set<string>();
@@ -162,7 +178,7 @@ function Inicio() {
       if (estadoFilter !== "ARCHIVED" && p.status === "ARCHIVED") {
         return false;
       }
-      if (estadoFilter && p.status !== estadoFilter) return false;
+      if (estadoFilter && (p.progress?.stage ?? p.status) !== estadoFilter) return false;
       if (reclutadorFilter && p.recruiter_name !== reclutadorFilter) return false;
       if (areaFilter && p.area !== areaFilter) return false;
       return true;
@@ -265,13 +281,13 @@ function Inicio() {
               )}
             >
               <Filter className="h-3.5 w-3.5" />{" "}
-              {estadoFilter ? PROCESS_STATUS_LABEL[estadoFilter] : "Estado"}
+              {estadoFilter ? STAGE_LABEL[estadoFilter] : "Etapa"}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => handleEstadoFilter(null)}>Todos</DropdownMenuItem>
-              {(Object.keys(PROCESS_STATUS_LABEL) as ProcessStatus[]).map((s) => (
+              {(Object.keys(STAGE_LABEL) as ProcessStage[]).map((s) => (
                 <DropdownMenuItem key={s} onClick={() => handleEstadoFilter(s)}>
-                  {PROCESS_STATUS_LABEL[s]}
+                  {STAGE_LABEL[s]}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -288,7 +304,9 @@ function Inicio() {
               <Filter className="h-3.5 w-3.5" /> {reclutadorFilter ?? "Reclutador"}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleReclutadorFilter(null)}>Todos</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleReclutadorFilter(null)}>
+                Todos
+              </DropdownMenuItem>
               {reclutadores.map((r) => (
                 <DropdownMenuItem key={r} onClick={() => handleReclutadorFilter(r)}>
                   {r}
@@ -335,7 +353,7 @@ function Inicio() {
                     <th className="text-left font-medium px-5 py-3">Proceso</th>
                     <th className="text-left font-medium px-3 py-3">Área</th>
                     <th className="text-left font-medium px-3 py-3">Reclutador</th>
-                    <th className="text-left font-medium px-3 py-3">Estado</th>
+                    <th className="text-left font-medium px-3 py-3">Etapa</th>
                     <th className="text-right font-medium px-3 py-3">Presupuesto</th>
                     <th className="text-left font-medium px-3 py-3">Fecha</th>
                     <th className="px-3 py-3"></th>
@@ -367,7 +385,7 @@ function Inicio() {
                       </td>
                       <td className="px-3 py-3">
                         <span
-                          className={`inline-flex px-2 py-1 rounded-md text-[10px] font-semibold ${estadoColors[p.status]}`}
+                          className={`inline-flex px-2 py-1 rounded-md text-[10px] font-semibold ${estadoColors[p.progress?.stage ?? p.status]}`}
                         >
                           {p.progress?.stage_label ?? PROCESS_STATUS_LABEL[p.status]}
                         </span>
@@ -394,7 +412,10 @@ function Inicio() {
                             {p.status !== "CLOSED" && p.status !== "ARCHIVED" && (
                               <DropdownMenuItem
                                 onClick={() =>
-                                  statusMutation.mutate({ processId: p.process_id, status: "CLOSED" })
+                                  statusMutation.mutate({
+                                    processId: p.process_id,
+                                    status: "CLOSED",
+                                  })
                                 }
                               >
                                 <XCircle className="h-3.5 w-3.5 mr-2" /> Cerrar proceso

@@ -6,7 +6,7 @@ import { GlassCard } from "@/components/app/GlassCard";
 import { createQuestionSet } from "@/lib/api/question-sets.functions";
 
 export const Route = createFileRoute("/app/sets/nuevo")({
-  head: () => ({ meta: [{ title: "Nuevo set de preguntas · RIWI MATCH" }] }),
+  head: () => ({ meta: [{ title: "Match" }] }),
   component: NuevoSet,
 });
 

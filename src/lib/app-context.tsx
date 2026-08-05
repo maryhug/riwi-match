@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
+/* eslint-disable react-refresh/only-export-components -- provider and hook are one context API. */
+
 export type NavPosition = "top" | "bottom" | "left" | "right";
 
 interface AppCtx {
@@ -28,14 +30,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (saved && ["top", "bottom", "left", "right"].includes(saved)) {
         setNavPositionState(saved);
       }
-    } catch {}
+    } catch {
+      // localStorage may be unavailable in private or restricted browsing contexts.
+    }
   }, []);
 
   const setNavPosition = (p: NavPosition) => {
     setNavPositionState(p);
     try {
       localStorage.setItem("navPosition", p);
-    } catch {}
+    } catch {
+      // Persisting the preference is best-effort and must not block navigation.
+    }
   };
 
   return (

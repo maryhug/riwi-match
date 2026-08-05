@@ -11,6 +11,8 @@ import {
 } from "react-hook-form";
 
 import { cn } from "@/lib/utils";
+
+/* eslint-disable react-refresh/only-export-components -- hooks and components form one field API. */
 import { Label } from "@/components/ui/label";
 
 const Form = FormProvider;

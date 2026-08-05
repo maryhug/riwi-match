@@ -8,7 +8,7 @@ import { getQuestionSets } from "@/lib/api/question-sets.functions";
 import { QUESTION_SET_STATUS_LABEL } from "@/lib/types/enums";
 
 export const Route = createFileRoute("/app/sets/")({
-  head: () => ({ meta: [{ title: "Sets de Preguntas · RIWI MATCH" }] }),
+  head: () => ({ meta: [{ title: "Match" }] }),
   component: Sets,
 });
 
@@ -29,7 +29,7 @@ function Sets() {
     queryFn: () => getQuestionSets(),
   });
 
-  const sets = data?.question_sets ?? [];
+  const sets = useMemo(() => data?.question_sets ?? [], [data]);
   const totalPages = Math.ceil(sets.length / PAGE_SIZE) || 1;
 
   const paginatedSets = useMemo(() => {
@@ -90,7 +90,10 @@ function Sets() {
                       </span>
                     </div>
                   </div>
-                  <h3 className="font-semibold leading-tight line-clamp-1 text-foreground" title={s.name}>
+                  <h3
+                    className="font-semibold leading-tight line-clamp-1 text-foreground"
+                    title={s.name}
+                  >
                     {s.name}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 h-8">
@@ -102,7 +105,9 @@ function Sets() {
                   <span className="font-medium">
                     {s.questions?.length ?? 0} pregunta{(s.questions?.length ?? 0) === 1 ? "" : "s"}
                   </span>
-                  <span className="text-[10px] text-muted-foreground/70 font-medium">Plantilla de Profiling</span>
+                  <span className="text-[10px] text-muted-foreground/70 font-medium">
+                    Plantilla de Profiling
+                  </span>
                 </div>
               </GlassCard>
             ))}
@@ -112,8 +117,8 @@ function Sets() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-4 border-t border-border/40 text-xs text-muted-foreground">
               <div>
-                Mostrando {(page - 1) * PAGE_SIZE + 1} -{" "}
-                {Math.min(page * PAGE_SIZE, sets.length)} de {sets.length} sets de preguntas
+                Mostrando {(page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, sets.length)}{" "}
+                de {sets.length} sets de preguntas
               </div>
               <div className="flex items-center gap-2">
                 <button

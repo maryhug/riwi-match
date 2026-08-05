@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { X, Download, ExternalLink, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { X, Download, ExternalLink, Loader2 } from "lucide-react";
 
 interface PdfPreviewModalProps {
   isOpen: boolean;
@@ -10,26 +10,23 @@ interface PdfPreviewModalProps {
   fileUrl: string;
 }
 
-export default function PdfPreviewModal({
-  isOpen,
-  onClose,
-  title,
-  fileUrl,
-}: PdfPreviewModalProps) {
+export default function PdfPreviewModal({ isOpen, onClose, title, fileUrl }: PdfPreviewModalProps) {
   const [loading, setLoading] = useState(true);
 
   // Reset spinner whenever the PDF URL changes
-  useEffect(() => { setLoading(true); }, [fileUrl]);
+  useEffect(() => {
+    setLoading(true);
+  }, [fileUrl]);
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     }
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     };
   }, [isOpen]);
 
@@ -45,13 +42,10 @@ export default function PdfPreviewModal({
         className="relative w-full max-w-5xl h-[85vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
-        
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-slate-800 truncate">
-              Vista previa: {title}
-            </h3>
+            <h3 className="text-sm font-semibold text-slate-800 truncate">Vista previa: {title}</h3>
             <p className="text-[10px] text-slate-400 mt-0.5">Hoja de Vida Normalizada por IA</p>
           </div>
 

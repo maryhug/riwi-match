@@ -4,7 +4,13 @@ import { apiCall } from "./client.server";
 import type { GlobalSearchResponse } from "../types/api";
 
 export const globalSearch = createServerFn({ method: "GET" })
-  .validator(z.object({ query: z.string().min(2).max(100), limit: z.number().optional(), offset: z.number().optional() }))
+  .validator(
+    z.object({
+      query: z.string().min(2).max(100),
+      limit: z.number().optional(),
+      offset: z.number().optional(),
+    }),
+  )
   .handler(async ({ data }) => {
     const params = new URLSearchParams({ q: data.query });
     if (data.limit != null) params.set("limit", String(data.limit));

@@ -21,7 +21,7 @@ import { getProcesses } from "@/lib/api/processes.functions";
 import { PROCESS_STATUS_LABEL, USER_ROLE_LABEL } from "@/lib/types/enums";
 
 export const Route = createFileRoute("/app/equipo")({
-  head: () => ({ meta: [{ title: "Dashboard de Equipo · RIWI MATCH" }] }),
+  head: () => ({ meta: [{ title: "Match" }] }),
   component: Equipo,
 });
 

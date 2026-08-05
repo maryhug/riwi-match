@@ -29,7 +29,7 @@ import { useAuth } from "@/lib/auth-context";
 import type { ParseJDResponse } from "@/lib/types/api";
 
 export const Route = createFileRoute("/app/procesos/nuevo")({
-  head: () => ({ meta: [{ title: "Crear proceso · RIWI MATCH" }] }),
+  head: () => ({ meta: [{ title: "Match" }] }),
   component: Wizard,
 });
 
@@ -102,7 +102,11 @@ function Wizard() {
   const hasNegativeWeight = Object.values(weights).some((w) => w < 0);
   const weightsValid = !showWeights || (totalWeights === 100 && !hasNegativeWeight);
   const isLeader = user?.role === "TA_LEADER";
-  const step0Valid = name.trim().length > 0 && jobTitle.trim().length > 0 && weightsValid && (!isLeader || Boolean(recruiterId));
+  const step0Valid =
+    name.trim().length > 0 &&
+    jobTitle.trim().length > 0 &&
+    weightsValid &&
+    (!isLeader || Boolean(recruiterId));
   const { data: usersData } = useQuery({
     queryKey: ["users"],
     queryFn: () => getUsers(),
@@ -290,13 +294,11 @@ function Wizard() {
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Área
                 </label>
-                <AppSelect
-                  value={area}
-                  onValueChange={setArea}
-                  className="mt-1.5 w-full"
-                >
+                <AppSelect value={area} onValueChange={setArea} className="mt-1.5 w-full">
                   {AREAS.map((a) => (
-                    <AppSelectItem key={a} value={a}>{a}</AppSelectItem>
+                    <AppSelectItem key={a} value={a}>
+                      {a}
+                    </AppSelectItem>
                   ))}
                 </AppSelect>
               </div>
@@ -304,13 +306,11 @@ function Wizard() {
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Seniority
                 </label>
-                <AppSelect
-                  value={seniority}
-                  onValueChange={setSeniority}
-                  className="mt-1.5 w-full"
-                >
+                <AppSelect value={seniority} onValueChange={setSeniority} className="mt-1.5 w-full">
                   {SENIORITIES.map((s) => (
-                    <AppSelectItem key={s} value={s}>{s}</AppSelectItem>
+                    <AppSelectItem key={s} value={s}>
+                      {s}
+                    </AppSelectItem>
                   ))}
                 </AppSelect>
               </div>

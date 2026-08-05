@@ -3,9 +3,11 @@ import { z } from "zod";
 import { apiCall } from "./client.server";
 import type {
   ProfilingAnswersResponse,
+  ProfilingBoardResponse,
   ProfilingRunListResponse,
   ProfilingRunOut,
   TriggerProfilingResponse,
+  ProcessPipelineResponse,
 } from "../types/api";
 
 export const triggerProfiling = createServerFn({ method: "POST" })
@@ -26,6 +28,26 @@ export const getProcessProfilingRuns = createServerFn({ method: "GET" })
 export const getAllProfilingRuns = createServerFn({ method: "GET" }).handler(async () => {
   return apiCall<ProfilingRunListResponse>("/api/v1/profiling/runs");
 });
+
+export const getProfilingBoard = createServerFn({ method: "GET" })
+  .validator(z.object({ timeframe: z.enum(["today", "7days", "month", "all"]) }))
+  .handler(async ({ data }) => {
+    return apiCall<ProfilingBoardResponse>(`/api/v1/profiling/board?timeframe=${data.timeframe}`);
+  });
+
+export const getProcessPipeline = createServerFn({ method: "GET" })
+  .validator(z.object({ processId: z.string() }))
+  .handler(async ({ data }) => {
+    return apiCall<ProcessPipelineResponse>(`/api/v1/processes/${data.processId}/pipeline`);
+  });
+
+export const getCandidateProfilingHistory = createServerFn({ method: "GET" })
+  .validator(z.object({ processCandidateId: z.string() }))
+  .handler(async ({ data }) => {
+    return apiCall<ProfilingRunListResponse>(
+      `/api/v1/profiling/candidates/${data.processCandidateId}/runs`,
+    );
+  });
 
 export const getProfilingRunDetail = createServerFn({ method: "GET" })
   .validator(z.object({ runId: z.string() }))

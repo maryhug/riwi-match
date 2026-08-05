@@ -199,6 +199,7 @@ export interface ProcessProgressResponse {
     profiling_runs_terminal: number;
     profiling_completed: number;
     profiling_failed: number;
+    consistency_attention: number;
   };
   active_calls: Array<{
     run_id: string;
@@ -420,13 +421,55 @@ export interface ProfilingRunOut {
 export interface TriggerProfilingResponse {
   process_id: string;
   queued: number;
-  tasks: Array<{ process_candidate_id: string; task_id: string }>;
-  skipped: Array<{ process_candidate_id: string; reason: string }>;
+  tasks: Array<{ process_candidate_id: string; run_id: string; task_id: string }>;
+  skipped: Array<{ process_candidate_id: string; run_id?: string; reason: string }>;
 }
 
 export interface ProfilingRunListResponse {
   total: number;
   profiling_runs: ProfilingRunOut[];
+}
+
+export type PipelineBoardColumn = "CV_MATCH" | "QUEUED" | "CALLING" | "COMPLETED" | "FAILED";
+
+export interface PipelineCandidate {
+  process_candidate_id: string;
+  candidate_id: string;
+  candidate_name: string;
+  candidate_email: string | null;
+  board_column: PipelineBoardColumn;
+  state_label: string;
+  candidate_status: CandidateStatus;
+  whatsapp_consent_status: WhatsAppConsentStatus;
+  latest_run: {
+    id: string;
+    status: ProfilingRunStatus;
+    call_attempts: number;
+    started_at: string | null;
+    completed_at: string | null;
+    created_at: string;
+    updated_at: string;
+    advancement_probability: AdvancementProbability | null;
+    twilio_status_detail: string | null;
+  } | null;
+  run_count: number;
+  process: { id: string; name: string; job_title: string } | null;
+  recruiter: { id: string; name: string } | null;
+  effective_updated_at: string;
+  consistency: "OK" | "ATTENTION";
+  consistency_explanation: string | null;
+}
+
+export interface ProcessPipelineResponse {
+  process_id: string;
+  total: number;
+  candidates: PipelineCandidate[];
+}
+
+export interface ProfilingBoardResponse {
+  timeframe: "today" | "7days" | "month" | "all";
+  total: number;
+  candidates: PipelineCandidate[];
 }
 
 export interface ProfilingAnswerOut {
@@ -566,7 +609,13 @@ export interface GlobalSearchResponse {
   limit: number;
   offset: number;
   processes: { id: string; name: string; job_title: string; area: string }[];
-  candidates: { process_id: string; process_candidate_id: string; name: string; email: string; process_name: string }[];
+  candidates: {
+    process_id: string;
+    process_candidate_id: string;
+    name: string;
+    email: string;
+    process_name: string;
+  }[];
   question_sets: { id: string; name: string; description: string | null }[];
 }
 

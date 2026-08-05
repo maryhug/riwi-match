@@ -78,13 +78,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "RIWI MATCH — Talent Acquisition AI" },
+      { title: "Match" },
       {
         name: "description",
         content:
           "Plataforma interna de reclutamiento con IA de Riwi: lectura de CVs, match con JD y profiling automatizado.",
       },
-      { property: "og:title", content: "RIWI MATCH — Talent Acquisition AI" },
+      { property: "og:title", content: "Match" },
       {
         property: "og:description",
         content:
@@ -92,7 +92,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "RIWI MATCH — Talent Acquisition AI" },
+      { name: "twitter:title", content: "Match" },
       {
         name: "twitter:description",
         content:

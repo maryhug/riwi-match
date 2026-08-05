@@ -81,8 +81,12 @@ export function ProfilingResultModal({
                 <PhoneCall className="h-5 w-5" />
               </div>
               <div>
-                <span className="text-base text-foreground font-semibold">{run.candidate_name}</span>
-                <p className="text-xs font-normal text-muted-foreground">Transcripción y Análisis de Entrevista de Voz</p>
+                <span className="text-base text-foreground font-semibold">
+                  {run.candidate_name}
+                </span>
+                <p className="text-xs font-normal text-muted-foreground">
+                  Transcripción y Análisis de Entrevista de Voz
+                </p>
               </div>
             </div>
             {run.advancement_probability && (
@@ -107,12 +111,15 @@ export function ProfilingResultModal({
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Dictamen de Evaluación
                   </span>
-                  <p className="text-foreground text-xs leading-relaxed">{run.advancement_explanation}</p>
+                  <p className="text-foreground text-xs leading-relaxed">
+                    {run.advancement_explanation}
+                  </p>
                 </div>
               )}
               <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/60">
                 <span className="flex items-center gap-1.5 font-medium text-foreground/80">
-                  <Clock className="h-3.5 w-3.5 text-primary" /> {formatDuration(run.started_at, run.completed_at)}
+                  <Clock className="h-3.5 w-3.5 text-primary" />{" "}
+                  {formatDuration(run.started_at, run.completed_at)}
                 </span>
                 <span>Intento {run.call_attempts}</span>
               </div>
@@ -206,7 +213,9 @@ export function ProfilingResultModal({
                         </summary>
                         <div className="mt-2.5 pt-2 border-t border-border/60 space-y-1.5 text-xs">
                           <div className="bg-muted/40 p-2 rounded-lg border border-border/70 text-foreground leading-relaxed font-medium">
-                            <span className="text-muted-foreground font-semibold block mb-0.5">Respuesta:</span>
+                            <span className="text-muted-foreground font-semibold block mb-0.5">
+                              Respuesta:
+                            </span>
                             {cleanAnswerText(a.normalized_answer, a.transcription)}
                           </div>
                           {a.evaluation_result && (
@@ -273,9 +282,7 @@ export function ProfilingResultModal({
                               c.operation_type as keyof typeof OPERATION_TYPE_LABEL
                             ] ?? c.operation_type}
                           </td>
-                          <td className="px-3 py-1 text-muted-foreground">
-                            {c.model_used ?? "—"}
-                          </td>
+                          <td className="px-3 py-1 text-muted-foreground">{c.model_used ?? "—"}</td>
                           <td className="px-3 py-1 text-right tabular-nums text-foreground">
                             {c.tokens_input || c.tokens_output
                               ? `${(c.tokens_input ?? 0) + (c.tokens_output ?? 0)}`
@@ -304,7 +311,8 @@ export function ProfilingResultModal({
           {/* ── Columna derecha: conversación completa tipo chat ── */}
           <div className="flex flex-col min-w-0 h-full overflow-hidden">
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5 shrink-0">
-              <MessageSquare className="h-4 w-4 text-primary" /> Conversación completa ({turns.length} mensajes)
+              <MessageSquare className="h-4 w-4 text-primary" /> Conversación completa (
+              {turns.length} mensajes)
             </div>
             {turns.length === 0 ? (
               <div className="text-xs text-muted-foreground py-12 text-center rounded-2xl border border-dashed border-border bg-muted/20">
@@ -317,7 +325,10 @@ export function ProfilingResultModal({
                     const isAgent = t.role === "agent";
                     if (!t.message) return null;
                     return (
-                      <div key={i} className={cn("flex", isAgent ? "justify-start" : "justify-end")}>
+                      <div
+                        key={i}
+                        className={cn("flex", isAgent ? "justify-start" : "justify-end")}
+                      >
                         <div
                           className={cn(
                             "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs shadow-xs transition",
@@ -362,5 +373,3 @@ export function ProfilingResultModal({
     </Dialog>
   );
 }
-
-

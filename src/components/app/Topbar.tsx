@@ -268,7 +268,10 @@ function PopoverNotifications() {
             <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background animate-pulse" />
           )}
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-80 sm:w-96 p-0 overflow-hidden shadow-xl border-border/60">
+        <PopoverContent
+          align="end"
+          className="w-80 sm:w-96 p-0 overflow-hidden shadow-xl border-border/60"
+        >
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card/60">
             <div>
               <div className="text-sm font-semibold">Notificaciones</div>
@@ -388,7 +391,8 @@ export function Topbar() {
             const prevSeg = i > 0 ? segments[i - 1] : undefined;
             const isLast = i === segments.length - 1;
             const rawHref = "/" + segments.slice(0, i + 1).join("/");
-            const href = !isLast && breadcrumbHrefOverrides[seg] ? breadcrumbHrefOverrides[seg] : rawHref;
+            const href =
+              !isLast && breadcrumbHrefOverrides[seg] ? breadcrumbHrefOverrides[seg] : rawHref;
             return (
               <span key={i} className="flex items-center gap-1">
                 {i > 0 && <span className="text-muted-foreground/40">/</span>}

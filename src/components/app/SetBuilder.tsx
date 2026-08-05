@@ -39,7 +39,11 @@ export function SetBuilder({ setId, processId }: { setId: string; processId?: st
   const followClone = (newId: string) => {
     if (newId !== setId) {
       toast.info("Se creó una nueva versión del set (estaba activo)");
-      nav({ to: "/app/sets/$id", params: { id: newId }, search: processId ? { processId } : undefined });
+      nav({
+        to: "/app/sets/$id",
+        params: { id: newId },
+        search: processId ? { processId } : undefined,
+      });
     } else {
       qc.invalidateQueries({ queryKey: ["question-set", setId] });
     }
@@ -112,8 +116,7 @@ export function SetBuilder({ setId, processId }: { setId: string; processId?: st
     else addMutation.mutate(q);
   };
 
-  if (isLoading)
-    return <LoadingIndicator className="py-16" label="Cargando set…" />;
+  if (isLoading) return <LoadingIndicator className="py-16" label="Cargando set…" />;
   if (!set)
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">Set no encontrado.</div>

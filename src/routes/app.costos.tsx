@@ -22,7 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 import { OPERATION_TYPE_LABEL } from "@/lib/types/enums";
 
 export const Route = createFileRoute("/app/costos")({
-  head: () => ({ meta: [{ title: "Costos · RIWI MATCH" }] }),
+  head: () => ({ meta: [{ title: "Match" }] }),
   component: Costos,
 });
 
@@ -97,7 +97,12 @@ function Costos() {
       toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
   });
 
-  if (isLoadingGlobalMetrics || (processFilter && isLoadingFilteredMetrics) || !metrics || !globalMetrics) {
+  if (
+    isLoadingGlobalMetrics ||
+    (processFilter && isLoadingFilteredMetrics) ||
+    !metrics ||
+    !globalMetrics
+  ) {
     return <LoadingIndicator className="py-16" label="Cargando costos…" />;
   }
 
@@ -232,114 +237,134 @@ function Costos() {
       </GlassCard>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <GlassCard className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-0">
-        <div className="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-                <DollarSign className="h-4 w-4" />
+        <GlassCard className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-0">
+          <div className="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                  <DollarSign className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                    Control financiero
+                  </div>
+                  <h2 className="mt-0.5 text-lg font-bold tracking-tight">Presupuesto global</h2>
+                </div>
               </div>
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Control financiero</div>
-                <h2 className="mt-0.5 text-lg font-bold tracking-tight">Presupuesto global</h2>
-              </div>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                Define el máximo acumulado de todos los procesos. Al alcanzarlo, no será posible
+                crear nuevos procesos.
+              </p>
             </div>
-            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-              Define el máximo acumulado de todos los procesos. Al alcanzarlo, no será posible crear nuevos procesos.
-            </p>
+
+            <div className="sm:w-40">
+              <div className="mb-2 text-xs font-medium text-muted-foreground">
+                Límite total (USD)
+              </div>
+              {isAdmin ? (
+                <>
+                  <input
+                    value={totalBudgetEdit}
+                    inputMode="decimal"
+                    onChange={(e) => setEdits({ ...edits, [TOTAL_BUDGET_KEY]: e.target.value })}
+                    onBlur={() => {
+                      if (edits[TOTAL_BUDGET_KEY] === undefined) return;
+                      const value = edits[TOTAL_BUDGET_KEY].trim();
+                      const num = value === "" ? 0 : Number(value);
+                      if (!Number.isNaN(num) && num >= 0)
+                        saveMutation.mutate({ key: TOTAL_BUDGET_KEY, value: num });
+                    }}
+                    placeholder="Sin límite"
+                    className="h-10 w-full rounded-lg border border-primary/25 bg-background/80 px-3 text-right text-base font-semibold tabular-nums shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
+                  {totalBudget > 0 && (
+                    <div className="mt-2 text-right text-[11px] text-muted-foreground">
+                      Llevas ${globalMetrics.total_cost_usd.toFixed(2)} de ${totalBudget.toFixed(2)}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex h-10 items-center rounded-lg border border-border bg-background/60 px-3 text-base font-semibold tabular-nums">
+                  {totalBudget > 0 ? `$${totalBudget.toFixed(2)}` : "Sin límite"}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="sm:w-40">
-            <div className="mb-2 text-xs font-medium text-muted-foreground">Límite total (USD)</div>
-            {isAdmin ? (
-              <>
-                <input
-                  value={totalBudgetEdit}
-                  inputMode="decimal"
-                  onChange={(e) => setEdits({ ...edits, [TOTAL_BUDGET_KEY]: e.target.value })}
-                  onBlur={() => {
-                    if (edits[TOTAL_BUDGET_KEY] === undefined) return;
-                    const value = edits[TOTAL_BUDGET_KEY].trim();
-                    const num = value === "" ? 0 : Number(value);
-                    if (!Number.isNaN(num) && num >= 0)
-                      saveMutation.mutate({ key: TOTAL_BUDGET_KEY, value: num });
-                  }}
-                  placeholder="Sin límite"
-                  className="h-10 w-full rounded-lg border border-primary/25 bg-background/80 px-3 text-right text-base font-semibold tabular-nums shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-                {totalBudget > 0 && (
-                  <div className="mt-2 text-right text-[11px] text-muted-foreground">
-                    Llevas ${globalMetrics.total_cost_usd.toFixed(2)} de ${totalBudget.toFixed(2)}
-                  </div>
-                )}
-              </>
+          <div className="border-t border-primary/15 bg-background/30 px-5 py-4">
+            {totalBudget <= 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Aún no hay un presupuesto global configurado. Déjalo vacío si no deseas limitar la
+                creación de procesos.
+              </p>
             ) : (
-              <div className="flex h-10 items-center rounded-lg border border-border bg-background/60 px-3 text-base font-semibold tabular-nums">
-                {totalBudget > 0 ? `$${totalBudget.toFixed(2)}` : "Sin límite"}
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                  <div>
+                    <div className="text-xl font-bold tabular-nums">
+                      ${globalMetrics.total_cost_usd.toFixed(2)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      consumidos de ${totalBudget.toFixed(2)} USD
+                    </div>
+                  </div>
+                  <div className="text-sm font-semibold text-primary">
+                    {budgetUsage.toFixed(1)}% utilizado
+                  </div>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-primary/10">
+                  <div
+                    className={
+                      budgetUsage >= 100
+                        ? "h-full bg-destructive"
+                        : budgetUsage >= 80
+                          ? "h-full bg-warning"
+                          : "h-full bg-primary"
+                    }
+                    style={{ width: `${Math.min(budgetUsage, 100)}%` }}
+                  />
+                </div>
+                {budgetUsage >= 100 ? (
+                  <Alert pct={budgetUsage} label="Presupuesto total alcanzado" />
+                ) : budgetUsage >= 80 ? (
+                  <Alert pct={budgetUsage} label="Presupuesto total próximo al límite" />
+                ) : null}
               </div>
             )}
+            {!isAdmin && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Solo un administrador puede editar el presupuesto global.
+              </p>
+            )}
           </div>
-        </div>
+        </GlassCard>
 
-        <div className="border-t border-primary/15 bg-background/30 px-5 py-4">
-          {totalBudget <= 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Aún no hay un presupuesto global configurado. Déjalo vacío si no deseas limitar la creación de procesos.
-            </p>
+        <GlassCard className="p-0 overflow-hidden">
+          <div className="p-4 border-b border-border/40 text-sm font-semibold">Por operación</div>
+          {metrics.cost_by_operation.length === 0 ? (
+            <div className="p-6 text-center text-xs text-muted-foreground">Sin datos aún.</div>
           ) : (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-end justify-between gap-2">
-                <div>
-                  <div className="text-xl font-bold tabular-nums">${globalMetrics.total_cost_usd.toFixed(2)}</div>
-                  <div className="text-xs text-muted-foreground">consumidos de ${totalBudget.toFixed(2)} USD</div>
-                </div>
-                <div className="text-sm font-semibold text-primary">{budgetUsage.toFixed(1)}% utilizado</div>
-              </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-primary/10">
-                <div
-                  className={budgetUsage >= 100 ? "h-full bg-destructive" : budgetUsage >= 80 ? "h-full bg-warning" : "h-full bg-primary"}
-                  style={{ width: `${Math.min(budgetUsage, 100)}%` }}
-                />
-              </div>
-              {budgetUsage >= 100 ? (
-                <Alert pct={budgetUsage} label="Presupuesto total alcanzado" />
-              ) : budgetUsage >= 80 ? (
-                <Alert pct={budgetUsage} label="Presupuesto total próximo al límite" />
-              ) : null}
-            </div>
+            <table className="w-full text-sm">
+              <tbody>
+                {metrics.cost_by_operation.map((r) => (
+                  <tr key={r.operation_type} className="border-t border-border/30">
+                    <td className="px-5 py-3 font-medium">
+                      {OPERATION_TYPE_LABEL[
+                        r.operation_type as keyof typeof OPERATION_TYPE_LABEL
+                      ] ?? r.operation_type}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-muted-foreground">
+                      {r.count} operación(es)
+                    </td>
+                    <td className="px-3 py-3 text-right font-semibold tabular-nums">
+                      ${r.total_cost.toFixed(4)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
-          {!isAdmin && (
-            <p className="mt-3 text-xs text-muted-foreground">Solo un administrador puede editar el presupuesto global.</p>
-          )}
-        </div>
-      </GlassCard>
-
-      <GlassCard className="p-0 overflow-hidden">
-        <div className="p-4 border-b border-border/40 text-sm font-semibold">Por operación</div>
-        {metrics.cost_by_operation.length === 0 ? (
-          <div className="p-6 text-center text-xs text-muted-foreground">Sin datos aún.</div>
-        ) : (
-          <table className="w-full text-sm">
-            <tbody>
-              {metrics.cost_by_operation.map((r) => (
-                <tr key={r.operation_type} className="border-t border-border/30">
-                  <td className="px-5 py-3 font-medium">
-                    {OPERATION_TYPE_LABEL[
-                      r.operation_type as keyof typeof OPERATION_TYPE_LABEL
-                    ] ?? r.operation_type}
-                  </td>
-                  <td className="px-3 py-3 text-xs text-muted-foreground">
-                    {r.count} operación(es)
-                  </td>
-                  <td className="px-3 py-3 text-right font-semibold tabular-nums">
-                    ${r.total_cost.toFixed(4)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </GlassCard>
+        </GlassCard>
       </div>
     </div>
   );

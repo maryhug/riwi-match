@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { getSession, login as loginFn, logout as logoutFn } from "./api/auth.functions";
 
+/* eslint-disable react-refresh/only-export-components -- provider and hook are one context API. */
+
 export interface AuthUser {
   id: string;
   name: string;

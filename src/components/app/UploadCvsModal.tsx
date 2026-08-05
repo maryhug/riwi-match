@@ -36,6 +36,8 @@ export function UploadCvsModal({
       qc.invalidateQueries({ queryKey: ["candidates", processId] });
       qc.invalidateQueries({ queryKey: ["process", processId] });
       qc.invalidateQueries({ queryKey: ["process-progress", processId] });
+      qc.invalidateQueries({ queryKey: ["process-pipeline", processId] });
+      qc.invalidateQueries({ queryKey: ["process-metrics", processId] });
       qc.invalidateQueries({ queryKey: ["processes"] });
       onClose();
     },

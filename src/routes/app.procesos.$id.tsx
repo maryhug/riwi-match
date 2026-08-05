@@ -39,6 +39,7 @@ import { AppSelect, AppSelectItem } from "@/components/app/AppSelect";
 import { LoadingIndicator } from "@/components/app/LoadingIndicator";
 import { UploadCvsModal } from "@/components/app/UploadCvsModal";
 import { ProfilingResultModal } from "@/components/app/ProfilingResultModal";
+import { PipelineBoard, ProfilingHistoryDialog } from "@/components/app/PipelineBoard";
 import PdfPreviewModal from "@/components/ui/PdfPreviewModal";
 import {
   PieChart,
@@ -75,12 +76,15 @@ import {
 import { triggerMatch, getMatchStatus } from "@/lib/api/match.functions";
 import {
   triggerProfiling,
+  cancelProfilingRun,
+  getProcessPipeline,
   getProcessProfilingRuns,
+  getProfilingRunDetail,
   getProfilingAnswers,
 } from "@/lib/api/profiling.functions";
 import { submitFeedback } from "@/lib/api/ai-feedback.functions";
 import { getQuestionSets } from "@/lib/api/question-sets.functions";
-import { candidateStatusesRefetchInterval, profilingRunsRefetchInterval } from "@/lib/polling";
+import { LIVE_REFRESH_INTERVAL_MS } from "@/lib/polling";
 import {
   PROCESS_STATUS_LABEL,
   CANDIDATE_STATUS_LABEL,
@@ -97,11 +101,12 @@ import type {
   ProcessProgressResponse,
   ParseJDResponse,
   ProfilingRunOut,
+  PipelineCandidate,
 } from "@/lib/types/api";
 import { cn, cleanAnswerText } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/procesos/$id")({
-  head: () => ({ meta: [{ title: "Detalle de proceso · RIWI MATCH" }] }),
+  head: () => ({ meta: [{ title: "Match" }] }),
   component: Detalle,
 });
 
@@ -200,58 +205,47 @@ function Detalle() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [drawerCandidate, setDrawerCandidate] = useState<CandidateListItem | null>(null);
   const [profilingModalRun, setProfilingModalRun] = useState<ProfilingRunOut | null>(null);
+  const [historyCandidate, setHistoryCandidate] = useState<PipelineCandidate | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [previewData, setPreviewData] = useState<{ title: string; url: string } | null>(null);
   const [editingCandidate, setEditingCandidate] = useState<CandidateListItem | null>(null);
   const [deletingCandidate, setDeletingCandidate] = useState<CandidateListItem | null>(null);
   const [closeProcessModalOpen, setCloseProcessModalOpen] = useState(false);
-  const [pollStart] = useState(() => Date.now());
-
   const { data: process, isLoading: processLoading } = useQuery({
     queryKey: ["process", id],
     queryFn: () => getProcess({ data: { processId: id } }),
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
   });
 
   const { data: progress } = useQuery({
     queryKey: ["process-progress", id],
     queryFn: () => getProcessProgress({ data: { processId: id } }),
-    refetchInterval: (q) => {
-      const stage = q.state.data?.stage;
-      const callsActive = q.state.data?.counts.calls_active ?? 0;
-      return stage === "CV_PROCESSING" ||
-        stage === "MATCH_PROCESSING" ||
-        stage === "PROFILING_ACTIVE" ||
-        callsActive > 0
-        ? 3000
-        : false;
-    },
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
   });
 
   const { data: candidatesData } = useQuery({
     queryKey: ["candidates", id],
     queryFn: () => getCandidates({ data: { processId: id } }),
-    refetchInterval: (q) =>
-      candidateStatusesRefetchInterval(
-        q.state.data?.candidates.map((c) => c.status),
-        pollStart,
-      ),
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
   });
 
   const { data: profilingRunsData } = useQuery({
     queryKey: ["profiling-runs", id],
     queryFn: () => getProcessProfilingRuns({ data: { processId: id } }),
-    refetchInterval: (q) =>
-      profilingRunsRefetchInterval(
-        q.state.data?.profiling_runs.map((r) => r.status),
-        pollStart,
-      ),
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+  });
+
+  const { data: pipelineData } = useQuery({
+    queryKey: ["process-pipeline", id],
+    queryFn: () => getProcessPipeline({ data: { processId: id } }),
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
   });
 
   const { data: matchStatus } = useQuery({
     queryKey: ["match-status", id],
     queryFn: () => getMatchStatus({ data: { processId: id } }),
     enabled: progress?.stage === "MATCH_PROCESSING",
-    refetchInterval: (q) => (q.state.data?.is_complete ? false : 3000),
+    refetchInterval: (q) => (q.state.data?.is_complete ? false : LIVE_REFRESH_INTERVAL_MS),
   });
 
   const candidates = candidatesData?.candidates ?? [];
@@ -267,6 +261,12 @@ function Detalle() {
     }
     return map;
   }, [profilingRunsData]);
+
+  const pipelineByPc = useMemo(
+    () =>
+      new Map((pipelineData?.candidates ?? []).map((item) => [item.process_candidate_id, item])),
+    [pipelineData],
+  );
 
   const analyzeMutation = useMutation({
     mutationFn: () => analyzeCVs({ data: { processId: id } }),
@@ -284,6 +284,9 @@ function Detalle() {
       qc.invalidateQueries({ queryKey: ["process", id] });
       qc.invalidateQueries({ queryKey: ["processes"] });
       qc.invalidateQueries({ queryKey: ["match-status", id] });
+      qc.invalidateQueries({ queryKey: ["process-pipeline", id] });
+      qc.invalidateQueries({ queryKey: ["profiling-runs", id] });
+      qc.invalidateQueries({ queryKey: ["process-metrics", id] });
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "No se pudo iniciar el análisis de CVs"),
@@ -297,6 +300,9 @@ function Detalle() {
       qc.invalidateQueries({ queryKey: ["process", id] });
       qc.invalidateQueries({ queryKey: ["process-progress", id] });
       qc.invalidateQueries({ queryKey: ["candidates", id] });
+      qc.invalidateQueries({ queryKey: ["process-pipeline", id] });
+      qc.invalidateQueries({ queryKey: ["match-status", id] });
+      qc.invalidateQueries({ queryKey: ["process-metrics", id] });
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "No se pudo iniciar el match"),
@@ -308,6 +314,7 @@ function Detalle() {
       toast.success("Estado actualizado");
       qc.invalidateQueries({ queryKey: ["process", id] });
       qc.invalidateQueries({ queryKey: ["process-progress", id] });
+      qc.invalidateQueries({ queryKey: ["process-metrics", id] });
       qc.invalidateQueries({ queryKey: ["processes"] });
     },
     onError: (err: unknown) =>
@@ -325,10 +332,39 @@ function Detalle() {
       qc.invalidateQueries({ queryKey: ["candidates", id] });
       qc.invalidateQueries({ queryKey: ["profiling-runs", id] });
       qc.invalidateQueries({ queryKey: ["process-progress", id] });
+      qc.invalidateQueries({ queryKey: ["process-pipeline", id] });
+      qc.invalidateQueries({ queryKey: ["process-metrics", id] });
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "No se pudo activar profiling"),
   });
+
+  const cancelProfilingMutation = useMutation({
+    mutationFn: (item: PipelineCandidate) =>
+      cancelProfilingRun({ data: { runId: item.latest_run!.id } }),
+    onSuccess: () => {
+      toast.success("Corrida cancelada");
+      qc.invalidateQueries({ queryKey: ["process-pipeline", id] });
+      qc.invalidateQueries({ queryKey: ["profiling-runs", id] });
+      qc.invalidateQueries({ queryKey: ["process-progress", id] });
+      qc.invalidateQueries({ queryKey: ["process-metrics", id] });
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "No se pudo cancelar"),
+  });
+
+  const openLatestRun = async (item: PipelineCandidate) => {
+    if (!item.latest_run) return;
+    try {
+      const run = await qc.fetchQuery({
+        queryKey: ["profiling-run", item.latest_run.id],
+        queryFn: () => getProfilingRunDetail({ data: { runId: item.latest_run!.id } }),
+      });
+      setProfilingModalRun(run);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo abrir el intento");
+    }
+  };
 
   if (processLoading) {
     return <LoadingIndicator className="py-20" label="Cargando proceso…" />;
@@ -345,7 +381,19 @@ function Detalle() {
   );
   const canAnalyzeCVs =
     isActive && candidates.some((candidate) => ["LOADED", "CV_ERROR"].includes(candidate.status));
-  const canRunMatch = !!process.job_description && isActive && !hasUnanalyzedCVs;
+  const canRunMatch =
+    !!process.job_description &&
+    isActive &&
+    !hasUnanalyzedCVs &&
+    progress?.stage !== "CV_PROCESSING" &&
+    progress?.stage !== "MATCH_PROCESSING";
+  const matchDisabledReason = !process.job_description
+    ? "El proceso necesita una Job Description"
+    : hasUnanalyzedCVs
+      ? "Analiza todos los CVs antes de ejecutar el match"
+      : progress?.stage === "CV_PROCESSING" || progress?.stage === "MATCH_PROCESSING"
+        ? "Hay un análisis en curso"
+        : undefined;
 
   return (
     <div className="space-y-6">
@@ -387,13 +435,7 @@ function Detalle() {
             <button
               onClick={() => matchMutation.mutate()}
               disabled={!canRunMatch || matchMutation.isPending || analyzeMutation.isPending}
-              title={
-                !process.job_description
-                  ? "El proceso necesita una Job Description"
-                  : hasUnanalyzedCVs
-                    ? "Analiza todos los CVs antes de ejecutar el match"
-                    : undefined
-              }
+              title={matchDisabledReason}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
             >
               <PlayCircle className="h-4 w-4" />{" "}
@@ -424,7 +466,7 @@ function Detalle() {
           </div>
         </div>
 
-        {matchStatus && !matchStatus.is_complete && (
+        {progress?.stage === "MATCH_PROCESSING" && matchStatus && !matchStatus.is_complete && (
           <div className="mt-4">
             <div className="flex justify-between text-xs mb-1">
               <span className="text-primary font-medium">
@@ -511,6 +553,7 @@ function Detalle() {
           processId={id}
           candidates={candidates}
           latestRunByPc={latestRunByPc}
+          pipelineByPc={pipelineByPc}
           hasQuestionSet={!!process.question_set_id}
           selected={selected}
           setSelected={setSelected}
@@ -530,10 +573,14 @@ function Detalle() {
       )}
 
       {tab === "Kanban" && (
-        <KanbanTab
-          candidates={candidates}
-          latestRunByPc={latestRunByPc}
-          onOpenDrawer={setDrawerCandidate}
+        <PipelineBoard
+          items={pipelineData?.candidates ?? []}
+          includeCvMatch
+          onOpenLatest={openLatestRun}
+          onOpenHistory={setHistoryCandidate}
+          onRetry={(item) => profilingMutation.mutate([item.process_candidate_id])}
+          onCancel={(item) => cancelProfilingMutation.mutate(item)}
+          actionPending={profilingMutation.isPending || cancelProfilingMutation.isPending}
         />
       )}
 
@@ -595,6 +642,15 @@ function Detalle() {
         onClose={() => setProfilingModalRun(null)}
       />
 
+      <ProfilingHistoryDialog
+        candidate={historyCandidate}
+        onClose={() => setHistoryCandidate(null)}
+        onSelect={(run) => {
+          setHistoryCandidate(null);
+          setProfilingModalRun(run);
+        }}
+      />
+
       <PdfPreviewModal
         isOpen={!!previewData}
         onClose={() => setPreviewData(null)}
@@ -630,12 +686,11 @@ function DashboardTab({
   const { data: metrics, isLoading } = useQuery({
     queryKey: ["process-metrics", processId],
     queryFn: () => getProcessMetrics({ data: { processId } }),
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
   });
 
   if (isLoading || !metrics || !progress) {
-    return (
-      <LoadingIndicator className="py-16" label="Cargando métricas…" />
-    );
+    return <LoadingIndicator className="py-16" label="Cargando métricas…" />;
   }
 
   const counts = progress?.counts;
@@ -1110,6 +1165,7 @@ function RankingTab({
   processId,
   candidates,
   latestRunByPc,
+  pipelineByPc,
   hasQuestionSet,
   selected,
   setSelected,
@@ -1124,6 +1180,7 @@ function RankingTab({
   processId: string;
   candidates: CandidateListItem[];
   latestRunByPc: Map<string, ProfilingRunOut>;
+  pipelineByPc: Map<string, PipelineCandidate>;
   hasQuestionSet: boolean;
   selected: Set<string>;
   setSelected: (s: Set<string>) => void;
@@ -1172,7 +1229,10 @@ function RankingTab({
         return false;
       if (quickFilter === "high" && c.match_category !== "HIGH") return false;
       if (quickFilter === "medium" && c.match_category !== "MEDIUM") return false;
-      if (quickFilter === "calling" && !["PROFILING_CALLING", "PROFILING_QUEUED"].includes(c.status))
+      if (
+        quickFilter === "calling" &&
+        !["PROFILING_CALLING", "PROFILING_QUEUED"].includes(c.status)
+      )
         return false;
       if (quickFilter === "completed" && c.status !== "PROFILING_COMPLETED") return false;
       return true;
@@ -1344,7 +1404,10 @@ function RankingTab({
                             <td className="px-3 py-3 text-muted-foreground text-xs">
                               {c.city ?? "—"}
                             </td>
-                            <td className="px-3 py-3 text-xs">{CANDIDATE_STATUS_LABEL[c.status]}</td>
+                            <td className="px-3 py-3 text-xs">
+                              {pipelineByPc.get(c.process_candidate_id)?.state_label ??
+                                CANDIDATE_STATUS_LABEL[c.status]}
+                            </td>
                             <td className="px-3 py-3 text-xs">
                               {run?.advancement_probability
                                 ? ADVANCEMENT_PROBABILITY_LABEL[run.advancement_probability]
@@ -1372,23 +1435,23 @@ function RankingTab({
                                   <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                                 </button>
                                 {onEditCandidate && (
-                                   <button
-                                     onClick={() => onEditCandidate(c)}
-                                     className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition cursor-pointer text-muted-foreground hover:text-foreground"
-                                     title="Editar candidato"
-                                   >
-                                     <Pencil className="h-3.5 w-3.5" />
-                                   </button>
-                                 )}
-                                 {onDeleteCandidate && (
-                                   <button
-                                     onClick={() => onDeleteCandidate(c)}
-                                     className="h-7 w-7 grid place-items-center rounded-md hover:bg-rose-500/10 transition cursor-pointer text-muted-foreground hover:text-rose-600"
-                                     title="Eliminar candidato del proceso"
-                                   >
-                                     <Trash2 className="h-3.5 w-3.5" />
-                                   </button>
-                                 )}
+                                  <button
+                                    onClick={() => onEditCandidate(c)}
+                                    className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition cursor-pointer text-muted-foreground hover:text-foreground"
+                                    title="Editar candidato"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                                {onDeleteCandidate && (
+                                  <button
+                                    onClick={() => onDeleteCandidate(c)}
+                                    className="h-7 w-7 grid place-items-center rounded-md hover:bg-rose-500/10 transition cursor-pointer text-muted-foreground hover:text-rose-600"
+                                    title="Eliminar candidato del proceso"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -1403,7 +1466,8 @@ function RankingTab({
                   <div className="flex items-center justify-between px-5 py-3 border-t border-border/40 text-xs text-muted-foreground">
                     <div>
                       Mostrando {(page - 1) * RANKING_PAGE_SIZE + 1} -{" "}
-                      {Math.min(page * RANKING_PAGE_SIZE, currentList.length)} de {currentList.length} candidatos
+                      {Math.min(page * RANKING_PAGE_SIZE, currentList.length)} de{" "}
+                      {currentList.length} candidatos
                     </div>
                     <div className="flex items-center gap-2">
                       <button
@@ -1460,7 +1524,10 @@ function RankingTab({
                           className="cursor-pointer border-t border-border/30 hover:bg-accent/30 transition"
                         >
                           <td className="px-4 py-3 font-medium">{c.name}</td>
-                          <td className="px-3 py-3 text-xs">{CANDIDATE_STATUS_LABEL[c.status]}</td>
+                          <td className="px-3 py-3 text-xs">
+                            {pipelineByPc.get(c.process_candidate_id)?.state_label ??
+                              CANDIDATE_STATUS_LABEL[c.status]}
+                          </td>
                           <td className="px-3 py-3 text-xs text-muted-foreground max-w-xs truncate">
                             {run?.transcript_summary ?? "—"}
                           </td>
@@ -1494,7 +1561,8 @@ function RankingTab({
                 <div className="flex items-center justify-between px-5 py-3 border-t border-border/40 text-xs text-muted-foreground">
                   <div>
                     Mostrando {(page - 1) * RANKING_PAGE_SIZE + 1} -{" "}
-                    {Math.min(page * RANKING_PAGE_SIZE, currentList.length)} de {currentList.length} candidatos
+                    {Math.min(page * RANKING_PAGE_SIZE, currentList.length)} de {currentList.length}{" "}
+                    candidatos
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -1979,7 +2047,7 @@ function ConfigTab({
 
       <GlassCard className="p-5 space-y-3">
         <div className="text-sm font-semibold">Set de preguntas de profiling</div>
-        
+
         {process.question_set_id ? (
           <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between">
             <div>
@@ -2005,11 +2073,15 @@ function ConfigTab({
 
         <div className="pt-2 border-t border-border/40">
           <div className="text-xs font-medium text-muted-foreground mb-2">
-            {process.question_set_id ? "Reemplazar con otra plantilla base:" : "Seleccionar plantilla base:"}
+            {process.question_set_id
+              ? "Reemplazar con otra plantilla base:"
+              : "Seleccionar plantilla base:"}
           </div>
           <div className="flex items-center gap-2">
             <AppSelect
-              value={selectedSetId === process.question_set_id || !selectedSetId ? "none" : selectedSetId}
+              value={
+                selectedSetId === process.question_set_id || !selectedSetId ? "none" : selectedSetId
+              }
               onValueChange={(value) => setSelectedSetId(value === "none" ? "" : value)}
               disabled={!isActive}
               className="flex-1"
@@ -2116,6 +2188,7 @@ function CandidatoDrawer({
     queryKey: ["candidate-detail", processId, candidate.process_candidate_id],
     queryFn: () =>
       getCandidateDetail({ data: { processId, pcId: candidate.process_candidate_id } }),
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
   });
 
   if (detail && !notesInit) {
@@ -2506,9 +2579,7 @@ function CandidatoDrawer({
                         <Sparkles className="h-4 w-4" />
                       </div>
                       <div>
-                        <div className="text-sm font-bold text-slate-900">
-                          Análisis de Match IA
-                        </div>
+                        <div className="text-sm font-bold text-slate-900">Análisis de Match IA</div>
                         <div className="text-[10px] text-slate-500">
                           Compatibilidad automatizada con el perfil
                         </div>
@@ -2569,37 +2640,34 @@ function CandidatoDrawer({
                         Desglose Por Criterio (Breakdown)
                       </div>
                       <div className="space-y-2.5">
-                        {(Object.keys(BREAKDOWN_LABELS) as (keyof MatchBreakdown)[]).map(
-                          (key) => {
-                            const item = breakdown[key];
-                            if (!item) return null;
-                            return (
-                              <div key={key} className="text-xs space-y-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-slate-600 font-medium">
-                                    {BREAKDOWN_LABELS[key]}{" "}
-                                    <span className="text-[10px] text-slate-400 font-normal">
-                                      (Peso {item.weight}%)
-                                    </span>
+                        {(Object.keys(BREAKDOWN_LABELS) as (keyof MatchBreakdown)[]).map((key) => {
+                          const item = breakdown[key];
+                          if (!item) return null;
+                          return (
+                            <div key={key} className="text-xs space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-600 font-medium">
+                                  {BREAKDOWN_LABELS[key]}{" "}
+                                  <span className="text-[10px] text-slate-400 font-normal">
+                                    (Peso {item.weight}%)
                                   </span>
-                                  <span className="font-bold tabular-nums text-slate-900">
-                                    {item.raw_score}%
-                                  </span>
-                                </div>
-                                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                                  <div
-                                    className="h-full bg-primary rounded-full transition-all duration-500"
-                                    style={{ width: `${item.raw_score}%` }}
-                                  />
-                                </div>
+                                </span>
+                                <span className="font-bold tabular-nums text-slate-900">
+                                  {item.raw_score}%
+                                </span>
                               </div>
-                            );
-                          },
-                        )}
+                              <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                                <div
+                                  className="h-full bg-primary rounded-full transition-all duration-500"
+                                  style={{ width: `${item.raw_score}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
-
                 </div>
               )}
 

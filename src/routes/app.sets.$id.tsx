@@ -6,7 +6,7 @@ export const Route = createFileRoute("/app/sets/$id")({
   validateSearch: z.object({
     processId: z.string().optional(),
   }),
-  head: () => ({ meta: [{ title: "Editar set de preguntas · RIWI MATCH" }] }),
+  head: () => ({ meta: [{ title: "Match" }] }),
   component: SetDetalle,
 });
 

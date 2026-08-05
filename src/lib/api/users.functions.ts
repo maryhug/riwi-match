@@ -51,4 +51,3 @@ export const deleteUser = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     return apiCall<void>(`/api/v1/users/${data.userId}`, { method: "DELETE" });
   });
-

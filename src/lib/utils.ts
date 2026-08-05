@@ -21,4 +21,3 @@ export function cleanAnswerText(normalized?: string | null, raw?: string | null)
   }
   return cleaned;
 }
-

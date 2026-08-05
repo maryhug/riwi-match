@@ -5,6 +5,11 @@ import type { CandidateStatus, ProfilingRunStatus } from "./types/enums";
 
 export const POLL_INTERVAL_MS = 3000;
 export const PROFILING_POLL_INTERVAL_MS = 10000;
+// El detalle de un proceso debe reflejar cambios iniciados desde otra pestaña,
+// otro recruiter o un worker. TanStack Query deja de hacerlo si todos los
+// estados parecen asentados, así que mantenemos un pulso ligero mientras la
+// pantalla está abierta (no se ejecuta en segundo plano por defecto).
+export const LIVE_REFRESH_INTERVAL_MS = 5000;
 
 // Tope de seguridad: si el backend no asienta todo tras este tiempo (worker caído/atascado),
 // dejamos de pollear para no golpear la API indefinidamente.
