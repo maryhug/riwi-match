@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   PlayCircle,
@@ -72,6 +72,8 @@ import {
   updateCandidateAnalysisContext,
   updateCandidate,
   deleteCandidate,
+  discardCandidate,
+  restoreCandidate,
 } from "@/lib/api/candidates.functions";
 import { triggerMatch, getMatchStatus } from "@/lib/api/match.functions";
 import {
@@ -1019,6 +1021,12 @@ function EditCandidateModal({
   );
 }
 
+/**
+ * DISCARDED se revierte desde aquí. MATCHED/PROFILING_FAILED admiten descarte reversible
+ * (RB-008, CandidateStateMachine). Cualquier otro estado (profiling en curso/completado,
+ * pendiente de match, etc.) no tiene transición válida a DISCARDED — solo se ofrece el
+ * borrado físico permanente.
+ */
 function DeleteCandidateModal({
   isOpen,
   onClose,
@@ -1031,27 +1039,130 @@ function DeleteCandidateModal({
   candidate: CandidateListItem | null;
 }) {
   const qc = useQueryClient();
+  const isDiscarded = candidate?.status === "DISCARDED";
+  const canDiscard = candidate?.status === "MATCHED" || candidate?.status === "PROFILING_FAILED";
+
+  const invalidateAndClose = (message: string) => {
+    qc.invalidateQueries({ queryKey: ["candidates", processId] });
+    toast.success(message);
+    onClose();
+  };
+
+  const discardMutation = useMutation({
+    mutationFn: () =>
+      discardCandidate({ data: { processId, pcId: candidate!.process_candidate_id } }),
+    onSuccess: () =>
+      invalidateAndClose("Candidato descartado del ranking — puedes revertirlo cuando quieras"),
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo descartar el candidato"),
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: () =>
+      restoreCandidate({ data: { processId, pcId: candidate!.process_candidate_id } }),
+    onSuccess: () => invalidateAndClose("Descarte revertido — el candidato vuelve al ranking"),
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo revertir el descarte"),
+  });
 
   const deleteMutation = useMutation({
-    mutationFn: () =>
-      deleteCandidate({
-        data: {
-          processId,
-          pcId: candidate!.process_candidate_id,
-        },
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["candidates", processId] });
-      toast.success("Candidato eliminado del proceso");
-      onClose();
-    },
-    onError: (err: unknown) => {
-      toast.error(err instanceof Error ? err.message : "Error al eliminar candidato");
-    },
+    mutationFn: () => deleteCandidate({ data: { processId, pcId: candidate!.process_candidate_id } }),
+    onSuccess: () => invalidateAndClose("Candidato eliminado del proceso"),
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "Error al eliminar candidato"),
   });
 
   if (!isOpen || !candidate) return null;
 
+  if (isDiscarded) {
+    return (
+      <ConfirmActionModal
+        onClose={onClose}
+        icon={<ThumbsUp className="h-5 w-5" />}
+        iconClassName="bg-emerald-50 text-emerald-600"
+        title="¿Revertir descarte?"
+        description={
+          <>
+            <strong className="text-slate-800">{candidate.name}</strong> vuelve al ranking activo
+            del proceso, con estado Rankeado (MATCHED).
+          </>
+        }
+        confirmLabel="Sí, revertir"
+        confirmPendingLabel="Revirtiendo…"
+        confirmClassName="bg-emerald-600 hover:bg-emerald-700"
+        isPending={restoreMutation.isPending}
+        onConfirm={() => restoreMutation.mutate()}
+      />
+    );
+  }
+
+  if (canDiscard) {
+    return (
+      <ConfirmActionModal
+        onClose={onClose}
+        icon={<Trash2 className="h-5 w-5" />}
+        iconClassName="bg-amber-50 text-amber-600"
+        title="¿Descartar candidato?"
+        description={
+          <>
+            <strong className="text-slate-800">{candidate.name}</strong> sale del ranking activo,
+            pero no se borra — puedes revertir el descarte cuando quieras desde el mismo botón.
+          </>
+        }
+        confirmLabel="Sí, descartar"
+        confirmPendingLabel="Descartando…"
+        confirmClassName="bg-amber-600 hover:bg-amber-700"
+        isPending={discardMutation.isPending}
+        onConfirm={() => discardMutation.mutate()}
+      />
+    );
+  }
+
+  return (
+    <ConfirmActionModal
+      onClose={onClose}
+      icon={<Trash2 className="h-5 w-5" />}
+      iconClassName="bg-rose-50 text-rose-600"
+      title="¿Eliminar candidato?"
+      description={
+        <>
+          <strong className="text-slate-800">{candidate.name}</strong> está en un estado
+          ({CANDIDATE_STATUS_LABEL[candidate.status]}) que no admite descarte reversible — solo se
+          puede eliminar de forma permanente. Esta acción no se puede deshacer.
+        </>
+      }
+      confirmLabel="Sí, eliminar"
+      confirmPendingLabel="Eliminando…"
+      confirmClassName="bg-rose-600 hover:bg-rose-700"
+      isPending={deleteMutation.isPending}
+      onConfirm={() => deleteMutation.mutate()}
+    />
+  );
+}
+
+function ConfirmActionModal({
+  onClose,
+  icon,
+  iconClassName,
+  title,
+  description,
+  confirmLabel,
+  confirmPendingLabel,
+  confirmClassName,
+  isPending,
+  onConfirm,
+}: {
+  onClose: () => void;
+  icon: ReactNode;
+  iconClassName: string;
+  title: string;
+  description: ReactNode;
+  confirmLabel: string;
+  confirmPendingLabel: string;
+  confirmClassName: string;
+  isPending: boolean;
+  onConfirm: () => void;
+}) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
@@ -1062,16 +1173,10 @@ function DeleteCandidateModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3">
-          <div className="p-2.5 rounded-2xl bg-rose-50 text-rose-600 shrink-0 mt-0.5">
-            <Trash2 className="h-5 w-5" />
-          </div>
+          <div className={cn("p-2.5 rounded-2xl shrink-0 mt-0.5", iconClassName)}>{icon}</div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">¿Eliminar candidato?</h3>
-            <p className="text-xs text-slate-500 leading-relaxed mt-1">
-              ¿Estás seguro de que deseas eliminar a{" "}
-              <strong className="text-slate-800">{candidate.name}</strong> de este proceso de
-              selección? Esta acción no se puede deshacer.
-            </p>
+            <h3 className="text-base font-bold text-slate-900">{title}</h3>
+            <p className="text-xs text-slate-500 leading-relaxed mt-1">{description}</p>
           </div>
         </div>
 
@@ -1085,11 +1190,14 @@ function DeleteCandidateModal({
           </button>
           <button
             type="button"
-            onClick={() => deleteMutation.mutate()}
-            disabled={deleteMutation.isPending}
-            className="px-5 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 transition cursor-pointer disabled:opacity-50 shadow-xs"
+            onClick={onConfirm}
+            disabled={isPending}
+            className={cn(
+              "px-5 py-2 rounded-xl text-xs font-semibold text-white transition cursor-pointer disabled:opacity-50 shadow-xs",
+              confirmClassName,
+            )}
           >
-            {deleteMutation.isPending ? "Eliminando…" : "Sí, eliminar"}
+            {isPending ? confirmPendingLabel : confirmLabel}
           </button>
         </div>
       </div>
@@ -1447,7 +1555,11 @@ function RankingTab({
                                   <button
                                     onClick={() => onDeleteCandidate(c)}
                                     className="h-7 w-7 grid place-items-center rounded-md hover:bg-rose-500/10 transition cursor-pointer text-muted-foreground hover:text-rose-600"
-                                    title="Eliminar candidato del proceso"
+                                    title={
+                                      c.status === "DISCARDED"
+                                        ? "Revertir descarte"
+                                        : "Descartar / eliminar candidato"
+                                    }
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
@@ -2508,9 +2620,10 @@ function CandidatoDrawer({
                   onDeleteCandidate(candidate);
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 text-xs font-semibold transition cursor-pointer shadow-xs"
-                title="Eliminar del proceso"
+                title={candidate.status === "DISCARDED" ? "Revertir descarte" : "Descartar / eliminar"}
               >
-                <Trash2 className="h-3.5 w-3.5 text-rose-500" /> Eliminar
+                <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+                {candidate.status === "DISCARDED" ? "Revertir" : "Descartar"}
               </button>
             )}
             <button
