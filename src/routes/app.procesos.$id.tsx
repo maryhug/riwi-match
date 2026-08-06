@@ -115,6 +115,12 @@ export const Route = createFileRoute("/app/procesos/$id")({
 const tabs = ["Dashboard", "Ranking de candidatos", "Kanban", "Configuración"] as const;
 type TabName = (typeof tabs)[number];
 
+const VOICE_LANGUAGES = [
+  { value: "es", label: "Español" },
+  { value: "en", label: "Inglés" },
+  { value: "pt", label: "Portugués" },
+];
+
 const CATEGORY_COLOR: Record<MatchCategory, { text: string; bg: string; ring: string }> = {
   HIGH: { text: "text-success", bg: "bg-success/15", ring: "#22c55e" },
   MEDIUM: { text: "text-warning-foreground", bg: "bg-warning/15", ring: "#eab308" },
@@ -1794,6 +1800,7 @@ function ConfigTab({
   const [selectedSetId, setSelectedSetId] = useState(process.question_set_id ?? "");
   const [voicePrompt, setVoicePrompt] = useState(process.voice_override_system_prompt ?? "");
   const [voiceGreeting, setVoiceGreeting] = useState(process.voice_override_first_message ?? "");
+  const [voiceLanguage, setVoiceLanguage] = useState(process.voice_override_language ?? "");
   const [jdAnalysis, setJdAnalysis] = useState<ParseJDResponse | null>(null);
   const [jdText, setJdText] = useState(process.job_description?.jd_raw_text ?? "");
 
@@ -1847,6 +1854,7 @@ function ConfigTab({
           processId,
           voice_override_system_prompt: voicePrompt || null,
           voice_override_first_message: voiceGreeting || null,
+          voice_override_language: voiceLanguage || null,
         },
       }),
     onSuccess: () => {
@@ -2173,6 +2181,24 @@ function ConfigTab({
             onChange={(e) => setVoiceGreeting(e.target.value)}
             className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
           />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Idioma (llamada ElevenLabs y mensajes de WhatsApp)
+          </label>
+          <AppSelect
+            disabled={!isActive}
+            value={voiceLanguage || "auto"}
+            onValueChange={(value) => setVoiceLanguage(value === "auto" ? "" : value)}
+            className="mt-1.5 w-full"
+          >
+            <AppSelectItem value="auto">Automático (según el set de preguntas)</AppSelectItem>
+            {VOICE_LANGUAGES.map((lang) => (
+              <AppSelectItem key={lang.value} value={lang.value}>
+                {lang.label}
+              </AppSelectItem>
+            ))}
+          </AppSelect>
         </div>
         <button
           onClick={() => voiceMutation.mutate()}

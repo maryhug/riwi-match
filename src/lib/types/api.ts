@@ -113,6 +113,7 @@ export interface ProcessDetailResponse {
   question_set_id: string | null;
   voice_override_system_prompt: string | null;
   voice_override_first_message: string | null;
+  voice_override_language: string | null;
   job_description: JobDescriptionSummary | null;
   created_at: string;
   updated_at: string;
