@@ -94,18 +94,20 @@ function Profiling() {
       toast.error(error instanceof Error ? error.message : "No se pudo reintentar"),
   });
 
-  const openLatest = async (item: PipelineCandidate) => {
-    if (!item.latest_run) return;
+  const openLatest = async (item: PipelineCandidate | ProfilingRunOut | { id: string } | null) => {
+    if (!item) return;
+    const runId = "latest_run" in item ? item.latest_run?.id : item.id;
+    if (!runId) return;
     try {
-      await qc.invalidateQueries({ queryKey: ["profiling-run", item.latest_run.id] });
+      await qc.invalidateQueries({ queryKey: ["profiling-run", runId] });
       const run = await qc.fetchQuery({
-        queryKey: ["profiling-run", item.latest_run.id],
-        queryFn: () => getProfilingRunDetail({ data: { runId: item.latest_run!.id } }),
+        queryKey: ["profiling-run", runId],
+        queryFn: () => getProfilingRunDetail({ data: { runId } }),
         staleTime: 0,
       });
       setModalRun(run);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo abrir el intento");
+      toast.error(error instanceof Error ? error.message : "No se pudo abrir la entrevista");
     }
   };
 
@@ -268,7 +270,7 @@ function Profiling() {
           onClose={() => setDrawerCandidate(null)}
           onOpenProfilingModal={(run) => {
             setDrawerCandidate(null);
-            setModalRun(run);
+            openLatest(run);
           }}
           onPreviewNormalized={(c) => {
             window.open(

@@ -414,18 +414,20 @@ function Detalle() {
       toast.error(error instanceof Error ? error.message : "No se pudo cancelar"),
   });
 
-  const openLatestRun = async (item: PipelineCandidate) => {
-    if (!item.latest_run) return;
+  const openProfilingRun = async (target: PipelineCandidate | ProfilingRunOut | { id: string } | null) => {
+    if (!target) return;
+    const runId = "latest_run" in target ? target.latest_run?.id : target.id;
+    if (!runId) return;
     try {
-      await qc.invalidateQueries({ queryKey: ["profiling-run", item.latest_run.id] });
+      await qc.invalidateQueries({ queryKey: ["profiling-run", runId] });
       const run = await qc.fetchQuery({
-        queryKey: ["profiling-run", item.latest_run.id],
-        queryFn: () => getProfilingRunDetail({ data: { runId: item.latest_run!.id } }),
+        queryKey: ["profiling-run", runId],
+        queryFn: () => getProfilingRunDetail({ data: { runId } }),
         staleTime: 0,
       });
       setProfilingModalRun(run);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo abrir el intento");
+      toast.error(error instanceof Error ? error.message : "No se pudo abrir la entrevista");
     }
   };
 
@@ -621,7 +623,7 @@ function Detalle() {
           selected={selected}
           setSelected={setSelected}
           onOpenDrawer={setDrawerCandidate}
-          onOpenProfilingModal={setProfilingModalRun}
+          onOpenProfilingModal={openProfilingRun}
           onActivateProfiling={(ids) => profilingMutation.mutate(ids)}
           activating={profilingMutation.isPending}
           onPreviewNormalized={(c) => {
@@ -639,7 +641,7 @@ function Detalle() {
         <PipelineBoard
           items={pipelineData?.candidates ?? []}
           includeCvMatch
-          onOpenLatest={openLatestRun}
+          onOpenLatest={openProfilingRun}
           onOpenHistory={setHistoryCandidate}
           onRetry={(item) => profilingMutation.mutate([item.process_candidate_id])}
           onCancel={(item) => cancelProfilingMutation.mutate(item)}
@@ -655,7 +657,7 @@ function Detalle() {
           candidate={drawerCandidate}
           latestRun={latestRunByPc.get(drawerCandidate.process_candidate_id) ?? null}
           onClose={() => setDrawerCandidate(null)}
-          onOpenProfilingModal={setProfilingModalRun}
+          onOpenProfilingModal={openProfilingRun}
           onPreviewNormalized={(c) => {
             setPreviewData({
               title: c.name,
