@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Calendar, CheckCircle2, Clock3, PhoneCall } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle2, Clock3, PhoneCall, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppSelect, AppSelectItem } from "@/components/app/AppSelect";
@@ -8,6 +8,7 @@ import { GlassCard } from "@/components/app/GlassCard";
 import { LoadingIndicator } from "@/components/app/LoadingIndicator";
 import { PipelineBoard, ProfilingHistoryDialog } from "@/components/app/PipelineBoard";
 import { ProfilingResultModal } from "@/components/app/ProfilingResultModal";
+import { CandidatoDrawer } from "./app.procesos.$id";
 import {
   cancelProfilingRun,
   getProfilingBoard,
@@ -39,6 +40,10 @@ function Profiling() {
   const [processFilter, setProcessFilter] = useState<string | null>(null);
   const [modalRun, setModalRun] = useState<ProfilingRunOut | null>(null);
   const [historyCandidate, setHistoryCandidate] = useState<PipelineCandidate | null>(null);
+  const [drawerCandidate, setDrawerCandidate] = useState<{
+    processId: string;
+    candidate: PipelineCandidate;
+  } | null>(null);
 
   // getProcesses ya filtra por rol en el backend (recruiter -> solo los suyos,
   // admin/TA_LEADER -> todos), así que el selector nunca ofrece procesos ajenos.
@@ -196,6 +201,13 @@ function Profiling() {
         <PipelineBoard
           items={cards}
           showContext
+          onOpenCandidate={(item) => {
+            if (item.process?.id) {
+              setDrawerCandidate({ processId: item.process.id, candidate: item });
+            } else {
+              toast.info("Este candidato no tiene un proceso asociado.");
+            }
+          }}
           onOpenLatest={openLatest}
           onOpenHistory={setHistoryCandidate}
           onRetry={(item) => retryMutation.mutate(item)}
@@ -217,6 +229,59 @@ function Profiling() {
         }}
       />
       <ProfilingResultModal run={modalRun} open={!!modalRun} onClose={() => setModalRun(null)} />
+
+      {drawerCandidate && (
+        <CandidatoDrawer
+          processId={drawerCandidate.processId}
+          candidate={
+            {
+              process_candidate_id: drawerCandidate.candidate.process_candidate_id,
+              candidate_id: drawerCandidate.candidate.candidate_id,
+              name: drawerCandidate.candidate.candidate_name,
+              email: drawerCandidate.candidate.candidate_email ?? null,
+              phone: null,
+              city: null,
+              status: "LOADED",
+              stage: "IN_PROCESS",
+              stage_label: drawerCandidate.candidate.state_label,
+              source: "DIRECT",
+              source_label: "Directo",
+              has_cv: true,
+              match_score: null,
+              overall_score: null,
+              technical_score: null,
+              soft_skills_score: null,
+              experience_score: null,
+              education_score: null,
+              missing_must_haves: [],
+              missing_nice_to_haves: [],
+              human_override_match: null,
+              human_notes: null,
+              created_at: new Date().toISOString(),
+              whatsapp_consent: "PENDING",
+              availability_preference: null,
+            } as any
+          }
+          latestRun={drawerCandidate.candidate.latest_run as any}
+          onClose={() => setDrawerCandidate(null)}
+          onOpenProfilingModal={(run) => {
+            setDrawerCandidate(null);
+            setModalRun(run);
+          }}
+          onPreviewNormalized={(c) => {
+            window.open(
+              `/dl/cv-normalized/${drawerCandidate.processId}/${c.process_candidate_id}`,
+              "_blank",
+            );
+          }}
+          onPreviewOriginal={(c) => {
+            window.open(
+              `/dl/cv/${drawerCandidate.processId}/${c.process_candidate_id}`,
+              "_blank",
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

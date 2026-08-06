@@ -158,7 +158,8 @@ const WHATSAPP_CONSENT_STYLE: Record<
   TIMEOUT: { icon: XCircle, className: "text-muted-foreground bg-muted" },
 };
 
-function WhatsAppConsentBadge({ status }: { status: WhatsAppConsentStatus }) {
+function WhatsAppConsentBadge({ status }: { status?: WhatsAppConsentStatus | null }) {
+  if (!status || !WHATSAPP_CONSENT_STYLE[status]) return null;
   const { icon: Icon, className } = WHATSAPP_CONSENT_STYLE[status];
   return (
     <span
@@ -166,7 +167,7 @@ function WhatsAppConsentBadge({ status }: { status: WhatsAppConsentStatus }) {
         "inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold",
         className,
       )}
-      title={`Autorización WhatsApp: ${WHATSAPP_CONSENT_STATUS_LABEL[status]}`}
+      title={`Autorización WhatsApp: ${WHATSAPP_CONSENT_STATUS_LABEL[status] ?? ""}`}
     >
       <Icon className="h-3 w-3" />
       {WHATSAPP_CONSENT_STATUS_LABEL[status]}
@@ -2375,7 +2376,7 @@ function ConfigTab({
 
 // ─── Candidato Drawer ───────────────────────────────────────────────────────
 
-function CandidatoDrawer({
+export function CandidatoDrawer({
   processId,
   candidate,
   latestRun,
@@ -2659,7 +2660,7 @@ function CandidatoDrawer({
                 <h2 className="text-2xl font-bold tracking-tight text-slate-900 truncate">
                   {candidate.name}
                 </h2>
-                {candidate.match_category && (
+                {candidate.match_category && CATEGORY_COLOR[candidate.match_category] && (
                   <span
                     className={cn(
                       "px-2.5 py-0.5 rounded-full text-xs font-bold",
@@ -2670,7 +2671,7 @@ function CandidatoDrawer({
                     {MATCH_CATEGORY_LABEL[candidate.match_category]}
                   </span>
                 )}
-                {latestRun?.advancement_probability && (
+                {latestRun?.advancement_probability && ADVANCE_COLOR[latestRun.advancement_probability] && (
                   <span
                     className={cn(
                       "px-2.5 py-0.5 rounded-full text-xs font-semibold",
