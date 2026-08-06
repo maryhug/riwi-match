@@ -160,6 +160,20 @@ function Inicio() {
     },
   });
 
+  const closeAndArchiveMutation = useMutation({
+    mutationFn: async (processId: string) => {
+      await updateProcessStatus({ data: { processId, status: "CLOSED" } });
+      await updateProcessStatus({ data: { processId, status: "ARCHIVED" } });
+    },
+    onSuccess: () => {
+      toast.success("Proceso cerrado y archivado");
+      qc.invalidateQueries({ queryKey: ["processes"] });
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "No se pudo cerrar y archivar el proceso");
+    },
+  });
+
   const procesos = useMemo(() => processesData?.processes ?? [], [processesData]);
 
   const { reclutadores, areas } = useMemo(() => {
@@ -419,6 +433,25 @@ function Inicio() {
                                 }
                               >
                                 <XCircle className="h-3.5 w-3.5 mr-2" /> Cerrar proceso
+                              </DropdownMenuItem>
+                            )}
+                            {p.status !== "CLOSED" && p.status !== "ARCHIVED" && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  statusMutation.mutate({
+                                    processId: p.process_id,
+                                    status: "ARCHIVED",
+                                  })
+                                }
+                              >
+                                <Archive className="h-3.5 w-3.5 mr-2" /> Archivar proceso
+                              </DropdownMenuItem>
+                            )}
+                            {p.status !== "CLOSED" && p.status !== "ARCHIVED" && (
+                              <DropdownMenuItem
+                                onClick={() => closeAndArchiveMutation.mutate(p.process_id)}
+                              >
+                                <Archive className="h-3.5 w-3.5 mr-2" /> Archivar y cerrar proceso
                               </DropdownMenuItem>
                             )}
                             {p.status === "CLOSED" && (
