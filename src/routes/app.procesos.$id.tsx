@@ -90,10 +90,12 @@ import {
   CANDIDATE_STATUS_LABEL,
   MATCH_CATEGORY_LABEL,
   ADVANCEMENT_PROBABILITY_LABEL,
+  WHATSAPP_CONSENT_STATUS_LABEL,
   type ProcessStatus,
   type MatchCategory,
   type CandidateStatus,
   type AdvancementProbability,
+  type WhatsAppConsentStatus,
 } from "@/lib/types/enums";
 import type {
   CandidateListItem,
@@ -134,6 +136,32 @@ const BREAKDOWN_LABELS: Record<keyof MatchBreakdown, string> = {
   languages: "Idiomas",
   education_certifications: "Educación",
 };
+
+const WHATSAPP_CONSENT_STYLE: Record<
+  WhatsAppConsentStatus,
+  { icon: typeof ThumbsUp; className: string }
+> = {
+  ACCEPTED: { icon: ThumbsUp, className: "text-emerald-600 bg-emerald-500/10" },
+  REJECTED: { icon: ThumbsDown, className: "text-rose-600 bg-rose-500/10" },
+  PENDING: { icon: AlertCircle, className: "text-amber-600 bg-amber-500/10" },
+  TIMEOUT: { icon: XCircle, className: "text-muted-foreground bg-muted" },
+};
+
+function WhatsAppConsentBadge({ status }: { status: WhatsAppConsentStatus }) {
+  const { icon: Icon, className } = WHATSAPP_CONSENT_STYLE[status];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold",
+        className,
+      )}
+      title={`Autorización WhatsApp: ${WHATSAPP_CONSENT_STATUS_LABEL[status]}`}
+    >
+      <Icon className="h-3 w-3" />
+      {WHATSAPP_CONSENT_STATUS_LABEL[status]}
+    </span>
+  );
+}
 
 function MatchRing({
   pct,
@@ -1347,6 +1375,7 @@ function RankingTab({
                         <th className="text-left font-medium px-3 py-3">Match</th>
                         <th className="text-left font-medium px-3 py-3">Categoría</th>
                         <th className="text-left font-medium px-3 py-3">Ciudad</th>
+                        <th className="text-left font-medium px-3 py-3">WhatsApp</th>
                         <th className="text-left font-medium px-3 py-3">Profiling</th>
                         <th className="text-left font-medium px-3 py-3">Avance</th>
                         <th className="text-right font-medium px-3 py-3">Costo</th>
@@ -1403,6 +1432,9 @@ function RankingTab({
                             </td>
                             <td className="px-3 py-3 text-muted-foreground text-xs">
                               {c.city ?? "—"}
+                            </td>
+                            <td className="px-3 py-3">
+                              <WhatsAppConsentBadge status={c.whatsapp_consent} />
                             </td>
                             <td className="px-3 py-3 text-xs">
                               {pipelineByPc.get(c.process_candidate_id)?.state_label ??
@@ -2461,6 +2493,7 @@ function CandidatoDrawer({
                     Avance: {ADVANCEMENT_PROBABILITY_LABEL[latestRun.advancement_probability]}
                   </span>
                 )}
+                <WhatsAppConsentBadge status={candidate.whatsapp_consent} />
               </div>
 
               <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 font-medium">
