@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Calendar, CheckCircle2, Clock3, PhoneCall } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { AppSelect, AppSelectItem } from "@/components/app/AppSelect";
 import { GlassCard } from "@/components/app/GlassCard";
 import { LoadingIndicator } from "@/components/app/LoadingIndicator";
 import { PipelineBoard, ProfilingHistoryDialog } from "@/components/app/PipelineBoard";
@@ -13,6 +14,7 @@ import {
   getProfilingRunDetail,
   triggerProfiling,
 } from "@/lib/api/profiling.functions";
+import { getProcesses } from "@/lib/api/processes.functions";
 import type { PipelineCandidate, ProfilingRunOut } from "@/lib/types/api";
 import { LIVE_REFRESH_INTERVAL_MS } from "@/lib/polling";
 import { cn } from "@/lib/utils";
@@ -34,12 +36,21 @@ const timeframeLabels: Record<Timeframe, string> = {
 function Profiling() {
   const qc = useQueryClient();
   const [timeframe, setTimeframe] = useState<Timeframe>("today");
+  const [processFilter, setProcessFilter] = useState<string | null>(null);
   const [modalRun, setModalRun] = useState<ProfilingRunOut | null>(null);
   const [historyCandidate, setHistoryCandidate] = useState<PipelineCandidate | null>(null);
 
+  // getProcesses ya filtra por rol en el backend (recruiter -> solo los suyos,
+  // admin/TA_LEADER -> todos), así que el selector nunca ofrece procesos ajenos.
+  const { data: processesData } = useQuery({
+    queryKey: ["processes"],
+    queryFn: () => getProcesses(),
+  });
+
   const { data, isLoading } = useQuery({
-    queryKey: ["profiling-board", timeframe],
-    queryFn: () => getProfilingBoard({ data: { timeframe } }),
+    queryKey: ["profiling-board", timeframe, processFilter],
+    queryFn: () =>
+      getProfilingBoard({ data: { timeframe, processId: processFilter ?? undefined } }),
     refetchInterval: LIVE_REFRESH_INTERVAL_MS,
   });
 
@@ -114,22 +125,37 @@ function Profiling() {
             Una tarjeta por candidato. Cada intento anterior permanece en su historial.
           </p>
         </div>
-        <div className="flex items-center gap-1 rounded-2xl border border-border/70 bg-card/80 p-1.5 shadow-sm backdrop-blur-md">
-          <Calendar className="mx-1 h-4 w-4 text-muted-foreground" />
-          {(Object.keys(timeframeLabels) as Timeframe[]).map((value) => (
-            <button
-              key={value}
-              onClick={() => setTimeframe(value)}
-              className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-bold transition",
-                timeframe === value
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-              )}
-            >
-              {timeframeLabels[value]}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-3">
+          <AppSelect
+            value={processFilter ?? "all"}
+            onValueChange={(value) => setProcessFilter(value === "all" ? null : value)}
+            className="w-full sm:w-64"
+            placeholder="Filtrar por proceso"
+          >
+            <AppSelectItem value="all">Todos los procesos</AppSelectItem>
+            {(processesData?.processes ?? []).map((process) => (
+              <AppSelectItem key={process.process_id} value={process.process_id}>
+                {process.name}
+              </AppSelectItem>
+            ))}
+          </AppSelect>
+          <div className="flex items-center gap-1 rounded-2xl border border-border/70 bg-card/80 p-1.5 shadow-sm backdrop-blur-md">
+            <Calendar className="mx-1 h-4 w-4 text-muted-foreground" />
+            {(Object.keys(timeframeLabels) as Timeframe[]).map((value) => (
+              <button
+                key={value}
+                onClick={() => setTimeframe(value)}
+                className={cn(
+                  "rounded-xl px-3 py-1.5 text-xs font-bold transition",
+                  timeframe === value
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                )}
+              >
+                {timeframeLabels[value]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
