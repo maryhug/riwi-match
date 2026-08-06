@@ -1573,8 +1573,12 @@ function RankingTab({
                             <td className="px-3 py-3 text-muted-foreground text-xs">
                               {c.city ?? "—"}
                             </td>
-                            <td className="px-3 py-3">
-                              <WhatsAppConsentBadge status={c.whatsapp_consent} />
+                            <td className="px-3 py-3 text-xs">
+                              {c.whatsapp_consent ? (
+                                <WhatsAppConsentBadge status={c.whatsapp_consent} />
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
                             </td>
                             <td className="px-3 py-3">
                               <AvailabilityBadge pref={c.availability_preference} />
