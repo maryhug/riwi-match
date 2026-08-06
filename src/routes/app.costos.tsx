@@ -408,13 +408,13 @@ function Costos() {
 function Alert({ pct, label }: { pct: number; label: string }) {
   const destructive = pct >= 100;
   const cls = destructive
-    ? "bg-destructive/15 text-destructive border-destructive/30"
+    ? "bg-destructive/15 text-destructive border-destructive/40 border-2"
     : "bg-warning/15 text-warning-foreground border-warning/30";
   return (
-    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${cls} text-xs`}>
-      <AlertTriangle className="h-3.5 w-3.5" />
-      <span className="flex-1">{label}</span>
-      <span className="font-bold">{pct}%</span>
+    <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border ${cls} text-xs`}>
+      <AlertTriangle className={destructive ? "h-4 w-4 shrink-0" : "h-3.5 w-3.5 shrink-0"} />
+      <span className="flex-1 font-medium">{label}</span>
+      <span className="font-bold tabular-nums">{pct.toFixed(1)}%</span>
     </div>
   );
 }
