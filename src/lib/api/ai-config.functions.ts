@@ -58,7 +58,12 @@ export const getGlobalSettings = createServerFn({ method: "GET" }).handler(async
 });
 
 export const updateGlobalSetting = createServerFn({ method: "POST" })
-  .validator(z.object({ key: z.string(), value: z.record(z.string(), z.unknown()) }))
+  .validator(
+    z.object({
+      key: z.string(),
+      value: z.union([z.record(z.string(), z.unknown()), z.number()]),
+    }),
+  )
   .handler(async ({ data }) => {
     return apiCall<GlobalSettingOut>(`/api/v1/ai-config/global-settings/${data.key}`, {
       method: "PATCH",

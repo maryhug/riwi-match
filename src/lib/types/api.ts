@@ -564,7 +564,7 @@ export interface GlobalSettingOut {
   id: string;
   setting_key: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  setting_value: Record<string, any>;
+  setting_value: Record<string, any> | number;
   updated_by: string | null;
   updated_at: string;
 }

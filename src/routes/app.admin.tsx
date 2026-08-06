@@ -642,6 +642,11 @@ function ParametrosIATab() {
       </section>
 
       <section className="space-y-3">
+        <SectionLabel>Llamadas de profiling</SectionLabel>
+        <MaxCallAttemptsCard />
+      </section>
+
+      <section className="space-y-3">
         <SectionLabel>Modelos y prompts por tarea</SectionLabel>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {TASK_TYPES.map((taskType) => (
@@ -865,6 +870,86 @@ function MatchThresholdsCard() {
             className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
           >
             {saveMutation.isPending ? "Guardando…" : "Guardar umbrales"}
+          </button>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+const DEFAULT_MAX_CALL_ATTEMPTS = 3;
+
+function MaxCallAttemptsCard() {
+  const qc = useQueryClient();
+  const { data: settingsData } = useQuery({
+    queryKey: ["global-settings"],
+    queryFn: () => getGlobalSettings(),
+  });
+
+  const saved = settingsData?.settings.find((s) => s.setting_key === "max_call_attempts")
+    ?.setting_value as number | undefined;
+
+  const [attempts, setAttempts] = useState(saved ?? DEFAULT_MAX_CALL_ATTEMPTS);
+
+  const [hydrated, setHydrated] = useState(false);
+  if (saved != null && !hydrated) {
+    setAttempts(saved);
+    setHydrated(true);
+  }
+
+  const isValid = Number.isInteger(attempts) && attempts >= 1 && attempts <= 10;
+
+  const saveMutation = useMutation({
+    mutationFn: () => updateGlobalSetting({ data: { key: "max_call_attempts", value: attempts } }),
+    onSuccess: () => {
+      toast.success("Intentos de llamada actualizados");
+      qc.invalidateQueries({ queryKey: ["global-settings"] });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
+  });
+
+  return (
+    <GlassCard className="space-y-4">
+      <div>
+        <div className="text-sm font-semibold">Intentos de llamada (primer acercamiento)</div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Cuántas veces reintenta el sistema una llamada de profiling que no conecta (no
+          contesta, buzón de voz, error de red) antes de marcarla como fallida.
+        </p>
+      </div>
+
+      <label className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background/70 border border-border max-w-xs">
+        <span className="flex-1 text-xs font-medium text-muted-foreground">Máximo de intentos</span>
+        <input
+          type="number"
+          min={1}
+          max={10}
+          value={attempts}
+          onChange={(e) => setAttempts(Number(e.target.value))}
+          className="w-14 bg-transparent text-right text-sm font-semibold outline-none"
+        />
+      </label>
+
+      <div className="flex items-center justify-between gap-3">
+        {!isValid ? (
+          <p className="text-xs text-destructive">Debe ser un entero entre 1 y 10.</p>
+        ) : (
+          <span />
+        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setAttempts(DEFAULT_MAX_CALL_ATTEMPTS)}
+            className="px-4 py-2 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground transition"
+          >
+            Por defecto
+          </button>
+          <button
+            onClick={() => saveMutation.mutate()}
+            disabled={!isValid || saveMutation.isPending}
+            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
+          >
+            {saveMutation.isPending ? "Guardando…" : "Guardar"}
           </button>
         </div>
       </div>
