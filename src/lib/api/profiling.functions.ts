@@ -30,9 +30,16 @@ export const getAllProfilingRuns = createServerFn({ method: "GET" }).handler(asy
 });
 
 export const getProfilingBoard = createServerFn({ method: "GET" })
-  .validator(z.object({ timeframe: z.enum(["today", "7days", "month", "all"]) }))
+  .validator(
+    z.object({
+      timeframe: z.enum(["today", "7days", "month", "all"]),
+      processId: z.string().optional(),
+    }),
+  )
   .handler(async ({ data }) => {
-    return apiCall<ProfilingBoardResponse>(`/api/v1/profiling/board?timeframe=${data.timeframe}`);
+    const params = new URLSearchParams({ timeframe: data.timeframe });
+    if (data.processId) params.set("process_id", data.processId);
+    return apiCall<ProfilingBoardResponse>(`/api/v1/profiling/board?${params.toString()}`);
   });
 
 export const getProcessPipeline = createServerFn({ method: "GET" })
