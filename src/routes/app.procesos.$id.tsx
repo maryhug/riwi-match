@@ -272,34 +272,42 @@ function Detalle() {
   const [editingCandidate, setEditingCandidate] = useState<CandidateListItem | null>(null);
   const [deletingCandidate, setDeletingCandidate] = useState<CandidateListItem | null>(null);
   const [closeProcessModalOpen, setCloseProcessModalOpen] = useState(false);
-  const { data: process, isLoading: processLoading } = useQuery({
-    queryKey: ["process", id],
-    queryFn: () => getProcess({ data: { processId: id } }),
-    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
-  });
-
   const { data: progress } = useQuery({
     queryKey: ["process-progress", id],
     queryFn: () => getProcessProgress({ data: { processId: id } }),
     refetchInterval: LIVE_REFRESH_INTERVAL_MS,
   });
 
+  const isActiveProcessing =
+    progress?.stage === "MATCH_PROCESSING" ||
+    progress?.stage === "CV_PROCESSING" ||
+    (progress?.counts?.calls_active ?? 0) > 0 ||
+    (progress?.counts?.profiling_active ?? 0) > 0;
+
+  const dynamicRefetchInterval = isActiveProcessing ? LIVE_REFRESH_INTERVAL_MS : 15000;
+
+  const { data: process, isLoading: processLoading } = useQuery({
+    queryKey: ["process", id],
+    queryFn: () => getProcess({ data: { processId: id } }),
+    refetchInterval: dynamicRefetchInterval,
+  });
+
   const { data: candidatesData } = useQuery({
     queryKey: ["candidates", id],
     queryFn: () => getCandidates({ data: { processId: id } }),
-    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    refetchInterval: dynamicRefetchInterval,
   });
 
   const { data: profilingRunsData } = useQuery({
     queryKey: ["profiling-runs", id],
     queryFn: () => getProcessProfilingRuns({ data: { processId: id } }),
-    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    refetchInterval: dynamicRefetchInterval,
   });
 
   const { data: pipelineData } = useQuery({
     queryKey: ["process-pipeline", id],
     queryFn: () => getProcessPipeline({ data: { processId: id } }),
-    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    refetchInterval: dynamicRefetchInterval,
   });
 
   const { data: matchStatus } = useQuery({
