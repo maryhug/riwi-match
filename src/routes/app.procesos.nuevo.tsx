@@ -101,16 +101,16 @@ function Wizard() {
   const totalWeights = Object.values(weights).reduce((a, b) => a + b, 0);
   const hasNegativeWeight = Object.values(weights).some((w) => w < 0);
   const weightsValid = !showWeights || (totalWeights === 100 && !hasNegativeWeight);
-  const isLeader = user?.role === "TA_LEADER";
+  const canAssignRecruiter = user?.role === "TA_LEADER" || user?.role === "ADMIN";
   const step0Valid =
     name.trim().length > 0 &&
     jobTitle.trim().length > 0 &&
     weightsValid &&
-    (!isLeader || Boolean(recruiterId));
+    (!canAssignRecruiter || Boolean(recruiterId));
   const { data: usersData } = useQuery({
     queryKey: ["users"],
     queryFn: () => getUsers(),
-    enabled: isLeader,
+    enabled: canAssignRecruiter,
   });
   const recruiters = (usersData ?? []).filter(
     (candidate) => candidate.role === "RECRUITER" && candidate.status === "ACTIVE",
@@ -137,7 +137,7 @@ function Wizard() {
               seniority,
               budget_max_usd: budget ? Number(budget) : undefined,
               match_weights_override: showWeights ? weights : undefined,
-              recruiter_id: isLeader ? recruiterId : undefined,
+              recruiter_id: canAssignRecruiter ? recruiterId : undefined,
             },
           }),
     onSuccess: (res) => {
@@ -318,7 +318,7 @@ function Wizard() {
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Reclutador responsable
                 </label>
-                {isLeader ? (
+                {canAssignRecruiter ? (
                   <AppSelect
                     value={recruiterId || "none"}
                     onValueChange={(value) => setRecruiterId(value === "none" ? "" : value)}
