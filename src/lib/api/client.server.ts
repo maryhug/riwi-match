@@ -32,17 +32,19 @@ export interface SessionUser {
   status: "ACTIVE" | "SUSPENDED";
 }
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export function setSessionCookies(tokens: { access_token: string; refresh_token: string }): void {
   setCookie(ACCESS_COOKIE, tokens.access_token, {
     httpOnly: true,
-    secure: true,
+    secure: isProduction,
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60,
   });
   setCookie(REFRESH_COOKIE, tokens.refresh_token, {
     httpOnly: true,
-    secure: true,
+    secure: isProduction,
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
@@ -54,7 +56,7 @@ export function setSessionUserCookie(user: SessionUser): void {
   // La autorización real siempre la valida el backend contra el JWT firmado.
   setCookie(USER_COOKIE, JSON.stringify(user), {
     httpOnly: false,
-    secure: true,
+    secure: isProduction,
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
