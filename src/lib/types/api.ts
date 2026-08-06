@@ -259,6 +259,18 @@ export interface AnalyzeCVsResponse {
   message: string;
 }
 
+/**
+ * Disponibilidad horaria que el candidato reportó por WhatsApp, extraída por IA
+ * (whatsapp_message_usecase.py) en formato libre pero con este shape esperado.
+ * null si el candidato nunca mencionó disponibilidad.
+ */
+export interface AvailabilityPreference {
+  preference: "ANYTIME" | "MORNING" | "AFTERNOON" | "SPECIFIC_WINDOW";
+  date?: string;
+  start_time?: string;
+  end_time?: string;
+}
+
 /** Item dentro de GET /processes/{id}/candidates (lista, distinto del detalle) */
 export interface CandidateListItem {
   rank: number;
@@ -273,6 +285,7 @@ export interface CandidateListItem {
   whatsapp_consent: WhatsAppConsentStatus;
   normalized_cv_url: string | null;
   city: string | null;
+  availability_preference: AvailabilityPreference | null;
   /** Suma de todos los CostLog de este candidato en el proceso (CV, match, llamadas, WhatsApp). */
   total_cost: number;
   // Presentes solo si match_explanation existe — el backend omite la clave, no la manda null.
@@ -304,6 +317,7 @@ export interface CandidateDetailResponse {
   };
   status: CandidateStatus;
   whatsapp_consent: WhatsAppConsentStatus;
+  availability_preference: AvailabilityPreference | null;
   analysis_context: string | null;
   human_notes: string | null;
   /** Ojo: el backend colapsa 0 a null (`if pc.human_override_match else None`). */

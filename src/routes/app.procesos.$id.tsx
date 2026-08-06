@@ -32,6 +32,7 @@ import {
   Pencil,
   Trash2,
   X,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
@@ -90,6 +91,7 @@ import {
   CANDIDATE_STATUS_LABEL,
   MATCH_CATEGORY_LABEL,
   ADVANCEMENT_PROBABILITY_LABEL,
+  AVAILABILITY_PREFERENCE_LABEL,
   type ProcessStatus,
   type MatchCategory,
   type CandidateStatus,
@@ -102,6 +104,7 @@ import type {
   ParseJDResponse,
   ProfilingRunOut,
   PipelineCandidate,
+  AvailabilityPreference,
 } from "@/lib/types/api";
 import { cn, cleanAnswerText } from "@/lib/utils";
 
@@ -134,6 +137,27 @@ const BREAKDOWN_LABELS: Record<keyof MatchBreakdown, string> = {
   languages: "Idiomas",
   education_certifications: "Educación",
 };
+
+function formatAvailability(pref: AvailabilityPreference | null): string | null {
+  if (!pref) return null;
+  if (pref.preference === "SPECIFIC_WINDOW") {
+    const range =
+      pref.start_time && pref.end_time ? `${pref.start_time}–${pref.end_time}` : pref.start_time;
+    return [pref.date, range].filter(Boolean).join(" · ") || AVAILABILITY_PREFERENCE_LABEL[pref.preference];
+  }
+  return AVAILABILITY_PREFERENCE_LABEL[pref.preference];
+}
+
+function AvailabilityBadge({ pref }: { pref: AvailabilityPreference | null }) {
+  const text = formatAvailability(pref);
+  if (!text) return <span className="text-muted-foreground text-xs">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <Clock className="h-3 w-3" />
+      {text}
+    </span>
+  );
+}
 
 function MatchRing({
   pct,
@@ -1347,6 +1371,7 @@ function RankingTab({
                         <th className="text-left font-medium px-3 py-3">Match</th>
                         <th className="text-left font-medium px-3 py-3">Categoría</th>
                         <th className="text-left font-medium px-3 py-3">Ciudad</th>
+                        <th className="text-left font-medium px-3 py-3">Disponibilidad</th>
                         <th className="text-left font-medium px-3 py-3">Profiling</th>
                         <th className="text-left font-medium px-3 py-3">Avance</th>
                         <th className="text-right font-medium px-3 py-3">Costo</th>
@@ -1403,6 +1428,9 @@ function RankingTab({
                             </td>
                             <td className="px-3 py-3 text-muted-foreground text-xs">
                               {c.city ?? "—"}
+                            </td>
+                            <td className="px-3 py-3">
+                              <AvailabilityBadge pref={c.availability_preference} />
                             </td>
                             <td className="px-3 py-3 text-xs">
                               {pipelineByPc.get(c.process_candidate_id)?.state_label ??
@@ -2475,6 +2503,12 @@ function CandidatoDrawer({
                 {candidate.city && (
                   <span className="flex items-center gap-1">
                     <MapPin className="h-3.5 w-3.5 text-primary" /> {candidate.city}
+                  </span>
+                )}
+                {formatAvailability(candidate.availability_preference) && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5 text-primary" />{" "}
+                    {formatAvailability(candidate.availability_preference)}
                   </span>
                 )}
               </div>
