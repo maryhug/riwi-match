@@ -414,21 +414,11 @@ function Detalle() {
       toast.error(error instanceof Error ? error.message : "No se pudo cancelar"),
   });
 
-  const openProfilingRun = async (target: PipelineCandidate | ProfilingRunOut | { id: string } | null) => {
+  const openProfilingRun = (target: PipelineCandidate | ProfilingRunOut | { id: string } | null) => {
     if (!target) return;
-    const runId = "latest_run" in target ? target.latest_run?.id : target.id;
-    if (!runId) return;
-    try {
-      await qc.invalidateQueries({ queryKey: ["profiling-run", runId] });
-      const run = await qc.fetchQuery({
-        queryKey: ["profiling-run", runId],
-        queryFn: () => getProfilingRunDetail({ data: { runId } }),
-        staleTime: 0,
-      });
-      setProfilingModalRun(run);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo abrir la entrevista");
-    }
+    const run = "latest_run" in target ? target.latest_run : target;
+    if (!run) return;
+    setProfilingModalRun(run as any);
   };
 
   if (processLoading) {

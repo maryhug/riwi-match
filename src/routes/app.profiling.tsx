@@ -94,21 +94,11 @@ function Profiling() {
       toast.error(error instanceof Error ? error.message : "No se pudo reintentar"),
   });
 
-  const openLatest = async (item: PipelineCandidate | ProfilingRunOut | { id: string } | null) => {
+  const openLatest = (item: PipelineCandidate | ProfilingRunOut | { id: string } | null) => {
     if (!item) return;
-    const runId = "latest_run" in item ? item.latest_run?.id : item.id;
-    if (!runId) return;
-    try {
-      await qc.invalidateQueries({ queryKey: ["profiling-run", runId] });
-      const run = await qc.fetchQuery({
-        queryKey: ["profiling-run", runId],
-        queryFn: () => getProfilingRunDetail({ data: { runId } }),
-        staleTime: 0,
-      });
-      setModalRun(run);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo abrir la entrevista");
-    }
+    const run = "latest_run" in item ? item.latest_run : item;
+    if (!run) return;
+    setModalRun(run as any);
   };
 
   const cards = useMemo(() => data?.candidates ?? [], [data]);
@@ -269,7 +259,6 @@ function Profiling() {
           latestRun={drawerCandidate.candidate.latest_run as any}
           onClose={() => setDrawerCandidate(null)}
           onOpenProfilingModal={(run) => {
-            setDrawerCandidate(null);
             openLatest(run);
           }}
           onPreviewNormalized={(c) => {

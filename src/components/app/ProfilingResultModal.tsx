@@ -11,7 +11,7 @@ import {
   User,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { getProfilingAnswers } from "@/lib/api/profiling.functions";
+import { getProfilingAnswers, getProfilingRunDetail } from "@/lib/api/profiling.functions";
 import { ADVANCEMENT_PROBABILITY_LABEL, OPERATION_TYPE_LABEL } from "@/lib/types/enums";
 import type { CandidateDetailResponse, ProfilingRunOut } from "@/lib/types/api";
 import { cn, cleanAnswerText } from "@/lib/utils";
@@ -39,6 +39,8 @@ const CALL_OPERATION_TYPES = new Set([
   "TWILIO_CALL",
 ]);
 
+
+
 export function ProfilingResultModal({
   run,
   costs,
@@ -52,18 +54,27 @@ export function ProfilingResultModal({
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const { data: answersData, isLoading } = useQuery({
-    queryKey: ["profiling-answers", run?.id],
-    queryFn: () => getProfilingAnswers({ data: { runId: run!.id } }),
-    enabled: open && !!run,
+  const { data: runDetail, isLoading: isRunDetailLoading } = useQuery({
+    queryKey: ["profiling-run-detail", run?.id],
+    queryFn: () => getProfilingRunDetail({ data: { runId: run!.id } }),
+    enabled: open && !!run?.id,
     staleTime: 0,
   });
 
-  if (!run) return null;
+  const activeRun = runDetail ?? run;
+
+  const { data: answersData, isLoading } = useQuery({
+    queryKey: ["profiling-answers", activeRun?.id],
+    queryFn: () => getProfilingAnswers({ data: { runId: activeRun!.id } }),
+    enabled: open && !!activeRun?.id,
+    staleTime: 0,
+  });
+
+  if (!activeRun) return null;
 
   const callCosts = (costs ?? []).filter((c) => CALL_OPERATION_TYPES.has(c.operation_type));
   const callTotal = callCosts.reduce((s, c) => s + c.estimated_cost, 0);
-  const turns = run.transcript_turns ?? [];
+  const turns = activeRun.transcript_turns ?? [];
 
   const handleSeek = (secs: number) => {
     if (audioRef.current) {
@@ -83,21 +94,21 @@ export function ProfilingResultModal({
               </div>
               <div>
                 <span className="text-base text-foreground font-semibold">
-                  {run.candidate_name}
+                  {activeRun.candidate_name}
                 </span>
                 <p className="text-xs font-normal text-muted-foreground">
                   Transcripción y Análisis de Entrevista de Voz
                 </p>
               </div>
             </div>
-            {run.advancement_probability && (
+            {activeRun.advancement_probability && (
               <span
                 className={cn(
                   "px-3 py-1 rounded-full text-xs font-semibold tracking-wide",
-                  ADVANCE_COLOR[run.advancement_probability],
+                  ADVANCE_COLOR[activeRun.advancement_probability],
                 )}
               >
-                Avance: {ADVANCEMENT_PROBABILITY_LABEL[run.advancement_probability]}
+                Avance: {ADVANCEMENT_PROBABILITY_LABEL[activeRun.advancement_probability]}
               </span>
             )}
           </DialogTitle>
@@ -107,24 +118,24 @@ export function ProfilingResultModal({
           {/* ── Columna izquierda: evaluación, respuestas, costos ── */}
           <div className="space-y-4 min-w-0 flex flex-col min-h-0 overflow-y-auto pr-1.5 scrollbar-thin scrollbar-thumb-border">
             <div className="rounded-xl border border-border bg-muted/30 p-3.5 space-y-2.5 shadow-xs shrink-0">
-              {run.advancement_explanation && (
+              {activeRun.advancement_explanation && (
                 <div className="space-y-1">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Dictamen de Evaluación
                   </span>
                   <p className="text-foreground text-xs leading-relaxed">
-                    {run.advancement_explanation}
+                    {activeRun.advancement_explanation}
                   </p>
                 </div>
               )}
               <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/60">
                 <span className="flex items-center gap-1.5 font-medium text-foreground/80">
                   <Clock className="h-3.5 w-3.5 text-primary" />{" "}
-                  {formatDuration(run.started_at, run.completed_at)}
+                  {formatDuration(activeRun.started_at, activeRun.completed_at)}
                 </span>
-                <span>Intento {run.call_attempts}</span>
+                <span>Intento {activeRun.call_attempts}</span>
               </div>
-              {run.has_audio && (
+              {activeRun.has_audio && (
                 <div className="pt-2 border-t border-border/60">
                   <div className="flex items-center gap-2 mb-1 text-xs text-foreground font-medium">
                     <Headphones className="h-3.5 w-3.5 text-primary" />
@@ -133,7 +144,7 @@ export function ProfilingResultModal({
                   <audio
                     ref={audioRef}
                     controls
-                    src={`/dl/profiling-audio/${run.id}`}
+                    src={`/dl/profiling-audio/${activeRun.id}`}
                     className="h-8 w-full rounded-lg accent-primary"
                   />
                 </div>
@@ -345,7 +356,7 @@ export function ProfilingResultModal({
                               ) : (
                                 <User className="h-3 w-3 text-slate-500 shrink-0" />
                               )}
-                              {isAgent ? "Agente" : run.candidate_name}
+                              {isAgent ? "Agente" : activeRun.candidate_name}
                             </span>
                             {t.time_in_call_secs != null && (
                               <button
