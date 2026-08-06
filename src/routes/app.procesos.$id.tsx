@@ -2426,7 +2426,7 @@ function CandidatoDrawer({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white text-slate-900 shadow-2xl border border-slate-200 cursor-default p-0"
+        className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto scrollbar-visible rounded-3xl bg-white text-slate-900 shadow-2xl border border-slate-200 cursor-default p-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sticky Header Banner */}
@@ -2790,7 +2790,7 @@ function CandidatoDrawer({
                     Sin respuestas registradas en esta sesión.
                   </div>
                 ) : (
-                  <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-[320px] overflow-y-auto scrollbar-visible pr-1">
                     {answersData.answers.map((a) => (
                       <details
                         key={a.id}
