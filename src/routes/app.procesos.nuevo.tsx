@@ -91,6 +91,7 @@ function Wizard() {
   const [jdText, setJdText] = useState("");
   const [jdSaved, setJdSaved] = useState(false);
   const [parseResult, setParseResult] = useState<ParseJDResponse | null>(null);
+  const [preEnhanceJdText, setPreEnhanceJdText] = useState<string | null>(null);
 
   // Paso 2
   const [files, setFiles] = useState<File[]>([]);
@@ -166,6 +167,7 @@ function Wizard() {
     onSuccess: (res) => {
       setParseResult(res);
       if (res.enhanced_jd) {
+        setPreEnhanceJdText(jdText);
         setJdText(res.enhanced_jd);
         setJdSaved(false);
       }
@@ -177,6 +179,14 @@ function Wizard() {
       toast.error(err instanceof Error ? err.message : "No se pudo analizar la JD");
     },
   });
+
+  const undoEnhance = () => {
+    if (preEnhanceJdText === null) return;
+    setJdText(preEnhanceJdText);
+    setPreEnhanceJdText(null);
+    setJdSaved(false);
+    toast.info("Se restauró el texto anterior a la mejora de IA");
+  };
 
   const uploadMutation = useMutation({
     mutationFn: () => {
@@ -480,6 +490,7 @@ function Wizard() {
                   setJdText(text);
                   setJdSaved(true);
                   setJdTab("text");
+                  setPreEnhanceJdText(null);
                 }}
               />
             )}
@@ -496,17 +507,28 @@ function Wizard() {
                     mejorada + recomendaciones (no persiste nada hasta que la apliques).
                   </div>
                 </div>
-                <button
-                  onClick={() => parseJDMutation.mutate()}
-                  disabled={jdText.trim().length < 10 || parseJDMutation.isPending}
-                  className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold shadow-sm hover:bg-primary/90 transition disabled:opacity-60"
-                >
-                  {parseJDMutation.isPending
-                    ? "Analizando…"
-                    : parseResult
-                      ? "Re-analizar"
-                      : "Analizar con IA"}
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {preEnhanceJdText !== null && (
+                    <button
+                      onClick={undoEnhance}
+                      title="Restaurar el texto anterior a la mejora de IA"
+                      className="px-3 py-2 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground transition"
+                    >
+                      Deshacer
+                    </button>
+                  )}
+                  <button
+                    onClick={() => parseJDMutation.mutate()}
+                    disabled={jdText.trim().length < 10 || parseJDMutation.isPending}
+                    className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold shadow-sm hover:bg-primary/90 transition disabled:opacity-60"
+                  >
+                    {parseJDMutation.isPending
+                      ? "Analizando…"
+                      : parseResult
+                        ? "Re-analizar"
+                        : "Analizar con IA"}
+                  </button>
+                </div>
               </div>
 
               {parseResult && (

@@ -1943,6 +1943,7 @@ function ConfigTab({
   const [voiceLanguage, setVoiceLanguage] = useState(process.voice_override_language ?? "");
   const [jdAnalysis, setJdAnalysis] = useState<ParseJDResponse | null>(null);
   const [jdText, setJdText] = useState(process.job_description?.jd_raw_text ?? "");
+  const [preEnhanceJdText, setPreEnhanceJdText] = useState<string | null>(null);
 
   const { data: questionSets } = useQuery({
     queryKey: ["question-sets"],
@@ -2010,7 +2011,10 @@ function ConfigTab({
     mutationFn: () => parseJobDescription({ data: { processId, jdRawText: jdText } }),
     onSuccess: (res) => {
       setJdAnalysis(res);
-      if (res.enhanced_jd) setJdText(res.enhanced_jd);
+      if (res.enhanced_jd) {
+        setPreEnhanceJdText(jdText);
+        setJdText(res.enhanced_jd);
+      }
       toast.success("JD analizada y enriquecida por IA", {
         description: "La versión mejorada ya está en el campo de texto — puedes editarla.",
       });
@@ -2019,11 +2023,19 @@ function ConfigTab({
       toast.error(err instanceof Error ? err.message : "No se pudo analizar la JD"),
   });
 
+  const undoEnhance = () => {
+    if (preEnhanceJdText === null) return;
+    setJdText(preEnhanceJdText);
+    setPreEnhanceJdText(null);
+    toast.info("Se restauró el texto anterior a la mejora de IA");
+  };
+
   const saveJDMutation = useMutation({
     mutationFn: () => createJobDescription({ data: { processId, jdRawText: jdText } }),
     onSuccess: () => {
       toast.success("Nueva versión de la JD guardada");
       setJdAnalysis(null);
+      setPreEnhanceJdText(null);
       qc.invalidateQueries({ queryKey: ["job-descriptions", processId] });
       qc.invalidateQueries({ queryKey: ["process", processId] });
       qc.invalidateQueries({ queryKey: ["process-progress", processId] });
@@ -2149,6 +2161,15 @@ function ConfigTab({
           >
             {analyzeJDMutation.isPending ? "Analizando…" : "Analizar y enriquecer con IA"}
           </button>
+          {preEnhanceJdText !== null && (
+            <button
+              onClick={undoEnhance}
+              title="Restaurar el texto anterior a la mejora de IA"
+              className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition"
+            >
+              Deshacer
+            </button>
+          )}
         </div>
 
         {jdAnalysis && (
