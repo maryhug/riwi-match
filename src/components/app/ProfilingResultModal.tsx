@@ -56,6 +56,7 @@ export function ProfilingResultModal({
     queryKey: ["profiling-answers", run?.id],
     queryFn: () => getProfilingAnswers({ data: { runId: run!.id } }),
     enabled: open && !!run,
+    staleTime: 0,
   });
 
   if (!run) return null;

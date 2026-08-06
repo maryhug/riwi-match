@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertTriangle,
   CheckCircle2,
   Clock3,
   FileSearch,
@@ -129,9 +128,6 @@ function PipelineCard({
               </div>
             )}
           </div>
-          {item.consistency === "ATTENTION" && (
-            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" aria-label="Atención" />
-          )}
         </div>
 
         <div className="mt-2.5 flex items-center justify-between gap-2">
@@ -168,12 +164,6 @@ function PipelineCard({
               {item.process.job_title}
               {item.recruiter ? ` · ${item.recruiter.name}` : ""}
             </div>
-          </div>
-        )}
-
-        {item.consistency === "ATTENTION" && item.consistency_explanation && (
-          <div className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/8 px-2 py-1.5 text-[10px] leading-4 text-amber-800 dark:text-amber-200">
-            {item.consistency_explanation}
           </div>
         )}
       </div>

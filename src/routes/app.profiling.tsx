@@ -97,9 +97,11 @@ function Profiling() {
   const openLatest = async (item: PipelineCandidate) => {
     if (!item.latest_run) return;
     try {
+      await qc.invalidateQueries({ queryKey: ["profiling-run", item.latest_run.id] });
       const run = await qc.fetchQuery({
         queryKey: ["profiling-run", item.latest_run.id],
         queryFn: () => getProfilingRunDetail({ data: { runId: item.latest_run!.id } }),
+        staleTime: 0,
       });
       setModalRun(run);
     } catch (error) {
