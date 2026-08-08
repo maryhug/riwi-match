@@ -16,6 +16,12 @@ dist-ssr
 .nitro
 *.local
 
+# Playwright (artefactos reproducibles; las pruebas y configuraciones si se versionan)
+playwright/.cache/
+playwright-report/
+test-results/
+tests/.auth/
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

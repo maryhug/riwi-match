@@ -16,7 +16,7 @@ import {
   triggerProfiling,
 } from "@/lib/api/profiling.functions";
 import { getProcesses } from "@/lib/api/processes.functions";
-import type { PipelineCandidate, ProfilingRunOut } from "@/lib/types/api";
+import type { CandidateListItem, PipelineCandidate, ProfilingRunOut } from "@/lib/types/api";
 import { LIVE_REFRESH_INTERVAL_MS } from "@/lib/polling";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +33,10 @@ const timeframeLabels: Record<Timeframe, string> = {
   month: "Este mes",
   all: "Histórico",
 };
+
+function isProfilingRunOut(run: { id: string }): run is ProfilingRunOut {
+  return "process_candidate_id" in run && "candidate_name" in run;
+}
 
 function Profiling() {
   const qc = useQueryClient();
@@ -98,7 +102,15 @@ function Profiling() {
     if (!item) return;
     const run = "latest_run" in item ? item.latest_run : item;
     if (!run) return;
-    setModalRun(run as any);
+    if (isProfilingRunOut(run)) {
+      setModalRun(run);
+      return;
+    }
+    void getProfilingRunDetail({ data: { runId: run.id } })
+      .then(setModalRun)
+      .catch((error: unknown) =>
+        toast.error(error instanceof Error ? error.message : "No se pudo cargar la corrida"),
+      );
   };
 
   const cards = useMemo(() => data?.candidates ?? [], [data]);
@@ -232,31 +244,20 @@ function Profiling() {
               process_candidate_id: drawerCandidate.candidate.process_candidate_id,
               candidate_id: drawerCandidate.candidate.candidate_id,
               name: drawerCandidate.candidate.candidate_name,
-              email: drawerCandidate.candidate.candidate_email ?? null,
+              email: drawerCandidate.candidate.candidate_email ?? "",
               phone: null,
               city: null,
-              status: "LOADED",
-              stage: "IN_PROCESS",
-              stage_label: drawerCandidate.candidate.state_label,
-              source: "DIRECT",
-              source_label: "Directo",
-              has_cv: true,
-              match_score: null,
-              overall_score: null,
-              technical_score: null,
-              soft_skills_score: null,
-              experience_score: null,
-              education_score: null,
-              missing_must_haves: [],
-              missing_nice_to_haves: [],
-              human_override_match: null,
-              human_notes: null,
-              created_at: new Date().toISOString(),
-              whatsapp_consent: "PENDING",
+              rank: 0,
+              status: drawerCandidate.candidate.candidate_status,
+              match_percentage: 0,
+              match_category: null,
+              whatsapp_consent: drawerCandidate.candidate.whatsapp_consent_status,
+              normalized_cv_url: null,
               availability_preference: null,
-            } as any
+              total_cost: 0,
+            } satisfies CandidateListItem
           }
-          latestRun={drawerCandidate.candidate.latest_run as any}
+          latestRun={null}
           onClose={() => setDrawerCandidate(null)}
           onOpenProfilingModal={(run) => {
             openLatest(run);
@@ -268,10 +269,7 @@ function Profiling() {
             );
           }}
           onPreviewOriginal={(c) => {
-            window.open(
-              `/dl/cv/${drawerCandidate.processId}/${c.process_candidate_id}`,
-              "_blank",
-            );
+            window.open(`/dl/cv/${drawerCandidate.processId}/${c.process_candidate_id}`, "_blank");
           }}
         />
       )}

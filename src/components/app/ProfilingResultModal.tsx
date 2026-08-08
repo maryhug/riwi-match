@@ -39,8 +39,6 @@ const CALL_OPERATION_TYPES = new Set([
   "TWILIO_CALL",
 ]);
 
-
-
 export function ProfilingResultModal({
   run,
   costs,

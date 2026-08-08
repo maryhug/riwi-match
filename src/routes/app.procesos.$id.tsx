@@ -120,6 +120,10 @@ export const Route = createFileRoute("/app/procesos/$id")({
 const tabs = ["Dashboard", "Ranking de candidatos", "Kanban", "Configuración"] as const;
 type TabName = (typeof tabs)[number];
 
+function isProfilingRunOut(run: { id: string }): run is ProfilingRunOut {
+  return "process_candidate_id" in run && "candidate_name" in run;
+}
+
 const VOICE_LANGUAGES = [
   { value: "es", label: "Español" },
   { value: "en", label: "Inglés" },
@@ -180,7 +184,10 @@ function formatAvailability(pref: AvailabilityPreference | null): string | null 
   if (pref.preference === "SPECIFIC_WINDOW") {
     const range =
       pref.start_time && pref.end_time ? `${pref.start_time}–${pref.end_time}` : pref.start_time;
-    return [pref.date, range].filter(Boolean).join(" · ") || AVAILABILITY_PREFERENCE_LABEL[pref.preference];
+    return (
+      [pref.date, range].filter(Boolean).join(" · ") ||
+      AVAILABILITY_PREFERENCE_LABEL[pref.preference]
+    );
   }
   return AVAILABILITY_PREFERENCE_LABEL[pref.preference];
 }
@@ -422,11 +429,21 @@ function Detalle() {
       toast.error(error instanceof Error ? error.message : "No se pudo cancelar"),
   });
 
-  const openProfilingRun = (target: PipelineCandidate | ProfilingRunOut | { id: string } | null) => {
+  const openProfilingRun = (
+    target: PipelineCandidate | ProfilingRunOut | { id: string } | null,
+  ) => {
     if (!target) return;
     const run = "latest_run" in target ? target.latest_run : target;
     if (!run) return;
-    setProfilingModalRun(run as any);
+    if (isProfilingRunOut(run)) {
+      setProfilingModalRun(run);
+      return;
+    }
+    void getProfilingRunDetail({ data: { runId: run.id } })
+      .then(setProfilingModalRun)
+      .catch((error: unknown) =>
+        toast.error(error instanceof Error ? error.message : "No se pudo cargar la corrida"),
+      );
   };
 
   if (processLoading) {
@@ -1127,7 +1144,8 @@ function DeleteCandidateModal({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteCandidate({ data: { processId, pcId: candidate!.process_candidate_id } }),
+    mutationFn: () =>
+      deleteCandidate({ data: { processId, pcId: candidate!.process_candidate_id } }),
     onSuccess: () => invalidateAndClose("Candidato eliminado del proceso"),
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "Error al eliminar candidato"),
@@ -1187,8 +1205,8 @@ function DeleteCandidateModal({
       title="¿Eliminar candidato?"
       description={
         <>
-          <strong className="text-slate-800">{candidate.name}</strong> está en un estado
-          ({CANDIDATE_STATUS_LABEL[candidate.status]}) que no admite descarte reversible — solo se
+          <strong className="text-slate-800">{candidate.name}</strong> está en un estado (
+          {CANDIDATE_STATUS_LABEL[candidate.status]}) que no admite descarte reversible — solo se
           puede eliminar de forma permanente. Esta acción no se puede deshacer.
         </>
       }
@@ -2677,16 +2695,17 @@ export function CandidatoDrawer({
                     {MATCH_CATEGORY_LABEL[candidate.match_category]}
                   </span>
                 )}
-                {latestRun?.advancement_probability && ADVANCE_COLOR[latestRun.advancement_probability] && (
-                  <span
-                    className={cn(
-                      "px-2.5 py-0.5 rounded-full text-xs font-semibold",
-                      ADVANCE_COLOR[latestRun.advancement_probability],
-                    )}
-                  >
-                    Avance: {ADVANCEMENT_PROBABILITY_LABEL[latestRun.advancement_probability]}
-                  </span>
-                )}
+                {latestRun?.advancement_probability &&
+                  ADVANCE_COLOR[latestRun.advancement_probability] && (
+                    <span
+                      className={cn(
+                        "px-2.5 py-0.5 rounded-full text-xs font-semibold",
+                        ADVANCE_COLOR[latestRun.advancement_probability],
+                      )}
+                    >
+                      Avance: {ADVANCEMENT_PROBABILITY_LABEL[latestRun.advancement_probability]}
+                    </span>
+                  )}
                 <WhatsAppConsentBadge status={candidate.whatsapp_consent} />
               </div>
 
@@ -2741,7 +2760,9 @@ export function CandidatoDrawer({
                   onDeleteCandidate(candidate);
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 text-xs font-semibold transition cursor-pointer shadow-xs"
-                title={candidate.status === "DISCARDED" ? "Revertir descarte" : "Descartar / eliminar"}
+                title={
+                  candidate.status === "DISCARDED" ? "Revertir descarte" : "Descartar / eliminar"
+                }
               >
                 <Trash2 className="h-3.5 w-3.5 text-rose-500" />
                 {candidate.status === "DISCARDED" ? "Revertir" : "Descartar"}
