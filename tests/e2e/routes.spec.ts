@@ -52,15 +52,30 @@ test("SetBuilder renderiza datos del backend mock a traves del BFF", async ({ pa
   await expect(page.getByText("Cuentanos tu experiencia con FastAPI")).toBeVisible();
 });
 
-test("rutas clave no presentan violaciones criticas de accesibilidad", async ({ page }) => {
-  for (const url of ["/app", "/app/profiling", "/app/sets/set-qa"]) {
+test("rutas clave no presentan violaciones graves de accesibilidad", async ({ page }) => {
+  for (const url of ["/app", "/app/procesos/process-qa", "/app/profiling", "/app/sets/set-qa"]) {
     await page.goto(url);
     const results = await new AxeBuilder({ page }).analyze();
     expect(
-      results.violations.filter((violation) => violation.impact === "critical"),
-      `Violaciones criticas en ${url}`,
+      results.violations.filter(
+        (violation) => violation.impact === "critical" || violation.impact === "serious",
+      ),
+      `Violaciones graves en ${url}`,
     ).toEqual([]);
   }
+});
+
+test("login publico asocia etiquetas y no presenta violaciones graves", async ({ page }) => {
+  await page.context().clearCookies();
+  await page.goto("/");
+  await expect(page.getByLabel("Email")).toBeVisible();
+  await expect(page.getByLabel("Contraseña", { exact: true })).toBeVisible();
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(
+    results.violations.filter(
+      (violation) => violation.impact === "critical" || violation.impact === "serious",
+    ),
+  ).toEqual([]);
 });
 
 test("dashboard conserva comportamiento util en viewport movil", async ({ page }) => {

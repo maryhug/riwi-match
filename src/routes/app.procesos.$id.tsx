@@ -531,7 +531,7 @@ function Detalle() {
             {isActive ? (
               <button
                 onClick={() => setCloseProcessModalOpen(true)}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20 text-sm font-semibold transition cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20 text-sm font-semibold transition cursor-pointer shadow-xs"
               >
                 <XCircle className="h-4 w-4 text-rose-500" /> Cerrar proceso
               </button>
@@ -2759,7 +2759,7 @@ export function CandidatoDrawer({
                   onClose();
                   onDeleteCandidate(candidate);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 text-xs font-semibold transition cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 text-xs font-semibold transition cursor-pointer shadow-xs"
                 title={
                   candidate.status === "DISCARDED" ? "Revertir descarte" : "Descartar / eliminar"
                 }

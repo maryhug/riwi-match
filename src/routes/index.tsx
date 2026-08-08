@@ -70,10 +70,14 @@ function Login() {
               </div>
             )}
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <label
+                htmlFor="login-email"
+                className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+              >
                 Email
               </label>
               <input
+                id="login-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -83,11 +87,15 @@ function Login() {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <label
+                htmlFor="login-password"
+                className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+              >
                 Contraseña
               </label>
               <div className="relative mt-1.5">
                 <input
+                  id="login-password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

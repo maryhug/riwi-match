@@ -98,6 +98,31 @@ interface ApiCallOptions {
   tokenOverride?: string;
 }
 
+function formatApiDetail(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "msg" in item) {
+          const message = (item as { msg?: unknown }).msg;
+          return typeof message === "string" ? message : null;
+        }
+        return null;
+      })
+      .filter((message): message is string => Boolean(message));
+    if (messages.length > 0) return messages.join("; ");
+  }
+
+  if (detail && typeof detail === "object" && "message" in detail) {
+    const message = (detail as { message?: unknown }).message;
+    if (typeof message === "string") return message;
+  }
+
+  return "La solicitud no pudo procesarse.";
+}
+
 async function rawApiCall<T>(path: string, opts: ApiCallOptions): Promise<T> {
   const baseUrl = getApiBaseUrl();
   const headers: Record<string, string> = {};
@@ -131,7 +156,7 @@ async function rawApiCall<T>(path: string, opts: ApiCallOptions): Promise<T> {
   if (!response.ok) {
     const detail =
       isJson && payload && typeof payload === "object" && "detail" in payload
-        ? String((payload as { detail: unknown }).detail)
+        ? formatApiDetail((payload as { detail: unknown }).detail)
         : `Error ${response.status}`;
     throw new ApiError(response.status, detail);
   }
