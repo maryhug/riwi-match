@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   PlayCircle,
@@ -32,6 +32,7 @@ import {
   Pencil,
   Trash2,
   X,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
@@ -72,6 +73,8 @@ import {
   updateCandidateAnalysisContext,
   updateCandidate,
   deleteCandidate,
+  discardCandidate,
+  restoreCandidate,
 } from "@/lib/api/candidates.functions";
 import { triggerMatch, getMatchStatus } from "@/lib/api/match.functions";
 import {
@@ -90,10 +93,13 @@ import {
   CANDIDATE_STATUS_LABEL,
   MATCH_CATEGORY_LABEL,
   ADVANCEMENT_PROBABILITY_LABEL,
+  WHATSAPP_CONSENT_STATUS_LABEL,
+  AVAILABILITY_PREFERENCE_LABEL,
   type ProcessStatus,
   type MatchCategory,
   type CandidateStatus,
   type AdvancementProbability,
+  type WhatsAppConsentStatus,
 } from "@/lib/types/enums";
 import type {
   CandidateListItem,
@@ -102,6 +108,7 @@ import type {
   ParseJDResponse,
   ProfilingRunOut,
   PipelineCandidate,
+  AvailabilityPreference,
 } from "@/lib/types/api";
 import { cn, cleanAnswerText } from "@/lib/utils";
 
@@ -112,6 +119,16 @@ export const Route = createFileRoute("/app/procesos/$id")({
 
 const tabs = ["Dashboard", "Ranking de candidatos", "Kanban", "Configuración"] as const;
 type TabName = (typeof tabs)[number];
+
+function isProfilingRunOut(run: { id: string }): run is ProfilingRunOut {
+  return "process_candidate_id" in run && "candidate_name" in run;
+}
+
+const VOICE_LANGUAGES = [
+  { value: "es", label: "Español" },
+  { value: "en", label: "Inglés" },
+  { value: "pt", label: "Portugués" },
+];
 
 const CATEGORY_COLOR: Record<MatchCategory, { text: string; bg: string; ring: string }> = {
   HIGH: { text: "text-success", bg: "bg-success/15", ring: "#22c55e" },
@@ -134,6 +151,57 @@ const BREAKDOWN_LABELS: Record<keyof MatchBreakdown, string> = {
   languages: "Idiomas",
   education_certifications: "Educación",
 };
+
+const WHATSAPP_CONSENT_STYLE: Record<
+  WhatsAppConsentStatus,
+  { icon: typeof ThumbsUp; className: string }
+> = {
+  ACCEPTED: { icon: ThumbsUp, className: "text-emerald-600 bg-emerald-500/10" },
+  REJECTED: { icon: ThumbsDown, className: "text-rose-600 bg-rose-500/10" },
+  PENDING: { icon: AlertCircle, className: "text-amber-600 bg-amber-500/10" },
+  TIMEOUT: { icon: XCircle, className: "text-muted-foreground bg-muted" },
+};
+
+function WhatsAppConsentBadge({ status }: { status?: WhatsAppConsentStatus | null }) {
+  if (!status || !WHATSAPP_CONSENT_STYLE[status]) return null;
+  const { icon: Icon, className } = WHATSAPP_CONSENT_STYLE[status];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold",
+        className,
+      )}
+      title={`Autorización WhatsApp: ${WHATSAPP_CONSENT_STATUS_LABEL[status] ?? ""}`}
+    >
+      <Icon className="h-3 w-3" />
+      {WHATSAPP_CONSENT_STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+function formatAvailability(pref: AvailabilityPreference | null): string | null {
+  if (!pref) return null;
+  if (pref.preference === "SPECIFIC_WINDOW") {
+    const range =
+      pref.start_time && pref.end_time ? `${pref.start_time}–${pref.end_time}` : pref.start_time;
+    return (
+      [pref.date, range].filter(Boolean).join(" · ") ||
+      AVAILABILITY_PREFERENCE_LABEL[pref.preference]
+    );
+  }
+  return AVAILABILITY_PREFERENCE_LABEL[pref.preference];
+}
+
+function AvailabilityBadge({ pref }: { pref: AvailabilityPreference | null }) {
+  const text = formatAvailability(pref);
+  if (!text) return <span className="text-muted-foreground text-xs">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <Clock className="h-3 w-3" />
+      {text}
+    </span>
+  );
+}
 
 function MatchRing({
   pct,
@@ -211,34 +279,42 @@ function Detalle() {
   const [editingCandidate, setEditingCandidate] = useState<CandidateListItem | null>(null);
   const [deletingCandidate, setDeletingCandidate] = useState<CandidateListItem | null>(null);
   const [closeProcessModalOpen, setCloseProcessModalOpen] = useState(false);
-  const { data: process, isLoading: processLoading } = useQuery({
-    queryKey: ["process", id],
-    queryFn: () => getProcess({ data: { processId: id } }),
-    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
-  });
-
   const { data: progress } = useQuery({
     queryKey: ["process-progress", id],
     queryFn: () => getProcessProgress({ data: { processId: id } }),
     refetchInterval: LIVE_REFRESH_INTERVAL_MS,
   });
 
+  const isActiveProcessing =
+    progress?.stage === "MATCH_PROCESSING" ||
+    progress?.stage === "CV_PROCESSING" ||
+    (progress?.counts?.calls_active ?? 0) > 0 ||
+    (progress?.counts?.profiling_active ?? 0) > 0;
+
+  const dynamicRefetchInterval = isActiveProcessing ? LIVE_REFRESH_INTERVAL_MS : 15000;
+
+  const { data: process, isLoading: processLoading } = useQuery({
+    queryKey: ["process", id],
+    queryFn: () => getProcess({ data: { processId: id } }),
+    refetchInterval: dynamicRefetchInterval,
+  });
+
   const { data: candidatesData } = useQuery({
     queryKey: ["candidates", id],
     queryFn: () => getCandidates({ data: { processId: id } }),
-    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    refetchInterval: dynamicRefetchInterval,
   });
 
   const { data: profilingRunsData } = useQuery({
     queryKey: ["profiling-runs", id],
     queryFn: () => getProcessProfilingRuns({ data: { processId: id } }),
-    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    refetchInterval: dynamicRefetchInterval,
   });
 
   const { data: pipelineData } = useQuery({
     queryKey: ["process-pipeline", id],
     queryFn: () => getProcessPipeline({ data: { processId: id } }),
-    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    refetchInterval: dynamicRefetchInterval,
   });
 
   const { data: matchStatus } = useQuery({
@@ -353,17 +429,21 @@ function Detalle() {
       toast.error(error instanceof Error ? error.message : "No se pudo cancelar"),
   });
 
-  const openLatestRun = async (item: PipelineCandidate) => {
-    if (!item.latest_run) return;
-    try {
-      const run = await qc.fetchQuery({
-        queryKey: ["profiling-run", item.latest_run.id],
-        queryFn: () => getProfilingRunDetail({ data: { runId: item.latest_run!.id } }),
-      });
+  const openProfilingRun = (
+    target: PipelineCandidate | ProfilingRunOut | { id: string } | null,
+  ) => {
+    if (!target) return;
+    const run = "latest_run" in target ? target.latest_run : target;
+    if (!run) return;
+    if (isProfilingRunOut(run)) {
       setProfilingModalRun(run);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo abrir el intento");
+      return;
     }
+    void getProfilingRunDetail({ data: { runId: run.id } })
+      .then(setProfilingModalRun)
+      .catch((error: unknown) =>
+        toast.error(error instanceof Error ? error.message : "No se pudo cargar la corrida"),
+      );
   };
 
   if (processLoading) {
@@ -558,7 +638,7 @@ function Detalle() {
           selected={selected}
           setSelected={setSelected}
           onOpenDrawer={setDrawerCandidate}
-          onOpenProfilingModal={setProfilingModalRun}
+          onOpenProfilingModal={openProfilingRun}
           onActivateProfiling={(ids) => profilingMutation.mutate(ids)}
           activating={profilingMutation.isPending}
           onPreviewNormalized={(c) => {
@@ -576,7 +656,7 @@ function Detalle() {
         <PipelineBoard
           items={pipelineData?.candidates ?? []}
           includeCvMatch
-          onOpenLatest={openLatestRun}
+          onOpenLatest={openProfilingRun}
           onOpenHistory={setHistoryCandidate}
           onRetry={(item) => profilingMutation.mutate([item.process_candidate_id])}
           onCancel={(item) => cancelProfilingMutation.mutate(item)}
@@ -592,7 +672,7 @@ function Detalle() {
           candidate={drawerCandidate}
           latestRun={latestRunByPc.get(drawerCandidate.process_candidate_id) ?? null}
           onClose={() => setDrawerCandidate(null)}
-          onOpenProfilingModal={setProfilingModalRun}
+          onOpenProfilingModal={openProfilingRun}
           onPreviewNormalized={(c) => {
             setPreviewData({
               title: c.name,
@@ -1019,6 +1099,12 @@ function EditCandidateModal({
   );
 }
 
+/**
+ * DISCARDED se revierte desde aquí. MATCHED/PROFILING_FAILED admiten descarte reversible
+ * (RB-008, CandidateStateMachine). Cualquier otro estado (profiling en curso/completado,
+ * pendiente de match, etc.) no tiene transición válida a DISCARDED — solo se ofrece el
+ * borrado físico permanente.
+ */
 function DeleteCandidateModal({
   isOpen,
   onClose,
@@ -1031,27 +1117,131 @@ function DeleteCandidateModal({
   candidate: CandidateListItem | null;
 }) {
   const qc = useQueryClient();
+  const isDiscarded = candidate?.status === "DISCARDED";
+  const canDiscard = candidate?.status === "MATCHED" || candidate?.status === "PROFILING_FAILED";
+
+  const invalidateAndClose = (message: string) => {
+    qc.invalidateQueries({ queryKey: ["candidates", processId] });
+    toast.success(message);
+    onClose();
+  };
+
+  const discardMutation = useMutation({
+    mutationFn: () =>
+      discardCandidate({ data: { processId, pcId: candidate!.process_candidate_id } }),
+    onSuccess: () =>
+      invalidateAndClose("Candidato descartado del ranking — puedes revertirlo cuando quieras"),
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo descartar el candidato"),
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: () =>
+      restoreCandidate({ data: { processId, pcId: candidate!.process_candidate_id } }),
+    onSuccess: () => invalidateAndClose("Descarte revertido — el candidato vuelve al ranking"),
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo revertir el descarte"),
+  });
 
   const deleteMutation = useMutation({
     mutationFn: () =>
-      deleteCandidate({
-        data: {
-          processId,
-          pcId: candidate!.process_candidate_id,
-        },
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["candidates", processId] });
-      toast.success("Candidato eliminado del proceso");
-      onClose();
-    },
-    onError: (err: unknown) => {
-      toast.error(err instanceof Error ? err.message : "Error al eliminar candidato");
-    },
+      deleteCandidate({ data: { processId, pcId: candidate!.process_candidate_id } }),
+    onSuccess: () => invalidateAndClose("Candidato eliminado del proceso"),
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "Error al eliminar candidato"),
   });
 
   if (!isOpen || !candidate) return null;
 
+  if (isDiscarded) {
+    return (
+      <ConfirmActionModal
+        onClose={onClose}
+        icon={<ThumbsUp className="h-5 w-5" />}
+        iconClassName="bg-emerald-50 text-emerald-600"
+        title="¿Revertir descarte?"
+        description={
+          <>
+            <strong className="text-slate-800">{candidate.name}</strong> vuelve al ranking activo
+            del proceso, con estado Rankeado (MATCHED).
+          </>
+        }
+        confirmLabel="Sí, revertir"
+        confirmPendingLabel="Revirtiendo…"
+        confirmClassName="bg-emerald-600 hover:bg-emerald-700"
+        isPending={restoreMutation.isPending}
+        onConfirm={() => restoreMutation.mutate()}
+      />
+    );
+  }
+
+  if (canDiscard) {
+    return (
+      <ConfirmActionModal
+        onClose={onClose}
+        icon={<Trash2 className="h-5 w-5" />}
+        iconClassName="bg-amber-50 text-amber-600"
+        title="¿Descartar candidato?"
+        description={
+          <>
+            <strong className="text-slate-800">{candidate.name}</strong> sale del ranking activo,
+            pero no se borra — puedes revertir el descarte cuando quieras desde el mismo botón.
+          </>
+        }
+        confirmLabel="Sí, descartar"
+        confirmPendingLabel="Descartando…"
+        confirmClassName="bg-amber-600 hover:bg-amber-700"
+        isPending={discardMutation.isPending}
+        onConfirm={() => discardMutation.mutate()}
+      />
+    );
+  }
+
+  return (
+    <ConfirmActionModal
+      onClose={onClose}
+      icon={<Trash2 className="h-5 w-5" />}
+      iconClassName="bg-rose-50 text-rose-600"
+      title="¿Eliminar candidato?"
+      description={
+        <>
+          <strong className="text-slate-800">{candidate.name}</strong> está en un estado (
+          {CANDIDATE_STATUS_LABEL[candidate.status]}) que no admite descarte reversible — solo se
+          puede eliminar de forma permanente. Esta acción no se puede deshacer.
+        </>
+      }
+      confirmLabel="Sí, eliminar"
+      confirmPendingLabel="Eliminando…"
+      confirmClassName="bg-rose-600 hover:bg-rose-700"
+      isPending={deleteMutation.isPending}
+      onConfirm={() => deleteMutation.mutate()}
+    />
+  );
+}
+
+function ConfirmActionModal({
+  onClose,
+  icon,
+  iconClassName,
+  title,
+  description,
+  confirmLabel,
+  confirmPendingLabel,
+  confirmClassName,
+  isPending,
+  onConfirm,
+}: {
+  onClose: () => void;
+  icon: ReactNode;
+  iconClassName: string;
+  title: string;
+  description: ReactNode;
+  confirmLabel: string;
+  confirmPendingLabel: string;
+  confirmClassName: string;
+  isPending: boolean;
+  onConfirm: () => void;
+}) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
@@ -1062,16 +1252,10 @@ function DeleteCandidateModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3">
-          <div className="p-2.5 rounded-2xl bg-rose-50 text-rose-600 shrink-0 mt-0.5">
-            <Trash2 className="h-5 w-5" />
-          </div>
+          <div className={cn("p-2.5 rounded-2xl shrink-0 mt-0.5", iconClassName)}>{icon}</div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">¿Eliminar candidato?</h3>
-            <p className="text-xs text-slate-500 leading-relaxed mt-1">
-              ¿Estás seguro de que deseas eliminar a{" "}
-              <strong className="text-slate-800">{candidate.name}</strong> de este proceso de
-              selección? Esta acción no se puede deshacer.
-            </p>
+            <h3 className="text-base font-bold text-slate-900">{title}</h3>
+            <p className="text-xs text-slate-500 leading-relaxed mt-1">{description}</p>
           </div>
         </div>
 
@@ -1085,11 +1269,14 @@ function DeleteCandidateModal({
           </button>
           <button
             type="button"
-            onClick={() => deleteMutation.mutate()}
-            disabled={deleteMutation.isPending}
-            className="px-5 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 transition cursor-pointer disabled:opacity-50 shadow-xs"
+            onClick={onConfirm}
+            disabled={isPending}
+            className={cn(
+              "px-5 py-2 rounded-xl text-xs font-semibold text-white transition cursor-pointer disabled:opacity-50 shadow-xs",
+              confirmClassName,
+            )}
           >
-            {deleteMutation.isPending ? "Eliminando…" : "Sí, eliminar"}
+            {isPending ? confirmPendingLabel : confirmLabel}
           </button>
         </div>
       </div>
@@ -1347,6 +1534,8 @@ function RankingTab({
                         <th className="text-left font-medium px-3 py-3">Match</th>
                         <th className="text-left font-medium px-3 py-3">Categoría</th>
                         <th className="text-left font-medium px-3 py-3">Ciudad</th>
+                        <th className="text-left font-medium px-3 py-3">WhatsApp</th>
+                        <th className="text-left font-medium px-3 py-3">Disponibilidad</th>
                         <th className="text-left font-medium px-3 py-3">Profiling</th>
                         <th className="text-left font-medium px-3 py-3">Avance</th>
                         <th className="text-right font-medium px-3 py-3">Costo</th>
@@ -1405,6 +1594,16 @@ function RankingTab({
                               {c.city ?? "—"}
                             </td>
                             <td className="px-3 py-3 text-xs">
+                              {c.whatsapp_consent ? (
+                                <WhatsAppConsentBadge status={c.whatsapp_consent} />
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3">
+                              <AvailabilityBadge pref={c.availability_preference} />
+                            </td>
+                            <td className="px-3 py-3 text-xs">
                               {pipelineByPc.get(c.process_candidate_id)?.state_label ??
                                 CANDIDATE_STATUS_LABEL[c.status]}
                             </td>
@@ -1447,7 +1646,11 @@ function RankingTab({
                                   <button
                                     onClick={() => onDeleteCandidate(c)}
                                     className="h-7 w-7 grid place-items-center rounded-md hover:bg-rose-500/10 transition cursor-pointer text-muted-foreground hover:text-rose-600"
-                                    title="Eliminar candidato del proceso"
+                                    title={
+                                      c.status === "DISCARDED"
+                                        ? "Revertir descarte"
+                                        : "Descartar / eliminar candidato"
+                                    }
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
@@ -1762,8 +1965,10 @@ function ConfigTab({
   const [selectedSetId, setSelectedSetId] = useState(process.question_set_id ?? "");
   const [voicePrompt, setVoicePrompt] = useState(process.voice_override_system_prompt ?? "");
   const [voiceGreeting, setVoiceGreeting] = useState(process.voice_override_first_message ?? "");
+  const [voiceLanguage, setVoiceLanguage] = useState(process.voice_override_language ?? "");
   const [jdAnalysis, setJdAnalysis] = useState<ParseJDResponse | null>(null);
   const [jdText, setJdText] = useState(process.job_description?.jd_raw_text ?? "");
+  const [preEnhanceJdText, setPreEnhanceJdText] = useState<string | null>(null);
 
   const { data: questionSets } = useQuery({
     queryKey: ["question-sets"],
@@ -1815,6 +2020,7 @@ function ConfigTab({
           processId,
           voice_override_system_prompt: voicePrompt || null,
           voice_override_first_message: voiceGreeting || null,
+          voice_override_language: voiceLanguage || null,
         },
       }),
     onSuccess: () => {
@@ -1830,7 +2036,10 @@ function ConfigTab({
     mutationFn: () => parseJobDescription({ data: { processId, jdRawText: jdText } }),
     onSuccess: (res) => {
       setJdAnalysis(res);
-      if (res.enhanced_jd) setJdText(res.enhanced_jd);
+      if (res.enhanced_jd) {
+        setPreEnhanceJdText(jdText);
+        setJdText(res.enhanced_jd);
+      }
       toast.success("JD analizada y enriquecida por IA", {
         description: "La versión mejorada ya está en el campo de texto — puedes editarla.",
       });
@@ -1839,11 +2048,19 @@ function ConfigTab({
       toast.error(err instanceof Error ? err.message : "No se pudo analizar la JD"),
   });
 
+  const undoEnhance = () => {
+    if (preEnhanceJdText === null) return;
+    setJdText(preEnhanceJdText);
+    setPreEnhanceJdText(null);
+    toast.info("Se restauró el texto anterior a la mejora de IA");
+  };
+
   const saveJDMutation = useMutation({
     mutationFn: () => createJobDescription({ data: { processId, jdRawText: jdText } }),
     onSuccess: () => {
       toast.success("Nueva versión de la JD guardada");
       setJdAnalysis(null);
+      setPreEnhanceJdText(null);
       qc.invalidateQueries({ queryKey: ["job-descriptions", processId] });
       qc.invalidateQueries({ queryKey: ["process", processId] });
       qc.invalidateQueries({ queryKey: ["process-progress", processId] });
@@ -1969,6 +2186,15 @@ function ConfigTab({
           >
             {analyzeJDMutation.isPending ? "Analizando…" : "Analizar y enriquecer con IA"}
           </button>
+          {preEnhanceJdText !== null && (
+            <button
+              onClick={undoEnhance}
+              title="Restaurar el texto anterior a la mejora de IA"
+              className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition"
+            >
+              Deshacer
+            </button>
+          )}
         </div>
 
         {jdAnalysis && (
@@ -2142,6 +2368,24 @@ function ConfigTab({
             className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
           />
         </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Idioma (llamada ElevenLabs y mensajes de WhatsApp)
+          </label>
+          <AppSelect
+            disabled={!isActive}
+            value={voiceLanguage || "auto"}
+            onValueChange={(value) => setVoiceLanguage(value === "auto" ? "" : value)}
+            className="mt-1.5 w-full"
+          >
+            <AppSelectItem value="auto">Automático (según el set de preguntas)</AppSelectItem>
+            {VOICE_LANGUAGES.map((lang) => (
+              <AppSelectItem key={lang.value} value={lang.value}>
+                {lang.label}
+              </AppSelectItem>
+            ))}
+          </AppSelect>
+        </div>
         <button
           onClick={() => voiceMutation.mutate()}
           disabled={!isActive || voiceMutation.isPending}
@@ -2156,7 +2400,7 @@ function ConfigTab({
 
 // ─── Candidato Drawer ───────────────────────────────────────────────────────
 
-function CandidatoDrawer({
+export function CandidatoDrawer({
   processId,
   candidate,
   latestRun,
@@ -2426,7 +2670,7 @@ function CandidatoDrawer({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white text-slate-900 shadow-2xl border border-slate-200 cursor-default p-0"
+        className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto scrollbar-visible rounded-3xl bg-white text-slate-900 shadow-2xl border border-slate-200 cursor-default p-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sticky Header Banner */}
@@ -2440,7 +2684,7 @@ function CandidatoDrawer({
                 <h2 className="text-2xl font-bold tracking-tight text-slate-900 truncate">
                   {candidate.name}
                 </h2>
-                {candidate.match_category && (
+                {candidate.match_category && CATEGORY_COLOR[candidate.match_category] && (
                   <span
                     className={cn(
                       "px-2.5 py-0.5 rounded-full text-xs font-bold",
@@ -2451,16 +2695,18 @@ function CandidatoDrawer({
                     {MATCH_CATEGORY_LABEL[candidate.match_category]}
                   </span>
                 )}
-                {latestRun?.advancement_probability && (
-                  <span
-                    className={cn(
-                      "px-2.5 py-0.5 rounded-full text-xs font-semibold",
-                      ADVANCE_COLOR[latestRun.advancement_probability],
-                    )}
-                  >
-                    Avance: {ADVANCEMENT_PROBABILITY_LABEL[latestRun.advancement_probability]}
-                  </span>
-                )}
+                {latestRun?.advancement_probability &&
+                  ADVANCE_COLOR[latestRun.advancement_probability] && (
+                    <span
+                      className={cn(
+                        "px-2.5 py-0.5 rounded-full text-xs font-semibold",
+                        ADVANCE_COLOR[latestRun.advancement_probability],
+                      )}
+                    >
+                      Avance: {ADVANCEMENT_PROBABILITY_LABEL[latestRun.advancement_probability]}
+                    </span>
+                  )}
+                <WhatsAppConsentBadge status={candidate.whatsapp_consent} />
               </div>
 
               <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 font-medium">
@@ -2475,6 +2721,12 @@ function CandidatoDrawer({
                 {candidate.city && (
                   <span className="flex items-center gap-1">
                     <MapPin className="h-3.5 w-3.5 text-primary" /> {candidate.city}
+                  </span>
+                )}
+                {formatAvailability(candidate.availability_preference) && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5 text-primary" />{" "}
+                    {formatAvailability(candidate.availability_preference)}
                   </span>
                 )}
               </div>
@@ -2508,9 +2760,12 @@ function CandidatoDrawer({
                   onDeleteCandidate(candidate);
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 text-xs font-semibold transition cursor-pointer shadow-xs"
-                title="Eliminar del proceso"
+                title={
+                  candidate.status === "DISCARDED" ? "Revertir descarte" : "Descartar / eliminar"
+                }
               >
-                <Trash2 className="h-3.5 w-3.5 text-rose-500" /> Eliminar
+                <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+                {candidate.status === "DISCARDED" ? "Revertir" : "Descartar"}
               </button>
             )}
             <button
@@ -2790,7 +3045,7 @@ function CandidatoDrawer({
                     Sin respuestas registradas en esta sesión.
                   </div>
                 ) : (
-                  <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-[320px] overflow-y-auto scrollbar-visible pr-1">
                     {answersData.answers.map((a) => (
                       <details
                         key={a.id}

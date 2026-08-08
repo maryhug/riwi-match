@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { DollarSign, AlertTriangle } from "lucide-react";
+import { DollarSign, AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
 import { LoadingIndicator } from "@/components/app/LoadingIndicator";
@@ -48,6 +48,17 @@ function groupByPeriod(daily: { date: string; cost: number }[], period: Period) 
     .map(([label, costo]) => ({ label, costo }));
 }
 
+function formatRelativeTime(timestampMs: number): string {
+  if (!timestampMs) return "—";
+  const seconds = Math.max(0, Math.round((Date.now() - timestampMs) / 1000));
+  if (seconds < 5) return "hace un momento";
+  if (seconds < 60) return `hace ${seconds}s`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `hace ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  return `hace ${hours} h`;
+}
+
 const TOTAL_BUDGET_KEY = "platform_total_budget";
 
 function Costos() {
@@ -57,12 +68,24 @@ function Costos() {
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [processFilter, setProcessFilter] = useState<string | null>(null);
 
-  const { data: globalMetrics, isLoading: isLoadingGlobalMetrics } = useQuery({
+  const {
+    data: globalMetrics,
+    isLoading: isLoadingGlobalMetrics,
+    dataUpdatedAt: globalUpdatedAt,
+    isFetching: isFetchingGlobal,
+    refetch: refetchGlobal,
+  } = useQuery({
     queryKey: ["dashboard-metrics"],
     queryFn: () => getDashboardMetrics(),
   });
 
-  const { data: filteredMetrics, isLoading: isLoadingFilteredMetrics } = useQuery({
+  const {
+    data: filteredMetrics,
+    isLoading: isLoadingFilteredMetrics,
+    dataUpdatedAt: filteredUpdatedAt,
+    isFetching: isFetchingFiltered,
+    refetch: refetchFiltered,
+  } = useQuery({
     queryKey: ["dashboard-metrics", processFilter],
     queryFn: () => getProcessDashboardMetrics({ data: { processId: processFilter! } }),
     enabled: Boolean(processFilter),
@@ -74,6 +97,9 @@ function Costos() {
   });
 
   const metrics = processFilter ? filteredMetrics : globalMetrics;
+  const metricsUpdatedAt = processFilter ? filteredUpdatedAt : globalUpdatedAt;
+  const isFetchingMetrics = processFilter ? isFetchingFiltered : isFetchingGlobal;
+  const refetchMetrics = processFilter ? refetchFiltered : refetchGlobal;
 
   const { data: settingsData } = useQuery({
     queryKey: ["global-settings"],
@@ -135,6 +161,15 @@ function Costos() {
           <p className="text-sm text-muted-foreground mt-1">
             Seguimiento por operación, proceso y recruiter.
           </p>
+          <button
+            onClick={() => refetchMetrics()}
+            disabled={isFetchingMetrics}
+            title="Estos datos son una foto al momento de cargar la página, no un stream en vivo — usa este botón para refrescarlos"
+            className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition disabled:opacity-60"
+          >
+            <RefreshCw className={`h-3 w-3 ${isFetchingMetrics ? "animate-spin" : ""}`} />
+            Actualizado {formatRelativeTime(metricsUpdatedAt)} · no es en tiempo real
+          </button>
         </div>
         <AppSelect
           value={processFilter ?? "all"}
@@ -373,13 +408,13 @@ function Costos() {
 function Alert({ pct, label }: { pct: number; label: string }) {
   const destructive = pct >= 100;
   const cls = destructive
-    ? "bg-destructive/15 text-destructive border-destructive/30"
+    ? "bg-destructive/15 text-destructive border-destructive/40 border-2"
     : "bg-warning/15 text-warning-foreground border-warning/30";
   return (
-    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${cls} text-xs`}>
-      <AlertTriangle className="h-3.5 w-3.5" />
-      <span className="flex-1">{label}</span>
-      <span className="font-bold">{pct}%</span>
+    <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border ${cls} text-xs`}>
+      <AlertTriangle className={destructive ? "h-4 w-4 shrink-0" : "h-3.5 w-3.5 shrink-0"} />
+      <span className="flex-1 font-medium">{label}</span>
+      <span className="font-bold tabular-nums">{pct.toFixed(1)}%</span>
     </div>
   );
 }

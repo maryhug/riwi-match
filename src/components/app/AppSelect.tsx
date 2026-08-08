@@ -29,6 +29,7 @@ export function AppSelect({
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger
+        aria-label={placeholder}
         className={cn(
           "h-10 rounded-xl border-border bg-card/80 px-3 text-sm shadow-sm backdrop-blur-xl transition hover:bg-card focus:ring-2 focus:ring-primary/40",
           className,

@@ -137,6 +137,15 @@ export const WHATSAPP_CONSENT_STATUS_LABEL: Record<WhatsAppConsentStatus, string
   TIMEOUT: "Sin respuesta",
 };
 
+export type AvailabilityPreferenceType = "ANYTIME" | "MORNING" | "AFTERNOON" | "SPECIFIC_WINDOW";
+
+export const AVAILABILITY_PREFERENCE_LABEL: Record<AvailabilityPreferenceType, string> = {
+  ANYTIME: "Cualquier momento",
+  MORNING: "Mañana",
+  AFTERNOON: "Tarde",
+  SPECIFIC_WINDOW: "Horario específico",
+};
+
 export type AITaskType =
   | "CV_EXTRACTION"
   | "CV_MATCH"

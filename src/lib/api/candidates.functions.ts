@@ -128,3 +128,23 @@ export const deleteCandidate = createServerFn({ method: "POST" })
       { method: "DELETE" },
     );
   });
+
+/** Descarte reversible (RB-008). Solo válido desde MATCHED/PROFILING_FAILED — el backend
+ * devuelve 422 en cualquier otro estado; en ese caso ofrecer deleteCandidate como fallback. */
+export const discardCandidate = createServerFn({ method: "POST" })
+  .validator(z.object({ processId: z.string(), pcId: z.string() }))
+  .handler(async ({ data }) => {
+    return apiCall<{ status: string; process_candidate_id: string }>(
+      `/api/v1/processes/${data.processId}/candidates/${data.pcId}/discard`,
+      { method: "PATCH" },
+    );
+  });
+
+export const restoreCandidate = createServerFn({ method: "POST" })
+  .validator(z.object({ processId: z.string(), pcId: z.string() }))
+  .handler(async ({ data }) => {
+    return apiCall<{ status: string; process_candidate_id: string }>(
+      `/api/v1/processes/${data.processId}/candidates/${data.pcId}/restore`,
+      { method: "PATCH" },
+    );
+  });

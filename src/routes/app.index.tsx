@@ -404,6 +404,7 @@ function Inicio() {
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             onClick={(e) => e.stopPropagation()}
+                            aria-label={`Acciones para ${p.name}`}
                             className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition"
                           >
                             <MoreHorizontal className="h-4 w-4 text-muted-foreground" />

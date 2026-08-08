@@ -30,7 +30,12 @@ import {
 const items: { to: string; label: string; icon: typeof Briefcase; roles: UserRole[] }[] = [
   { to: "/app", label: "Inicio", icon: Briefcase, roles: ["ADMIN", "RECRUITER", "TA_LEADER"] },
   { to: "/app/sets", label: "Sets", icon: ListChecks, roles: ["ADMIN", "RECRUITER", "TA_LEADER"] },
-  { to: "/app/profiling", label: "Profiling", icon: PhoneCall, roles: ["ADMIN", "RECRUITER"] },
+  {
+    to: "/app/profiling",
+    label: "Profiling",
+    icon: PhoneCall,
+    roles: ["ADMIN", "RECRUITER", "TA_LEADER"],
+  },
   { to: "/app/equipo", label: "Equipo", icon: Users, roles: ["ADMIN", "TA_LEADER"] },
   {
     to: "/app/costos",
@@ -211,6 +216,16 @@ export function FloatingNav() {
                 {USER_ROLE_LABEL[role]}
               </span>
             </div>
+            {(role === "ADMIN" || role === "TA_LEADER") && (
+              <>
+                <DropdownMenuItem asChild className="cursor-pointer gap-2 text-xs font-medium">
+                  <Link to="/app/admin">
+                    <Settings className="h-3.5 w-3.5" /> Ajustes y usuarios
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 pt-1">
               Mover barra a
             </DropdownMenuLabel>

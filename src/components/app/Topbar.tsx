@@ -376,6 +376,9 @@ export function Topbar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const segments = path.split("/").filter(Boolean);
   const [search, setSearch] = useState("");
+  // Ocultar la búsqueda global en flujos de edición enfocados: navegar fuera de un
+  // wizard multi-paso o de un set en construcción pierde el progreso no guardado.
+  const hideSearch = path === "/app/procesos/nuevo" || /^\/app\/sets\/[^/]+$/.test(path);
 
   return (
     <header
@@ -402,24 +405,26 @@ export function Topbar() {
           })}
         </nav>
 
-        {/* Search */}
+        {/* Search — oculta en flujos de edición enfocados (ver hideSearch) */}
         <div className="flex-1 min-w-0">
-          <form
-            className="relative"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const query = search.trim();
-              if (query.length >= 2) navigate({ to: "/app/buscar", search: { q: query } });
-            }}
-          >
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar procesos, candidatos, sets…"
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-full bg-muted/60 border border-transparent focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground"
-            />
-          </form>
+          {!hideSearch && (
+            <form
+              className="relative"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const query = search.trim();
+                if (query.length >= 2) navigate({ to: "/app/buscar", search: { q: query } });
+              }}
+            >
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Buscar procesos, candidatos, sets…"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-full bg-muted/60 border border-transparent focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground"
+              />
+            </form>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 ml-auto">

@@ -1,6 +1,6 @@
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertTriangle,
   CheckCircle2,
   Clock3,
   FileSearch,
@@ -86,6 +86,7 @@ function initials(name: string) {
 function PipelineCard({
   item,
   showContext,
+  onOpenCandidate,
   onOpenLatest,
   onOpenHistory,
   onRetry,
@@ -94,6 +95,7 @@ function PipelineCard({
 }: {
   item: PipelineCandidate;
   showContext: boolean;
+  onOpenCandidate?: (item: PipelineCandidate) => void;
   onOpenLatest?: (item: PipelineCandidate) => void;
   onOpenHistory?: (item: PipelineCandidate) => void;
   onRetry?: (item: PipelineCandidate) => void;
@@ -106,59 +108,65 @@ function PipelineCard({
   return (
     <GlassCard className="group relative overflow-hidden border-border/70 p-0 transition duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-lg">
       <div className={cn("absolute inset-x-0 top-0 h-px", COLUMN_META[item.board_column].rail)} />
-      <button
-        type="button"
-        onClick={() => onOpenLatest?.(item)}
-        disabled={!item.latest_run || !onOpenLatest}
-        className="w-full px-3.5 pb-2.5 pt-3.5 text-left disabled:cursor-default"
-      >
-        <div className="flex items-start gap-2.5">
-          <div
-            className={cn(
-              "grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-[11px] font-black",
-              BADGE_STYLE[item.board_column],
-            )}
-          >
-            {initials(item.candidate_name)}
-          </div>
+      <div className="w-full px-3.5 pb-2.5 pt-3.5 text-left">
+        <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-bold tracking-tight">{item.candidate_name}</div>
+            {onOpenCandidate && item.process?.id ? (
+              <button
+                type="button"
+                onClick={() => onOpenCandidate(item)}
+                className="truncate text-left text-sm font-bold tracking-tight text-foreground transition hover:text-primary hover:underline"
+              >
+                {item.candidate_name}
+              </button>
+            ) : (
+              <div className="truncate text-sm font-bold tracking-tight">{item.candidate_name}</div>
+            )}
             {item.candidate_email && (
               <div className="truncate text-[10px] text-muted-foreground">
                 {item.candidate_email}
               </div>
             )}
           </div>
-          {item.consistency === "ATTENTION" && (
-            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" aria-label="Atención" />
-          )}
         </div>
 
         <div className="mt-2.5 flex items-center justify-between gap-2">
-          <PipelineStateBadge item={item} />
+          <button
+            type="button"
+            onClick={() => onOpenLatest?.(item)}
+            disabled={!item.latest_run || !onOpenLatest}
+            className="inline-flex items-center gap-1.5 transition hover:opacity-80 disabled:cursor-default disabled:hover:opacity-100"
+          >
+            <PipelineStateBadge item={item} />
+          </button>
           {item.latest_run && (
-            <span className="text-[10px] tabular-nums text-muted-foreground">
+            <button
+              type="button"
+              onClick={() => onOpenLatest?.(item)}
+              disabled={!onOpenLatest}
+              className="text-[10px] tabular-nums text-muted-foreground transition hover:text-foreground disabled:cursor-default"
+            >
               Intento {Math.max(1, item.latest_run.call_attempts)}
-            </span>
+            </button>
           )}
         </div>
 
         {showContext && item.process && (
           <div className="mt-2 border-t border-border/50 pt-2 text-[10px] leading-4 text-muted-foreground">
-            <div className="truncate font-semibold text-foreground/75">{item.process.name}</div>
+            <Link
+              to="/app/procesos/$id"
+              params={{ id: item.process.id }}
+              className="inline-block max-w-full truncate font-semibold text-foreground/80 transition hover:text-primary hover:underline"
+            >
+              {item.process.name}
+            </Link>
             <div className="truncate">
               {item.process.job_title}
               {item.recruiter ? ` · ${item.recruiter.name}` : ""}
             </div>
           </div>
         )}
-
-        {item.consistency === "ATTENTION" && item.consistency_explanation && (
-          <div className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/8 px-2 py-1.5 text-[10px] leading-4 text-amber-800 dark:text-amber-200">
-            {item.consistency_explanation}
-          </div>
-        )}
-      </button>
+      </div>
 
       <div className="flex items-center gap-1 border-t border-border/50 px-2 py-1.5">
         {item.run_count > 0 && onOpenHistory && (
@@ -202,6 +210,7 @@ export function PipelineBoard({
   items,
   includeCvMatch = false,
   showContext = false,
+  onOpenCandidate,
   onOpenLatest,
   onOpenHistory,
   onRetry,
@@ -211,6 +220,7 @@ export function PipelineBoard({
   items: PipelineCandidate[];
   includeCvMatch?: boolean;
   showContext?: boolean;
+  onOpenCandidate?: (item: PipelineCandidate) => void;
   onOpenLatest?: (item: PipelineCandidate) => void;
   onOpenHistory?: (item: PipelineCandidate) => void;
   onRetry?: (item: PipelineCandidate) => void;
@@ -232,10 +242,7 @@ export function PipelineBoard({
         return (
           <section
             key={column}
-            className={cn(
-              "min-w-0 rounded-2xl border border-border/60 bg-gradient-to-b to-transparent p-2.5",
-              meta.wash,
-            )}
+            className="flex flex-col min-w-0 rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-2.5"
           >
             <header className="mb-2.5 flex items-center gap-2 px-1">
               <span className={cn("h-5 w-1 rounded-full", meta.rail)} />
@@ -247,25 +254,28 @@ export function PipelineBoard({
                 {columnItems.length}
               </span>
             </header>
-            <div className="space-y-2">
-              {columnItems.length === 0 ? (
-                <div className="grid min-h-24 place-items-center rounded-xl border border-dashed border-border/70 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-                  Sin tarjetas
-                </div>
-              ) : (
-                columnItems.map((item) => (
-                  <PipelineCard
-                    key={item.process_candidate_id}
-                    item={item}
-                    showContext={showContext}
-                    onOpenLatest={onOpenLatest}
-                    onOpenHistory={onOpenHistory}
-                    onRetry={onRetry}
-                    onCancel={onCancel}
-                    actionPending={actionPending}
-                  />
-                ))
-              )}
+            <div className="relative flex-1 min-h-[140px]">
+              <div className="max-h-[calc(100vh-310px)] overflow-y-auto space-y-2 pr-1 pb-4 [mask-image:linear-gradient(to_bottom,black_85%,transparent_100%)]">
+                {columnItems.length === 0 ? (
+                  <div className="grid min-h-24 place-items-center rounded-xl border border-dashed border-border/70 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                    Sin candidatos
+                  </div>
+                ) : (
+                  columnItems.map((item) => (
+                    <PipelineCard
+                      key={item.process_candidate_id}
+                      item={item}
+                      showContext={showContext}
+                      onOpenCandidate={onOpenCandidate}
+                      onOpenLatest={onOpenLatest}
+                      onOpenHistory={onOpenHistory}
+                      onRetry={onRetry}
+                      onCancel={onCancel}
+                      actionPending={actionPending}
+                    />
+                  ))
+                )}
+              </div>
             </div>
           </section>
         );

@@ -1,19 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Calendar, CheckCircle2, Clock3, PhoneCall } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle2, Clock3, PhoneCall, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { AppSelect, AppSelectItem } from "@/components/app/AppSelect";
 import { GlassCard } from "@/components/app/GlassCard";
 import { LoadingIndicator } from "@/components/app/LoadingIndicator";
 import { PipelineBoard, ProfilingHistoryDialog } from "@/components/app/PipelineBoard";
 import { ProfilingResultModal } from "@/components/app/ProfilingResultModal";
+import { CandidatoDrawer } from "./app.procesos.$id";
 import {
   cancelProfilingRun,
   getProfilingBoard,
   getProfilingRunDetail,
   triggerProfiling,
 } from "@/lib/api/profiling.functions";
-import type { PipelineCandidate, ProfilingRunOut } from "@/lib/types/api";
+import { getProcesses } from "@/lib/api/processes.functions";
+import type { CandidateListItem, PipelineCandidate, ProfilingRunOut } from "@/lib/types/api";
 import { LIVE_REFRESH_INTERVAL_MS } from "@/lib/polling";
 import { cn } from "@/lib/utils";
 
@@ -31,15 +34,32 @@ const timeframeLabels: Record<Timeframe, string> = {
   all: "Histórico",
 };
 
+function isProfilingRunOut(run: { id: string }): run is ProfilingRunOut {
+  return "process_candidate_id" in run && "candidate_name" in run;
+}
+
 function Profiling() {
   const qc = useQueryClient();
   const [timeframe, setTimeframe] = useState<Timeframe>("today");
+  const [processFilter, setProcessFilter] = useState<string | null>(null);
   const [modalRun, setModalRun] = useState<ProfilingRunOut | null>(null);
   const [historyCandidate, setHistoryCandidate] = useState<PipelineCandidate | null>(null);
+  const [drawerCandidate, setDrawerCandidate] = useState<{
+    processId: string;
+    candidate: PipelineCandidate;
+  } | null>(null);
+
+  // getProcesses ya filtra por rol en el backend (recruiter -> solo los suyos,
+  // admin/TA_LEADER -> todos), así que el selector nunca ofrece procesos ajenos.
+  const { data: processesData } = useQuery({
+    queryKey: ["processes"],
+    queryFn: () => getProcesses(),
+  });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["profiling-board", timeframe],
-    queryFn: () => getProfilingBoard({ data: { timeframe } }),
+    queryKey: ["profiling-board", timeframe, processFilter],
+    queryFn: () =>
+      getProfilingBoard({ data: { timeframe, processId: processFilter ?? undefined } }),
     refetchInterval: LIVE_REFRESH_INTERVAL_MS,
   });
 
@@ -78,17 +98,19 @@ function Profiling() {
       toast.error(error instanceof Error ? error.message : "No se pudo reintentar"),
   });
 
-  const openLatest = async (item: PipelineCandidate) => {
-    if (!item.latest_run) return;
-    try {
-      const run = await qc.fetchQuery({
-        queryKey: ["profiling-run", item.latest_run.id],
-        queryFn: () => getProfilingRunDetail({ data: { runId: item.latest_run!.id } }),
-      });
+  const openLatest = (item: PipelineCandidate | ProfilingRunOut | { id: string } | null) => {
+    if (!item) return;
+    const run = "latest_run" in item ? item.latest_run : item;
+    if (!run) return;
+    if (isProfilingRunOut(run)) {
       setModalRun(run);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo abrir el intento");
+      return;
     }
+    void getProfilingRunDetail({ data: { runId: run.id } })
+      .then(setModalRun)
+      .catch((error: unknown) =>
+        toast.error(error instanceof Error ? error.message : "No se pudo cargar la corrida"),
+      );
   };
 
   const cards = useMemo(() => data?.candidates ?? [], [data]);
@@ -114,22 +136,37 @@ function Profiling() {
             Una tarjeta por candidato. Cada intento anterior permanece en su historial.
           </p>
         </div>
-        <div className="flex items-center gap-1 rounded-2xl border border-border/70 bg-card/80 p-1.5 shadow-sm backdrop-blur-md">
-          <Calendar className="mx-1 h-4 w-4 text-muted-foreground" />
-          {(Object.keys(timeframeLabels) as Timeframe[]).map((value) => (
-            <button
-              key={value}
-              onClick={() => setTimeframe(value)}
-              className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-bold transition",
-                timeframe === value
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-              )}
-            >
-              {timeframeLabels[value]}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-3">
+          <AppSelect
+            value={processFilter ?? "all"}
+            onValueChange={(value) => setProcessFilter(value === "all" ? null : value)}
+            className="w-full sm:w-64"
+            placeholder="Filtrar por proceso"
+          >
+            <AppSelectItem value="all">Todos los procesos</AppSelectItem>
+            {(processesData?.processes ?? []).map((process) => (
+              <AppSelectItem key={process.process_id} value={process.process_id}>
+                {process.name}
+              </AppSelectItem>
+            ))}
+          </AppSelect>
+          <div className="flex items-center gap-1 rounded-2xl border border-border/70 bg-card/80 p-1.5 shadow-sm backdrop-blur-md">
+            <Calendar className="mx-1 h-4 w-4 text-muted-foreground" />
+            {(Object.keys(timeframeLabels) as Timeframe[]).map((value) => (
+              <button
+                key={value}
+                onClick={() => setTimeframe(value)}
+                className={cn(
+                  "rounded-xl px-3 py-1.5 text-xs font-bold transition",
+                  timeframe === value
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                )}
+              >
+                {timeframeLabels[value]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -170,6 +207,13 @@ function Profiling() {
         <PipelineBoard
           items={cards}
           showContext
+          onOpenCandidate={(item) => {
+            if (item.process?.id) {
+              setDrawerCandidate({ processId: item.process.id, candidate: item });
+            } else {
+              toast.info("Este candidato no tiene un proceso asociado.");
+            }
+          }}
           onOpenLatest={openLatest}
           onOpenHistory={setHistoryCandidate}
           onRetry={(item) => retryMutation.mutate(item)}
@@ -191,6 +235,44 @@ function Profiling() {
         }}
       />
       <ProfilingResultModal run={modalRun} open={!!modalRun} onClose={() => setModalRun(null)} />
+
+      {drawerCandidate && (
+        <CandidatoDrawer
+          processId={drawerCandidate.processId}
+          candidate={
+            {
+              process_candidate_id: drawerCandidate.candidate.process_candidate_id,
+              candidate_id: drawerCandidate.candidate.candidate_id,
+              name: drawerCandidate.candidate.candidate_name,
+              email: drawerCandidate.candidate.candidate_email ?? "",
+              phone: null,
+              city: null,
+              rank: 0,
+              status: drawerCandidate.candidate.candidate_status,
+              match_percentage: 0,
+              match_category: null,
+              whatsapp_consent: drawerCandidate.candidate.whatsapp_consent_status,
+              normalized_cv_url: null,
+              availability_preference: null,
+              total_cost: 0,
+            } satisfies CandidateListItem
+          }
+          latestRun={null}
+          onClose={() => setDrawerCandidate(null)}
+          onOpenProfilingModal={(run) => {
+            openLatest(run);
+          }}
+          onPreviewNormalized={(c) => {
+            window.open(
+              `/dl/cv-normalized/${drawerCandidate.processId}/${c.process_candidate_id}`,
+              "_blank",
+            );
+          }}
+          onPreviewOriginal={(c) => {
+            window.open(`/dl/cv/${drawerCandidate.processId}/${c.process_candidate_id}`, "_blank");
+          }}
+        />
+      )}
     </div>
   );
 }
