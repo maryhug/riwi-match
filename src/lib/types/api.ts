@@ -175,7 +175,7 @@ export interface ProcessMetricsResponse {
   match_distribution: Partial<Record<MatchCategory, number>>;
   total_cost_usd: number;
   budget_max_usd: number;
-  cost_by_category: { voz: number; twilio: number; whatsapp: number; llm: number };
+  cost_by_category: { storage: number; voz: number; twilio: number; whatsapp: number; llm: number };
 }
 
 export interface ProcessProgressResponse {
@@ -333,11 +333,18 @@ export interface CandidateDetailResponse {
   } | null;
   costs: Array<{
     operation_type: string;
+    provider: string | null;
     model_used: string | null;
     tokens_input: number | null;
+    tokens_cached: number | null;
     tokens_output: number | null;
     call_duration_s: number | null;
     estimated_cost: number;
+    currency: string;
+    cost_source: string;
+    external_reference: string | null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    cost_breakdown: Record<string, any>;
     created_at: string;
   }>;
   total_cost: number;

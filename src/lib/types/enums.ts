@@ -164,22 +164,28 @@ export const AI_TASK_TYPE_LABEL: Record<AITaskType, string> = {
 };
 
 export type OperationType =
+  | "CV_STORAGE"
   | "CV_EXTRACTION"
+  | "CV_EMBEDDING"
   | "CV_MATCH"
   | "JD_ENHANCEMENT"
   | "VOICE_CALL"
   | "VOICE_TRANSCRIPTION"
   | "WHATSAPP_MESSAGE"
+  | "WHATSAPP_AI"
   | "ANSWER_EVALUATION"
   | "TWILIO_CALL";
 
 export const OPERATION_TYPE_LABEL: Record<OperationType, string> = {
+  CV_STORAGE: "Almacenamiento de CV (R2)",
   CV_EXTRACTION: "Extracción de CV",
+  CV_EMBEDDING: "Embedding de CV",
   CV_MATCH: "Match de CV",
   JD_ENHANCEMENT: "Mejora de JD",
   VOICE_CALL: "Llamada de voz (ElevenLabs)",
   VOICE_TRANSCRIPTION: "Transcripción de voz",
   WHATSAPP_MESSAGE: "Mensaje WhatsApp",
+  WHATSAPP_AI: "Asistente de WhatsApp",
   ANSWER_EVALUATION: "Evaluación de respuestas",
   TWILIO_CALL: "Telefonía (Twilio)",
 };

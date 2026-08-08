@@ -914,6 +914,7 @@ function DashboardTab({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {(
               [
+                ["storage", "Almacenamiento (R2)"],
                 ["voz", "Voz (ElevenLabs)"],
                 ["twilio", "Twilio (telefonía)"],
                 ["whatsapp", "WhatsApp"],

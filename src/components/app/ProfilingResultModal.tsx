@@ -292,10 +292,15 @@ export function ProfilingResultModal({
                               c.operation_type as keyof typeof OPERATION_TYPE_LABEL
                             ] ?? c.operation_type}
                           </td>
-                          <td className="px-3 py-1 text-muted-foreground">{c.model_used ?? "—"}</td>
+                          <td className="px-3 py-1 text-muted-foreground">
+                            <div>{c.model_used ?? "—"}</div>
+                            <div className="text-[10px] opacity-70">
+                              {c.provider ?? "Proveedor desconocido"} · {c.cost_source}
+                            </div>
+                          </td>
                           <td className="px-3 py-1 text-right tabular-nums text-foreground">
                             {c.tokens_input || c.tokens_output
-                              ? `${(c.tokens_input ?? 0) + (c.tokens_output ?? 0)}`
+                              ? `${(c.tokens_input ?? 0) + (c.tokens_output ?? 0)}${c.tokens_cached ? ` (${c.tokens_cached} cache)` : ""}`
                               : "—"}
                           </td>
                           <td className="px-3 py-1 text-right tabular-nums font-semibold text-foreground">

@@ -140,7 +140,17 @@ function Costos() {
     .reduce((s, d) => s + d.cost, 0);
 
   const cvExtraction = metrics.cost_by_operation.find((o) => o.operation_type === "CV_EXTRACTION");
-  const voiceCall = metrics.cost_by_operation.find((o) => o.operation_type === "VOICE_CALL");
+  const profilingEvaluation = metrics.cost_by_operation.find(
+    (o) => o.operation_type === "ANSWER_EVALUATION",
+  );
+  const cvPipelineTypes = new Set(["CV_STORAGE", "CV_EXTRACTION", "CV_EMBEDDING", "CV_MATCH"]);
+  const profilingTypes = new Set(["VOICE_CALL", "TWILIO_CALL", "ANSWER_EVALUATION"]);
+  const cvPipelineCost = metrics.cost_by_operation
+    .filter((o) => cvPipelineTypes.has(o.operation_type))
+    .reduce((sum, operation) => sum + operation.total_cost, 0);
+  const profilingCost = metrics.cost_by_operation
+    .filter((o) => profilingTypes.has(o.operation_type))
+    .reduce((sum, operation) => sum + operation.total_cost, 0);
 
   const chartData = groupByPeriod(metrics.daily_costs, period);
 
@@ -193,13 +203,13 @@ function Costos() {
           [
             "Costo prom. / CV",
             cvExtraction && cvExtraction.count > 0
-              ? `$${(cvExtraction.total_cost / cvExtraction.count).toFixed(4)}`
+              ? `$${(cvPipelineCost / cvExtraction.count).toFixed(4)}`
               : "—",
           ],
           [
             "Costo prom. / profiling",
-            voiceCall && voiceCall.count > 0
-              ? `$${(voiceCall.total_cost / voiceCall.count).toFixed(4)}`
+            profilingEvaluation && profilingEvaluation.count > 0
+              ? `$${(profilingCost / profilingEvaluation.count).toFixed(4)}`
               : "—",
           ],
         ].map(([l, v]) => (
