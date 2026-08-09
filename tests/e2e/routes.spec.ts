@@ -114,6 +114,9 @@ test("inicio reinicia la paginación al aplicar un filtro", async ({ page }) => 
 
 test("inicio encuentra cerrados y archivados desde el filtro de etapa", async ({ page }) => {
   await page.goto("/app");
+  // El SSR ya pinta el shell antes de que React hidrate y llegue la primera página.
+  // Esperar un dato del endpoint evita hacer click sobre un trigger aún no interactivo.
+  await expect(page.getByText("Backend QA 2026", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Etapa" }).click();
   await page.getByRole("menuitem", { name: "Archivado" }).click();
@@ -131,6 +134,7 @@ test("inicio encuentra cerrados y archivados desde el filtro de etapa", async ({
 
 test("inicio distingue resultados vacíos de errores recuperables", async ({ page }) => {
   await page.goto("/app");
+  await expect(page.getByText("Backend QA 2026", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Área" }).click();
   await page.getByRole("menuitem", { name: "Diseño" }).click();
