@@ -11,6 +11,7 @@ import type {
   ProcessMetricsResponse,
   ProcessMutationResponse,
   ProcessProgressResponse,
+  ProcessAIPromptOut,
   UploadJDResponse,
   VoiceConfig,
 } from "../types/api";
@@ -96,7 +97,6 @@ export const updateVoiceConfig = createServerFn({ method: "POST" })
     z.object({
       processId: z.string(),
       voice_override_agent_id: z.string().nullable().optional(),
-      voice_override_system_prompt: z.string().nullable().optional(),
       voice_override_first_message: z.string().nullable().optional(),
       voice_override_language: z.string().nullable().optional(),
       voice_override_llm_model: z.string().nullable().optional(),
@@ -112,6 +112,34 @@ export const updateVoiceConfig = createServerFn({ method: "POST" })
       method: "PATCH",
       body,
     });
+  });
+
+export const getProcessAIPrompts = createServerFn({ method: "GET" })
+  .validator(z.object({ processId: z.string() }))
+  .handler(async ({ data }) => {
+    return apiCall<{ prompts: ProcessAIPromptOut[] }>(
+      `/api/v1/processes/${data.processId}/ai-prompts`,
+    );
+  });
+
+export const createProcessAIPrompt = createServerFn({ method: "POST" })
+  .validator(
+    z.object({ processId: z.string(), taskType: z.string(), systemPromptText: z.string().min(1) }),
+  )
+  .handler(async ({ data }) => {
+    return apiCall<ProcessAIPromptOut>(
+      `/api/v1/processes/${data.processId}/ai-prompts/${data.taskType}`,
+      { method: "POST", body: { system_prompt_text: data.systemPromptText } },
+    );
+  });
+
+export const restoreProcessAIPromptTemplate = createServerFn({ method: "POST" })
+  .validator(z.object({ processId: z.string(), taskType: z.string() }))
+  .handler(async ({ data }) => {
+    return apiCall<ProcessAIPromptOut>(
+      `/api/v1/processes/${data.processId}/ai-prompts/${data.taskType}/restore-template`,
+      { method: "POST" },
+    );
   });
 
 export const createJobDescription = createServerFn({ method: "POST" })

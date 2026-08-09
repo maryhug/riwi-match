@@ -25,7 +25,6 @@ export function SetBuilder({ setId, processId }: { setId: string; processId?: st
   >(null);
   const [name, setName] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
-  const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
 
   const { data: set, isLoading } = useQuery({
     queryKey: ["question-set", setId],
@@ -89,7 +88,6 @@ export function SetBuilder({ setId, processId }: { setId: string; processId?: st
       name?: string;
       description?: string;
       status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
-      default_system_prompt?: string;
     }) => updateQuestionSet({ data: { id: setId, ...body } }),
     onSuccess: (res) => {
       toast.success("Guardado");
@@ -196,22 +194,20 @@ export function SetBuilder({ setId, processId }: { setId: string; processId?: st
       )}
 
       <GlassCard className="p-4 space-y-2">
-        <div className="text-sm font-semibold">Prompt del agente de llamada</div>
+        <div className="text-sm font-semibold">Comportamiento del agente</div>
         <p className="text-xs text-muted-foreground">
-          Se suma al prompt universal (identidad, tono, estructura) que ya aplica a todas las
-          llamadas — acá solo va lo específico de este cargo/proceso. Las preguntas del cuestionario
-          y el aviso de consentimiento se agregan automáticamente, no hace falta escribirlos aquí.
+          Las preguntas se administran en este set. El prompt de voz y los demás comportamientos de
+          IA pertenecen al proceso para que una vacante no altere otra.
         </p>
-        <textarea
-          value={systemPrompt ?? set.default_system_prompt ?? ""}
-          onChange={(e) => setSystemPrompt(e.target.value)}
-          onBlur={() => {
-            if (systemPrompt !== null && systemPrompt !== (set.default_system_prompt ?? ""))
-              metaMutation.mutate({ default_system_prompt: systemPrompt });
-          }}
-          placeholder="Ej: Eres un agente de voz de Riwi Corp llamando para el cargo de…"
-          className="w-full min-h-[120px] px-3 py-2 rounded-lg bg-background/70 border border-border text-sm font-mono"
-        />
+        {processId && (
+          <Link
+            to="/app/procesos/$id"
+            params={{ id: processId }}
+            className="inline-flex text-xs font-semibold text-primary hover:underline"
+          >
+            Ir a ajustes de IA del proceso
+          </Link>
+        )}
       </GlassCard>
 
       <div className="space-y-3">

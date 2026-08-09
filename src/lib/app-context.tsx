@@ -11,6 +11,8 @@ interface AppCtx {
   toggleSidebar: () => void;
   navPosition: NavPosition;
   setNavPosition: (p: NavPosition) => void;
+  navExpandedLocked: boolean;
+  setNavExpandedLocked: (locked: boolean) => void;
 }
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -19,6 +21,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [navPosition, setNavPositionState] = useState<NavPosition>("top");
+  const [navExpandedLocked, setNavExpandedLockedState] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -30,6 +33,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (saved && ["top", "bottom", "left", "right"].includes(saved)) {
         setNavPositionState(saved);
       }
+      setNavExpandedLockedState(localStorage.getItem("navExpandedLocked") === "true");
     } catch {
       // localStorage may be unavailable in private or restricted browsing contexts.
     }
@@ -44,6 +48,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setNavExpandedLocked = (locked: boolean) => {
+    setNavExpandedLockedState(locked);
+    try {
+      localStorage.setItem("navExpandedLocked", String(locked));
+    } catch {
+      // Persisting the preference is best-effort and must not block navigation.
+    }
+  };
+
   return (
     <Ctx.Provider
       value={{
@@ -53,6 +66,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toggleSidebar: () => setSidebarCollapsed((c) => !c),
         navPosition,
         setNavPosition,
+        navExpandedLocked,
+        setNavExpandedLocked,
       }}
     >
       {children}

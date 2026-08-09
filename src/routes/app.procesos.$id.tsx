@@ -33,6 +33,9 @@ import {
   Trash2,
   X,
   Clock,
+  Bot,
+  History,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
@@ -41,6 +44,13 @@ import { LoadingIndicator } from "@/components/app/LoadingIndicator";
 import { UploadCvsModal } from "@/components/app/UploadCvsModal";
 import { ProfilingResultModal } from "@/components/app/ProfilingResultModal";
 import { PipelineBoard, ProfilingHistoryDialog } from "@/components/app/PipelineBoard";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import PdfPreviewModal from "@/components/ui/PdfPreviewModal";
 import {
   PieChart,
@@ -64,6 +74,9 @@ import {
   createJobDescription,
   parseJobDescription,
   getJobDescriptions,
+  createProcessAIPrompt,
+  getProcessAIPrompts,
+  restoreProcessAIPromptTemplate,
 } from "@/lib/api/processes.functions";
 import {
   getCandidates,
@@ -100,6 +113,8 @@ import {
   type CandidateStatus,
   type AdvancementProbability,
   type WhatsAppConsentStatus,
+  AI_TASK_TYPE_LABEL,
+  type AITaskType,
 } from "@/lib/types/enums";
 import type {
   CandidateListItem,
@@ -109,7 +124,9 @@ import type {
   ProfilingRunOut,
   PipelineCandidate,
   AvailabilityPreference,
+  ProcessAIPromptOut,
 } from "@/lib/types/api";
+import { useAuth } from "@/lib/auth-context";
 import { cn, cleanAnswerText } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/procesos/$id")({
@@ -926,7 +943,7 @@ function DashboardTab({
                   {label}
                 </div>
                 <div className="mt-1 text-lg font-bold tabular-nums">
-                  ${metrics.cost_by_category[key].toFixed(4)}
+                  ${(metrics.cost_by_category[key] ?? 0).toFixed(4)}
                 </div>
               </div>
             ))}
@@ -1950,6 +1967,198 @@ function KanbanTab({
 
 // ─── Configuración Tab ──────────────────────────────────────────────────────
 
+const PROCESS_PROMPT_TASKS: AITaskType[] = [
+  "CV_EXTRACTION",
+  "CV_MATCH",
+  "JD_ENHANCEMENT",
+  "WHATSAPP_MESSAGE",
+  "VOICE_CALL_AGENT",
+  "VOICE_PROFILING",
+];
+
+function ProcessAIPromptsPanel({
+  processId,
+  isActive,
+  canEdit,
+}: {
+  processId: string;
+  isActive: boolean;
+  canEdit: boolean;
+}) {
+  const qc = useQueryClient();
+  const [editingTask, setEditingTask] = useState<AITaskType | null>(null);
+  const [historyTask, setHistoryTask] = useState<AITaskType | null>(null);
+  const [text, setText] = useState("");
+  const { data, isLoading } = useQuery({
+    queryKey: ["process-ai-prompts", processId],
+    queryFn: () => getProcessAIPrompts({ data: { processId } }),
+  });
+  const prompts = data?.prompts ?? [];
+  const activeByTask = new Map(
+    prompts.filter((prompt) => prompt.is_active).map((prompt) => [prompt.task_type, prompt]),
+  );
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["process-ai-prompts", processId] });
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      createProcessAIPrompt({
+        data: { processId, taskType: editingTask!, systemPromptText: text },
+      }),
+    onSuccess: () => {
+      toast.success("Prompt del proceso actualizado");
+      invalidate();
+      setEditingTask(null);
+      setText("");
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo guardar el prompt"),
+  });
+  const restoreMutation = useMutation({
+    mutationFn: (taskType: AITaskType) =>
+      restoreProcessAIPromptTemplate({ data: { processId, taskType } }),
+    onSuccess: () => {
+      toast.success("Se creó una nueva versión desde la plantilla global");
+      invalidate();
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo restaurar la plantilla"),
+  });
+  const history = historyTask ? prompts.filter((prompt) => prompt.task_type === historyTask) : [];
+
+  return (
+    <GlassCard id="config-ia" className="p-5 space-y-4 scroll-mt-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <div className="text-sm font-semibold flex items-center gap-2">
+            <Bot className="h-4 w-4 text-primary" /> Comportamiento de IA
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground max-w-2xl">
+            Estas seis versiones pertenecen solo a este proceso. Las plantillas globales no se
+            aplican automáticamente: puedes restaurarlas cuando lo necesites.
+          </p>
+        </div>
+        <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-semibold">
+          {isLoading ? "Cargando…" : `${activeByTask.size}/6 configurados`}
+        </span>
+      </div>
+      <div className="grid md:grid-cols-2 gap-3">
+        {PROCESS_PROMPT_TASKS.map((taskType) => {
+          const prompt = activeByTask.get(taskType) as ProcessAIPromptOut | undefined;
+          return (
+            <div
+              key={taskType}
+              className="rounded-xl border border-border/70 bg-background/50 p-3 space-y-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold">{AI_TASK_TYPE_LABEL[taskType]}</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground truncate">
+                    {prompt?.version_name ?? "Sin versión activa"}
+                  </div>
+                </div>
+                <span
+                  className={cn(
+                    "shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold",
+                    prompt?.source_prompt_id
+                      ? "bg-info/30 text-info-foreground"
+                      : "bg-accent text-accent-foreground",
+                  )}
+                >
+                  {prompt?.source_prompt_id ? "Plantilla" : "Propio"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground line-clamp-2 min-h-8">
+                {prompt?.system_prompt_text ?? "Este proceso aún no tiene este prompt."}
+              </p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+                <button
+                  onClick={() => {
+                    setEditingTask(taskType);
+                    setText(prompt?.system_prompt_text ?? "");
+                  }}
+                  disabled={!isActive || !canEdit}
+                  className="text-primary font-medium hover:underline disabled:opacity-40"
+                >
+                  Editar
+                </button>
+                <button
+                  onClick={() => setHistoryTask(taskType)}
+                  className="inline-flex items-center gap-1 hover:text-primary"
+                >
+                  <History className="h-3.5 w-3.5" /> Historial
+                </button>
+                <button
+                  onClick={() => restoreMutation.mutate(taskType)}
+                  disabled={!isActive || !canEdit || restoreMutation.isPending}
+                  className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" /> Restaurar
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <Dialog open={editingTask !== null} onOpenChange={(open) => !open && setEditingTask(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Editar prompt — {editingTask && AI_TASK_TYPE_LABEL[editingTask]}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Al guardar se crea una nueva versión para este proceso. El candidato, la JD, el
+            consentimiento y las preguntas se agregan automáticamente al ejecutar el flujo.
+          </p>
+          <textarea
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            className="min-h-80 w-full rounded-xl border border-border bg-background/70 p-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <DialogFooter>
+            <button
+              onClick={() => setEditingTask(null)}
+              className="px-4 py-2 rounded-xl border border-border text-sm"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => saveMutation.mutate()}
+              disabled={!text.trim() || saveMutation.isPending}
+              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
+            >
+              {saveMutation.isPending ? "Guardando…" : "Guardar nueva versión"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={historyTask !== null} onOpenChange={(open) => !open && setHistoryTask(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Historial — {historyTask && AI_TASK_TYPE_LABEL[historyTask]}</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto scrollbar-visible">
+            {history.map((prompt) => (
+              <div key={prompt.id} className="rounded-xl border border-border bg-background/60 p-3">
+                <div className="flex justify-between gap-3 text-xs">
+                  <span className="font-semibold">{prompt.version_name}</span>
+                  <span className="text-muted-foreground">
+                    {new Date(prompt.created_at).toLocaleString("es-CO")}
+                  </span>
+                </div>
+                <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-lg bg-muted/50 p-2 text-[11px] scrollbar-visible">
+                  {prompt.system_prompt_text}
+                </pre>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </GlassCard>
+  );
+}
+
 function ConfigTab({
   processId,
   process,
@@ -1958,13 +2167,13 @@ function ConfigTab({
   process: NonNullable<ReturnType<typeof useQuery<Awaited<ReturnType<typeof getProcess>>>>["data"]>;
 }) {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [name, setName] = useState(process.name);
   const [jobTitle, setJobTitle] = useState(process.job_title);
   const [area, setArea] = useState(process.area);
   const [seniority, setSeniority] = useState(process.seniority);
   const [budget, setBudget] = useState(String(process.budget_max_usd || ""));
   const [selectedSetId, setSelectedSetId] = useState(process.question_set_id ?? "");
-  const [voicePrompt, setVoicePrompt] = useState(process.voice_override_system_prompt ?? "");
   const [voiceGreeting, setVoiceGreeting] = useState(process.voice_override_first_message ?? "");
   const [voiceLanguage, setVoiceLanguage] = useState(process.voice_override_language ?? "");
   const [jdAnalysis, setJdAnalysis] = useState<ParseJDResponse | null>(null);
@@ -1979,8 +2188,15 @@ function ConfigTab({
     queryKey: ["job-descriptions", processId],
     queryFn: () => getJobDescriptions({ data: { processId } }),
   });
+  const { data: promptData } = useQuery({
+    queryKey: ["process-ai-prompts", processId],
+    queryFn: () => getProcessAIPrompts({ data: { processId } }),
+  });
 
   const isActive = process.status !== "CLOSED" && process.status !== "ARCHIVED";
+  const canEditPrompts =
+    user?.role === "ADMIN" || (user?.role === "RECRUITER" && user.id === process.recruiter_id);
+  const activePromptCount = promptData?.prompts.filter((prompt) => prompt.is_active).length ?? 0;
 
   const updateBasicsMutation = useMutation({
     mutationFn: () =>
@@ -2019,7 +2235,6 @@ function ConfigTab({
       updateVoiceConfig({
         data: {
           processId,
-          voice_override_system_prompt: voicePrompt || null,
           voice_override_first_message: voiceGreeting || null,
           voice_override_language: voiceLanguage || null,
         },
@@ -2071,330 +2286,430 @@ function ConfigTab({
   });
 
   return (
-    <div className="space-y-5 max-w-3xl">
-      <GlassCard className="p-5 space-y-4">
-        <div className="text-sm font-semibold flex items-center gap-2">
-          <Settings2 className="h-4 w-4 text-primary" /> Datos básicos
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
+      <GlassCard className="p-5 sm:p-6 lg:p-7">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Nombre
-            </label>
-            <input
-              disabled={!isActive}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Cargo
-            </label>
-            <input
-              disabled={!isActive}
-              value={jobTitle}
-              onChange={(e) => setJobTitle(e.target.value)}
-              className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Área
-            </label>
-            <input
-              disabled={!isActive}
-              value={area}
-              onChange={(e) => setArea(e.target.value)}
-              className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Seniority
-            </label>
-            <input
-              disabled={!isActive}
-              value={seniority}
-              onChange={(e) => setSeniority(e.target.value)}
-              className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Presupuesto máx. USD
-            </label>
-            <input
-              disabled={!isActive}
-              type="number"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
-            />
-          </div>
-        </div>
-        <button
-          onClick={() => updateBasicsMutation.mutate()}
-          disabled={!isActive || updateBasicsMutation.isPending}
-          className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
-        >
-          {updateBasicsMutation.isPending ? "Guardando…" : "Guardar cambios"}
-        </button>
-        {!isActive && (
-          <p className="text-xs text-muted-foreground">
-            Proceso {PROCESS_STATUS_LABEL[process.status].toLowerCase()} — no se puede editar.
-          </p>
-        )}
-      </GlassCard>
-
-      <GlassCard className="p-5 space-y-3">
-        <div className="text-sm font-semibold">Job Description</div>
-        {jds && jds.length > 0 ? (
-          <div className="space-y-1.5">
-            {jds.map((jd) => (
-              <div
-                key={jd.jd_id}
-                className="text-xs px-3 py-2 rounded-lg bg-background/50 border border-border"
-              >
-                <span className="font-medium">v{jd.version}</span> — {jd.text_preview}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">Sin JD aún.</p>
-        )}
-
-        <textarea
-          disabled={!isActive}
-          value={jdText}
-          onChange={(e) => setJdText(e.target.value)}
-          placeholder="Pega aquí la descripción del cargo…"
-          className="w-full min-h-[140px] rounded-xl bg-background/70 border border-border p-3 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/40"
-        />
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => saveJDMutation.mutate()}
-            disabled={!isActive || jdText.trim().length < 10 || saveJDMutation.isPending}
-            className="px-3 py-1.5 rounded-lg border border-border bg-background/60 text-xs font-medium disabled:opacity-40"
-          >
-            {saveJDMutation.isPending ? "Guardando…" : "Guardar como nueva versión"}
-          </button>
-          <button
-            onClick={() => analyzeJDMutation.mutate()}
-            disabled={!isActive || jdText.trim().length < 10 || analyzeJDMutation.isPending}
-            className="px-3 py-1.5 rounded-lg border border-primary/40 text-primary bg-primary/5 text-xs font-medium disabled:opacity-40"
-          >
-            {analyzeJDMutation.isPending ? "Analizando…" : "Analizar y enriquecer con IA"}
-          </button>
-          {preEnhanceJdText !== null && (
-            <button
-              onClick={undoEnhance}
-              title="Restaurar el texto anterior a la mejora de IA"
-              className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition"
-            >
-              Deshacer
-            </button>
-          )}
-        </div>
-
-        {jdAnalysis && (
-          <div className="space-y-3 pt-2 border-t border-border/40">
-            {[
-              {
-                l: "Requisitos obligatorios",
-                c: jdAnalysis.must_have,
-                color: "bg-primary/15 text-primary",
-              },
-              {
-                l: "Deseables",
-                c: jdAnalysis.nice_to_have,
-                color: "bg-info/30 text-info-foreground",
-              },
-              {
-                l: "Criterios excluyentes",
-                c: jdAnalysis.deal_breakers,
-                color: "bg-destructive/15 text-destructive",
-              },
-            ].map(
-              (g) =>
-                g.c.length > 0 && (
-                  <div key={g.l}>
-                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
-                      {g.l}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {g.c.map((x) => (
-                        <span
-                          key={x}
-                          className={`px-2.5 py-1 rounded-md text-xs font-medium ${g.color}`}
-                        >
-                          {x}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ),
-            )}
-            {(jdAnalysis.recommendations.length > 0 || jdAnalysis.missing_elements.length > 0) && (
-              <div className="grid sm:grid-cols-2 gap-4">
-                {jdAnalysis.recommendations.length > 0 && (
-                  <div>
-                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
-                      Recomendaciones
-                    </div>
-                    <ul className="text-xs text-foreground/80 space-y-1 list-disc list-inside">
-                      {jdAnalysis.recommendations.map((r) => (
-                        <li key={r}>{r}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {jdAnalysis.missing_elements.length > 0 && (
-                  <div>
-                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
-                      Elementos faltantes
-                    </div>
-                    <ul className="text-xs text-foreground/80 space-y-1 list-disc list-inside">
-                      {jdAnalysis.missing_elements.map((m) => (
-                        <li key={m}>{m}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-            <p className="text-[11px] text-muted-foreground">
-              La versión mejorada ya se cargó arriba en el campo de texto — edítala y luego "Guardar
-              como nueva versión".
+            <div className="text-xs uppercase tracking-[0.15em] text-primary font-semibold">
+              Configuración propia
+            </div>
+            <h2 className="mt-1 text-xl font-bold tracking-tight">Ajustes del proceso</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Define el proceso, su profiling y el comportamiento de IA sin alterar otras vacantes.
             </p>
           </div>
-        )}
+          <span className="px-3 py-1.5 rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+            {PROCESS_STATUS_LABEL[process.status]}
+          </span>
+        </div>
+        <div className="mt-6 flex gap-1 overflow-x-auto border-b border-border/50">
+          {[
+            ["general", "General"],
+            ["jd", "Job Description"],
+            ["profiling", "Profiling"],
+            ["voice", "Voz"],
+            ["config-ia", "IA"],
+          ].map(([target, label]) => (
+            <a
+              key={target}
+              href={`#${target}`}
+              className="shrink-0 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-primary transition"
+            >
+              {label}
+            </a>
+          ))}
+        </div>
       </GlassCard>
-
-      <GlassCard className="p-5 space-y-3">
-        <div className="text-sm font-semibold">Set de preguntas de profiling</div>
-
-        {process.question_set_id ? (
-          <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between">
-            <div>
-              <div className="text-sm font-semibold text-primary">Set asignado</div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Copia única para este proceso. Edítala sin afectar la plantilla original.
-              </p>
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_19rem]">
+        <div className="min-w-0 space-y-5">
+          <GlassCard id="general" className="p-5 sm:p-6 space-y-4 scroll-mt-6">
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <Settings2 className="h-4 w-4 text-primary" /> Datos básicos
             </div>
-            <Link
-              to="/app/sets/$id"
-              params={{ id: process.question_set_id }}
-              search={{ processId }}
-              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold whitespace-nowrap shadow-md shadow-primary/20"
-            >
-              Editar preguntas
-            </Link>
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Aún no hay preguntas. Elige una plantilla base para comenzar a perfilar candidatos.
-          </p>
-        )}
-
-        <div className="pt-2 border-t border-border/40">
-          <div className="text-xs font-medium text-muted-foreground mb-2">
-            {process.question_set_id
-              ? "Reemplazar con otra plantilla base:"
-              : "Seleccionar plantilla base:"}
-          </div>
-          <div className="flex items-center gap-2">
-            <AppSelect
-              value={
-                selectedSetId === process.question_set_id || !selectedSetId ? "none" : selectedSetId
-              }
-              onValueChange={(value) => setSelectedSetId(value === "none" ? "" : value)}
-              disabled={!isActive}
-              className="flex-1"
-            >
-              <AppSelectItem value="none">— Selecciona una plantilla —</AppSelectItem>
-              {(questionSets?.question_sets ?? [])
-                .filter((qs) => qs.status === "ACTIVE")
-                .map((qs) => (
-                  <AppSelectItem key={qs.id} value={qs.id}>
-                    {qs.name}
-                  </AppSelectItem>
-                ))}
-            </AppSelect>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Nombre
+                </label>
+                <input
+                  disabled={!isActive}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Cargo
+                </label>
+                <input
+                  disabled={!isActive}
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Área
+                </label>
+                <input
+                  disabled={!isActive}
+                  value={area}
+                  onChange={(e) => setArea(e.target.value)}
+                  className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Seniority
+                </label>
+                <input
+                  disabled={!isActive}
+                  value={seniority}
+                  onChange={(e) => setSeniority(e.target.value)}
+                  className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Presupuesto máx. USD
+                </label>
+                <input
+                  disabled={!isActive}
+                  type="number"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
+                />
+              </div>
+            </div>
             <button
-              onClick={() => assignSetMutation.mutate()}
-              disabled={
-                !isActive ||
-                !selectedSetId ||
-                selectedSetId === process.question_set_id ||
-                assignSetMutation.isPending
-              }
+              onClick={() => updateBasicsMutation.mutate()}
+              disabled={!isActive || updateBasicsMutation.isPending}
               className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
             >
-              {process.question_set_id ? "Reemplazar" : "Asignar"}
+              {updateBasicsMutation.isPending ? "Guardando…" : "Guardar cambios"}
             </button>
-          </div>
-          {!process.question_set_id && (
-            <div className="mt-2 text-right">
-              <Link to="/app/sets/nuevo" className="text-xs text-primary hover:underline">
-                Crear nueva plantilla base
-              </Link>
-            </div>
-          )}
-        </div>
-      </GlassCard>
+            {!isActive && (
+              <p className="text-xs text-muted-foreground">
+                Proceso {PROCESS_STATUS_LABEL[process.status].toLowerCase()} — no se puede editar.
+              </p>
+            )}
+          </GlassCard>
 
-      <GlassCard className="p-5 space-y-3">
-        <div className="text-sm font-semibold">Configuración de voz (override del proceso)</div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            System prompt
-          </label>
-          <textarea
-            disabled={!isActive}
-            value={voicePrompt}
-            onChange={(e) => setVoicePrompt(e.target.value)}
-            className="mt-1.5 w-full min-h-[80px] px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
+          <GlassCard id="jd" className="p-5 sm:p-6 space-y-3 scroll-mt-6">
+            <div className="text-sm font-semibold">Job Description</div>
+            {jds && jds.length > 0 ? (
+              <div className="space-y-1.5">
+                {jds.map((jd) => (
+                  <div
+                    key={jd.jd_id}
+                    className="text-xs px-3 py-2 rounded-lg bg-background/50 border border-border"
+                  >
+                    <span className="font-medium">v{jd.version}</span> — {jd.text_preview}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Sin JD aún.</p>
+            )}
+
+            <textarea
+              disabled={!isActive}
+              value={jdText}
+              onChange={(e) => setJdText(e.target.value)}
+              placeholder="Pega aquí la descripción del cargo…"
+              className="w-full min-h-[140px] rounded-xl bg-background/70 border border-border p-3 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => saveJDMutation.mutate()}
+                disabled={!isActive || jdText.trim().length < 10 || saveJDMutation.isPending}
+                className="px-3 py-1.5 rounded-lg border border-border bg-background/60 text-xs font-medium disabled:opacity-40"
+              >
+                {saveJDMutation.isPending ? "Guardando…" : "Guardar como nueva versión"}
+              </button>
+              <button
+                onClick={() => analyzeJDMutation.mutate()}
+                disabled={!isActive || jdText.trim().length < 10 || analyzeJDMutation.isPending}
+                className="px-3 py-1.5 rounded-lg border border-primary/40 text-primary bg-primary/5 text-xs font-medium disabled:opacity-40"
+              >
+                {analyzeJDMutation.isPending ? "Analizando…" : "Analizar y enriquecer con IA"}
+              </button>
+              {preEnhanceJdText !== null && (
+                <button
+                  onClick={undoEnhance}
+                  title="Restaurar el texto anterior a la mejora de IA"
+                  className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition"
+                >
+                  Deshacer
+                </button>
+              )}
+            </div>
+
+            {jdAnalysis && (
+              <div className="space-y-3 pt-2 border-t border-border/40">
+                {[
+                  {
+                    l: "Requisitos obligatorios",
+                    c: jdAnalysis.must_have,
+                    color: "bg-primary/15 text-primary",
+                  },
+                  {
+                    l: "Deseables",
+                    c: jdAnalysis.nice_to_have,
+                    color: "bg-info/30 text-info-foreground",
+                  },
+                  {
+                    l: "Criterios excluyentes",
+                    c: jdAnalysis.deal_breakers,
+                    color: "bg-destructive/15 text-destructive",
+                  },
+                ].map(
+                  (g) =>
+                    g.c.length > 0 && (
+                      <div key={g.l}>
+                        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                          {g.l}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {g.c.map((x) => (
+                            <span
+                              key={x}
+                              className={`px-2.5 py-1 rounded-md text-xs font-medium ${g.color}`}
+                            >
+                              {x}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ),
+                )}
+                {(jdAnalysis.recommendations.length > 0 ||
+                  jdAnalysis.missing_elements.length > 0) && (
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {jdAnalysis.recommendations.length > 0 && (
+                      <div>
+                        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                          Recomendaciones
+                        </div>
+                        <ul className="text-xs text-foreground/80 space-y-1 list-disc list-inside">
+                          {jdAnalysis.recommendations.map((r) => (
+                            <li key={r}>{r}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {jdAnalysis.missing_elements.length > 0 && (
+                      <div>
+                        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                          Elementos faltantes
+                        </div>
+                        <ul className="text-xs text-foreground/80 space-y-1 list-disc list-inside">
+                          {jdAnalysis.missing_elements.map((m) => (
+                            <li key={m}>{m}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <p className="text-[11px] text-muted-foreground">
+                  La versión mejorada ya se cargó arriba en el campo de texto — edítala y luego
+                  "Guardar como nueva versión".
+                </p>
+              </div>
+            )}
+          </GlassCard>
+
+          <GlassCard id="profiling" className="p-5 sm:p-6 space-y-3 scroll-mt-6">
+            <div className="text-sm font-semibold">Set de preguntas de profiling</div>
+
+            {process.question_set_id ? (
+              <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-primary">Set asignado</div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Copia única para este proceso. Edítala sin afectar la plantilla original.
+                  </p>
+                </div>
+                <Link
+                  to="/app/sets/$id"
+                  params={{ id: process.question_set_id }}
+                  search={{ processId }}
+                  className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold whitespace-nowrap shadow-md shadow-primary/20"
+                >
+                  Editar preguntas
+                </Link>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Aún no hay preguntas. Elige una plantilla base para comenzar a perfilar candidatos.
+              </p>
+            )}
+
+            <div className="pt-2 border-t border-border/40">
+              <div className="text-xs font-medium text-muted-foreground mb-2">
+                {process.question_set_id
+                  ? "Reemplazar con otra plantilla base:"
+                  : "Seleccionar plantilla base:"}
+              </div>
+              <div className="flex items-center gap-2">
+                <AppSelect
+                  value={
+                    selectedSetId === process.question_set_id || !selectedSetId
+                      ? "none"
+                      : selectedSetId
+                  }
+                  onValueChange={(value) => setSelectedSetId(value === "none" ? "" : value)}
+                  disabled={!isActive}
+                  className="flex-1"
+                >
+                  <AppSelectItem value="none">— Selecciona una plantilla —</AppSelectItem>
+                  {(questionSets?.question_sets ?? [])
+                    .filter((qs) => qs.status === "ACTIVE")
+                    .map((qs) => (
+                      <AppSelectItem key={qs.id} value={qs.id}>
+                        {qs.name}
+                      </AppSelectItem>
+                    ))}
+                </AppSelect>
+                <button
+                  onClick={() => assignSetMutation.mutate()}
+                  disabled={
+                    !isActive ||
+                    !selectedSetId ||
+                    selectedSetId === process.question_set_id ||
+                    assignSetMutation.isPending
+                  }
+                  className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
+                >
+                  {process.question_set_id ? "Reemplazar" : "Asignar"}
+                </button>
+              </div>
+              {!process.question_set_id && (
+                <div className="mt-2 text-right">
+                  <Link to="/app/sets/nuevo" className="text-xs text-primary hover:underline">
+                    Crear nueva plantilla base
+                  </Link>
+                </div>
+              )}
+            </div>
+          </GlassCard>
+
+          <GlassCard id="voice" className="p-5 sm:p-6 space-y-3 scroll-mt-6">
+            <div>
+              <div className="text-sm font-semibold">Configuración técnica de voz</div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                El prompt de la llamada se edita en Comportamiento de IA; aquí solo ajustas saludo e
+                idioma.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Primer saludo
+              </label>
+              <input
+                disabled={!isActive}
+                value={voiceGreeting}
+                onChange={(e) => setVoiceGreeting(e.target.value)}
+                className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Idioma (llamada ElevenLabs y mensajes de WhatsApp)
+              </label>
+              <AppSelect
+                disabled={!isActive}
+                value={voiceLanguage || "auto"}
+                onValueChange={(value) => setVoiceLanguage(value === "auto" ? "" : value)}
+                className="mt-1.5 w-full"
+              >
+                <AppSelectItem value="auto">Automático (según el set de preguntas)</AppSelectItem>
+                {VOICE_LANGUAGES.map((lang) => (
+                  <AppSelectItem key={lang.value} value={lang.value}>
+                    {lang.label}
+                  </AppSelectItem>
+                ))}
+              </AppSelect>
+            </div>
+            <button
+              onClick={() => voiceMutation.mutate()}
+              disabled={!isActive || voiceMutation.isPending}
+              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
+            >
+              {voiceMutation.isPending ? "Guardando…" : "Guardar configuración de voz"}
+            </button>
+          </GlassCard>
+          <ProcessAIPromptsPanel
+            processId={processId}
+            isActive={isActive}
+            canEdit={canEditPrompts}
           />
         </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Primer saludo
-          </label>
-          <input
-            disabled={!isActive}
-            value={voiceGreeting}
-            onChange={(e) => setVoiceGreeting(e.target.value)}
-            className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Idioma (llamada ElevenLabs y mensajes de WhatsApp)
-          </label>
-          <AppSelect
-            disabled={!isActive}
-            value={voiceLanguage || "auto"}
-            onValueChange={(value) => setVoiceLanguage(value === "auto" ? "" : value)}
-            className="mt-1.5 w-full"
-          >
-            <AppSelectItem value="auto">Automático (según el set de preguntas)</AppSelectItem>
-            {VOICE_LANGUAGES.map((lang) => (
-              <AppSelectItem key={lang.value} value={lang.value}>
-                {lang.label}
-              </AppSelectItem>
-            ))}
-          </AppSelect>
-        </div>
-        <button
-          onClick={() => voiceMutation.mutate()}
-          disabled={!isActive || voiceMutation.isPending}
-          className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
-        >
-          {voiceMutation.isPending ? "Guardando…" : "Guardar configuración de voz"}
-        </button>
-      </GlassCard>
+
+        <aside className="hidden xl:block xl:sticky xl:top-6">
+          <GlassCard className="space-y-5 p-5">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                Centro de control
+              </div>
+              <h3 className="mt-1 text-base font-bold tracking-tight">Contexto del proceso</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Cada ajuste aplica únicamente a esta vacante y conserva el resto del espacio de
+                trabajo.
+              </p>
+            </div>
+
+            <div className="space-y-2.5 border-y border-border/60 py-4 text-xs">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">Estado</span>
+                <span className="rounded-full bg-muted px-2.5 py-1 font-semibold text-foreground">
+                  {PROCESS_STATUS_LABEL[process.status]}
+                </span>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-muted-foreground">Perfil</span>
+                <span className="max-w-[10rem] text-right font-medium">{process.job_title}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">Preguntas</span>
+                <span className="font-medium">
+                  {process.question_set_id ? "Set asignado" : "Pendiente"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">IA del proceso</span>
+                <span className="font-medium tabular-nums">{activePromptCount}/6 activa</span>
+              </div>
+            </div>
+
+            <nav aria-label="Secciones de configuración" className="space-y-1">
+              {[
+                ["general", "Datos básicos", Settings2],
+                ["jd", "Job Description", FileText],
+                ["profiling", "Profiling", Users],
+                ["voice", "Voz", PhoneCall],
+                ["config-ia", "Comportamiento IA", Bot],
+              ].map(([target, label, Icon]) => {
+                const SectionIcon = Icon as typeof Settings2;
+                return (
+                  <a
+                    key={target as string}
+                    href={`#${target}`}
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  >
+                    <SectionIcon className="h-3.5 w-3.5 text-primary" />
+                    {label as string}
+                  </a>
+                );
+              })}
+            </nav>
+          </GlassCard>
+        </aside>
+      </div>
     </div>
   );
 }

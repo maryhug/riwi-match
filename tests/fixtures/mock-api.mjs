@@ -46,7 +46,6 @@ const processDetail = {
   ...processItem,
   match_weights: null,
   question_set_id: "set-qa",
-  voice_override_system_prompt: null,
   voice_override_first_message: null,
   voice_override_language: "es",
   job_description: {
@@ -60,6 +59,25 @@ const processDetail = {
   },
   updated_at: now,
 };
+
+const processPrompts = [
+  "CV_EXTRACTION",
+  "CV_MATCH",
+  "JD_ENHANCEMENT",
+  "WHATSAPP_MESSAGE",
+  "VOICE_CALL_AGENT",
+  "VOICE_PROFILING",
+].map((task_type) => ({
+  id: `prompt-${task_type}`,
+  process_id: "process-qa",
+  task_type,
+  version_name: "v1-migrada",
+  system_prompt_text: `Instrucciones específicas para ${task_type}.`,
+  source_prompt_id: "template-qa",
+  is_active: true,
+  created_by: "user-qa",
+  created_at: now,
+}));
 
 const candidate = {
   rank: 1,
@@ -92,7 +110,6 @@ const questionSet = {
   created_at: now,
   updated_at: now,
   default_agent_id: null,
-  default_system_prompt: "Evalua experiencia tecnica.",
   default_first_message: null,
   default_language: "es",
   default_llm_model: null,
@@ -153,6 +170,8 @@ function responseFor(method, pathname) {
   if (pathname === "/api/v1/notifications") return json({ notifications: [], unread_count: 0 });
   if (pathname === "/api/v1/processes") return json({ total: 1, processes: [processItem] });
   if (pathname === "/api/v1/processes/process-qa") return json(processDetail);
+  if (pathname === "/api/v1/processes/process-qa/ai-prompts")
+    return json({ prompts: processPrompts });
   if (pathname === "/api/v1/processes/process-qa/candidates")
     return json({ process_id: "process-qa", total: 1, candidates: [candidate] });
   if (pathname === "/api/v1/processes/process-qa/candidates/pc-qa")

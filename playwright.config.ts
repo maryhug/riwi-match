@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = "http://127.0.0.1:8080";
+const e2ePort = Number(process.env.PLAYWRIGHT_PORT ?? "8080");
+const baseURL = `http://127.0.0.1:${e2ePort}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -32,8 +33,7 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
-      command:
-        "API_BASE_URL=http://127.0.0.1:9090 APP_ENV=test npm run dev -- --host 127.0.0.1 --port 8080",
+      command: `API_BASE_URL=http://127.0.0.1:9090 APP_ENV=test npm run dev -- --host 127.0.0.1 --port ${e2ePort}`,
       url: baseURL,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

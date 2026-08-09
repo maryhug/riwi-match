@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  LockKeyhole,
   Plus,
 } from "lucide-react";
 import { useApp, type NavPosition } from "@/lib/app-context";
@@ -20,6 +21,7 @@ import { USER_ROLE_LABEL, type UserRole } from "@/lib/types/enums";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -61,7 +63,7 @@ const moveOptions: { pos: NavPosition; label: string; icon: typeof ChevronUp }[]
 ];
 
 export function FloatingNav() {
-  const { navPosition, setNavPosition } = useApp();
+  const { navPosition, setNavPosition, navExpandedLocked, setNavExpandedLocked } = useApp();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -70,6 +72,7 @@ export function FloatingNav() {
   const isVertical = navPosition === "left" || navPosition === "right";
 
   const [navExpanded, setNavExpanded] = useState(false);
+  const isNavExpanded = navExpanded || navExpandedLocked;
 
   const isSets = path === "/app/sets" || path.startsWith("/app/sets/");
   const buttonText = isSets ? "Nuevo set" : "Crear proceso";
@@ -172,11 +175,20 @@ export function FloatingNav() {
                       !isVertical &&
                         (active
                           ? "max-w-24 opacity-100 pr-1.5"
-                          : cn("max-w-0 opacity-0", navExpanded && "max-w-24 opacity-100 pr-1.5")),
+                          : cn(
+                              "max-w-0 opacity-0",
+                              isNavExpanded && "max-w-24 opacity-100 pr-1.5",
+                            )),
                       isVertical &&
-                        "max-w-0 opacity-0 group-hover/item:max-w-24 group-hover/item:opacity-100",
-                      isLeft && isVertical ? "order-2 group-hover/item:pr-3" : "",
-                      isRight && isVertical ? "order-1 group-hover/item:pl-3" : "",
+                        (isNavExpanded
+                          ? "max-w-24 opacity-100"
+                          : "max-w-0 opacity-0 group-hover/item:max-w-24 group-hover/item:opacity-100"),
+                      isLeft && isVertical
+                        ? cn("order-2", isNavExpanded ? "pr-3" : "group-hover/item:pr-3")
+                        : "",
+                      isRight && isVertical
+                        ? cn("order-1", isNavExpanded ? "pl-3" : "group-hover/item:pl-3")
+                        : "",
                     )}
                   >
                     {item.label}
@@ -193,6 +205,9 @@ export function FloatingNav() {
         <DropdownMenu>
           <DropdownMenuTrigger
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground cursor-pointer hover:opacity-90 transition shadow-sm focus:outline-none"
+            aria-label={`Opciones de ${
+              user ? `${user.name} ${user.last_name}` : USER_ROLE_LABEL[role]
+            }`}
             title={
               user
                 ? `${user.name} ${user.last_name} · ${USER_ROLE_LABEL[role]}`
@@ -245,6 +260,14 @@ export function FloatingNav() {
                 </DropdownMenuItem>
               );
             })}
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              checked={navExpandedLocked}
+              onCheckedChange={setNavExpandedLocked}
+              className="cursor-pointer gap-2 text-xs"
+            >
+              <LockKeyhole className="h-3.5 w-3.5" /> Bloquear expandida
+            </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"

@@ -111,7 +111,6 @@ export interface ProcessDetailResponse {
   recruiter_id: string;
   recruiter_name: string;
   question_set_id: string | null;
-  voice_override_system_prompt: string | null;
   voice_override_first_message: string | null;
   voice_override_language: string | null;
   job_description: JobDescriptionSummary | null;
@@ -121,7 +120,6 @@ export interface ProcessDetailResponse {
 
 export interface VoiceConfig {
   voice_override_agent_id: string | null;
-  voice_override_system_prompt: string | null;
   voice_override_first_message: string | null;
   voice_override_language: string | null;
   voice_override_llm_model: string | null;
@@ -377,7 +375,6 @@ export interface QuestionOut {
 
 export interface QuestionSetVoiceDefaults {
   default_agent_id: string | null;
-  default_system_prompt: string | null;
   default_first_message: string | null;
   default_language: string | null;
   default_llm_model: string | null;
@@ -580,6 +577,18 @@ export interface AIPromptOut {
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProcessAIPromptOut {
+  id: string;
+  process_id: string;
+  task_type: string;
+  version_name: string;
+  system_prompt_text: string;
+  source_prompt_id: string | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
 }
 
 export interface GlobalSettingOut {

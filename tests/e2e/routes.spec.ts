@@ -40,6 +40,17 @@ test("Topbar y FloatingNav respetan el shell autenticado", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Profiling" })).toBeVisible();
 });
 
+test("la barra flotante restaura la expansión bloqueada", async ({ page }) => {
+  await page.goto("/app");
+  await page.evaluate(() => localStorage.setItem("navExpandedLocked", "true"));
+  await page.reload();
+
+  await expect(page.getByRole("link", { name: "Sets" }).locator("span")).toHaveClass(/max-w-24/);
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("navExpandedLocked")))
+    .toBe("true");
+});
+
 test("SetBuilder renderiza datos del backend mock a traves del BFF", async ({ page }) => {
   await page.goto("/app/sets/set-qa");
   await expect
@@ -50,6 +61,26 @@ test("SetBuilder renderiza datos del backend mock a traves del BFF", async ({ pa
     )
     .toBe(true);
   await expect(page.getByText("Cuentanos tu experiencia con FastAPI")).toBeVisible();
+});
+
+test("los ajustes del proceso centralizan sus prompts de IA", async ({ page }) => {
+  await page.goto("/app/procesos/process-qa");
+  await page.getByRole("button", { name: "Configuración" }).click();
+  await expect(page.getByRole("heading", { name: "Ajustes del proceso" })).toBeVisible();
+  await expect(page.getByText("Centro de control", { exact: true })).toBeVisible();
+  await expect(page.getByText("6/6 activa", { exact: true })).toBeVisible();
+  await expect(page.getByText("Comportamiento de IA", { exact: true })).toBeVisible();
+  await expect(page.getByText("Extracción de CV", { exact: true })).toBeVisible();
+  await expect(page.getByText("Agente de llamada (prompt base)", { exact: true })).toBeVisible();
+});
+
+test("la configuración mantiene la navegación util en móvil", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/app/procesos/process-qa");
+  await page.getByRole("button", { name: "Configuración" }).click();
+  await expect(page.getByRole("heading", { name: "Ajustes del proceso" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Voz" }).first()).toBeVisible();
+  await expect(page.getByText("Centro de control", { exact: true })).not.toBeVisible();
 });
 
 test("rutas clave no presentan violaciones graves de accesibilidad", async ({ page }) => {

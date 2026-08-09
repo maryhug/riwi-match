@@ -29,7 +29,6 @@ export const updateQuestionSet = createServerFn({ method: "POST" })
       name: z.string().optional(),
       description: z.string().optional(),
       status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional(),
-      default_system_prompt: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {

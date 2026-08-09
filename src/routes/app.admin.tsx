@@ -642,7 +642,7 @@ function ParametrosIATab() {
       </section>
 
       <section className="space-y-3">
-        <SectionLabel>Modelos y prompts por tarea</SectionLabel>
+        <SectionLabel>Modelos y plantillas para procesos nuevos</SectionLabel>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {TASK_TYPES.map((taskType) => (
             <TaskTypeConfigCard
@@ -716,16 +716,16 @@ function TaskTypeConfigCard({
         </AppSelect>
       </div>
       <div className="flex items-center justify-between gap-3">
-        <div className="text-xs text-muted-foreground">Prompt activo</div>
+        <div className="text-xs text-muted-foreground">Plantilla vigente</div>
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium">
-            {activePrompt?.version_name ?? "Sin prompt configurado"}
+            {activePrompt?.version_name ?? "Sin plantilla configurada"}
           </span>
           <button onClick={onOpenHistory} className="text-xs text-primary hover:underline">
             Ver / historial
           </button>
           <button onClick={onNewPrompt} className="text-xs text-primary hover:underline">
-            Nueva versión
+            Nueva plantilla
           </button>
         </div>
       </div>
@@ -908,9 +908,7 @@ function NewPromptDialog({
     <Dialog open={taskType !== null} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            Nueva versión de prompt — {taskType && AI_TASK_TYPE_LABEL[taskType]}
-          </DialogTitle>
+          <DialogTitle>Nueva plantilla — {taskType && AI_TASK_TYPE_LABEL[taskType]}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <input
@@ -922,12 +920,12 @@ function NewPromptDialog({
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Texto del system prompt…"
+            placeholder="Texto de la plantilla…"
             className="w-full min-h-[160px] px-3 py-2 rounded-xl bg-background/70 border border-border text-sm"
           />
           <p className="text-[11px] text-muted-foreground">
-            Los prompts son append-only — esto crea una nueva versión y la activa, sin borrar las
-            anteriores.
+            Las plantillas son append-only. Afectan solo a procesos nuevos; los existentes pueden
+            restaurarla explícitamente desde sus ajustes.
           </p>
         </div>
         <DialogFooter>
@@ -939,7 +937,7 @@ function NewPromptDialog({
             disabled={!versionName || !text || createMutation.isPending}
             className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
           >
-            {createMutation.isPending ? "Guardando…" : "Crear y activar"}
+            {createMutation.isPending ? "Guardando…" : "Publicar plantilla"}
           </button>
         </DialogFooter>
       </DialogContent>
@@ -974,7 +972,7 @@ function PromptHistoryDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            Historial de prompts — {taskType && AI_TASK_TYPE_LABEL[taskType]}
+            Historial de plantillas — {taskType && AI_TASK_TYPE_LABEL[taskType]}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-2 max-h-[60vh] overflow-y-auto">
