@@ -14,6 +14,9 @@ import {
   Trash2,
   User2,
   Pencil,
+  RefreshCw,
+  MessageCircle,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -40,6 +43,12 @@ import {
   getGlobalSettings,
   updateGlobalSetting,
 } from "@/lib/api/ai-config.functions";
+import {
+  createWhatsAppTemplate,
+  getAdminWhatsAppTemplates,
+  syncWhatsAppTemplates,
+  updateWhatsAppTemplate,
+} from "@/lib/api/whatsapp-templates.functions";
 import { getAuditLogs } from "@/lib/api/audit.functions";
 import { getIntegrationsHealth } from "@/lib/api/system.functions";
 import {
@@ -50,7 +59,7 @@ import {
   type UserStatus,
   type AITaskType,
 } from "@/lib/types/enums";
-import type { User, AIModelOut, AIPromptOut } from "@/lib/types/api";
+import type { User, AIModelOut, AIPromptOut, WhatsAppTemplateOut } from "@/lib/types/api";
 
 export const Route = createFileRoute("/app/admin")({
   head: () => ({ meta: [{ title: "Match" }] }),
@@ -690,6 +699,8 @@ function ParametrosIATab() {
         </div>
       </section>
 
+      <WhatsAppTemplatesAdmin />
+
       <NewPromptDialog taskType={newPromptOpen} onClose={() => setNewPromptOpen(null)} />
       <PromptHistoryDialog
         taskType={historyOpen}
@@ -697,6 +708,471 @@ function ParametrosIATab() {
         onClose={() => setHistoryOpen(null)}
       />
     </div>
+  );
+}
+
+const WHATSAPP_BINDING_OPTIONS = [
+  { value: "candidate_name", label: "Nombre del candidato" },
+  { value: "job_title", label: "Cargo" },
+  { value: "process_name", label: "Nombre del proceso" },
+  { value: "recruiter_name", label: "Recruiter responsable" },
+] as const;
+
+const WHATSAPP_STATUS_LABEL: Record<string, string> = {
+  SUBMITTING: "Enviando",
+  PENDING: "En revisión",
+  APPROVED: "Aprobada",
+  REJECTED: "Rechazada",
+  PAUSED: "Pausada",
+  DISABLED: "Deshabilitada por Meta",
+  SUBMISSION_FAILED: "Error de envío",
+  DELETED: "Eliminada",
+  UNKNOWN: "Sin sincronizar",
+};
+
+function getWhatsAppBody(template: WhatsAppTemplateOut) {
+  return (
+    template.components.find((component) => component.type.toUpperCase() === "BODY")?.text ?? ""
+  );
+}
+
+function getTemplatePositions(text: string) {
+  return Array.from(text.matchAll(/\{\{(\d+)\}\}/g))
+    .map((match) => Number(match[1]))
+    .filter((position, index, rows) => rows.indexOf(position) === index)
+    .sort((a, b) => a - b);
+}
+
+function WhatsAppTemplatesAdmin() {
+  const qc = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [mappingTemplate, setMappingTemplate] = useState<WhatsAppTemplateOut | null>(null);
+  const { data, isLoading } = useQuery({
+    queryKey: ["whatsapp-templates", "admin"],
+    queryFn: () => getAdminWhatsAppTemplates(),
+  });
+  const templates = data?.templates ?? [];
+  const syncMutation = useMutation({
+    mutationFn: () => syncWhatsAppTemplates(),
+    onSuccess: (result) => {
+      toast.success("Plantillas sincronizadas", {
+        description: `${result.remote} encontradas · ${result.created} nuevas · ${result.updated} actualizadas`,
+      });
+      qc.invalidateQueries({ queryKey: ["whatsapp-templates"] });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo sincronizar con Meta"),
+  });
+  const updateMutation = useMutation({
+    mutationFn: (data: { templateId: string; is_enabled?: boolean; is_default?: boolean }) =>
+      updateWhatsAppTemplate({ data }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-templates"] }),
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo actualizar la plantilla"),
+  });
+
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <SectionLabel>Plantillas oficiales de WhatsApp</SectionLabel>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
+            Son mensajes iniciales de consentimiento enviados mediante Meta. No son prompts de IA:
+            solo las plantillas aprobadas y habilitadas pueden seleccionarse en un proceso.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => syncMutation.mutate()}
+            disabled={syncMutation.isPending}
+            className="inline-flex h-9 items-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold transition hover:bg-muted disabled:opacity-40"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${syncMutation.isPending ? "animate-spin" : ""}`} />
+            Sincronizar Meta
+          </button>
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex h-9 items-center gap-2 rounded-xl bg-emerald-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+          >
+            <Plus className="h-3.5 w-3.5" /> Nueva plantilla
+          </button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <GlassCard className="p-6 text-sm text-muted-foreground">Cargando plantillas…</GlassCard>
+      ) : templates.length === 0 ? (
+        <GlassCard className="border-dashed p-8 text-center">
+          <MessageCircle className="mx-auto h-8 w-8 text-muted-foreground" />
+          <p className="mt-3 text-sm font-semibold">Todavía no hay plantillas registradas</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Crea una desde aquí o sincroniza las existentes en tu cuenta de Meta.
+          </p>
+        </GlassCard>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {templates.map((template) => {
+            const approved = template.status === "APPROVED";
+            const statusTone = approved
+              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+              : template.status === "REJECTED" || template.status === "SUBMISSION_FAILED"
+                ? "bg-destructive/15 text-destructive"
+                : "bg-amber-500/15 text-amber-700 dark:text-amber-300";
+            return (
+              <GlassCard key={template.id} className="space-y-4 overflow-hidden p-0">
+                <div className="border-b border-border/60 bg-emerald-500/[0.04] px-5 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4 shrink-0 text-emerald-600" />
+                        <h3 className="truncate text-sm font-semibold">{template.name}</h3>
+                      </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {template.language} · {template.category}
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusTone}`}
+                    >
+                      {WHATSAPP_STATUS_LABEL[template.status] ?? template.status}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-4 px-5 pb-5">
+                  <p className="line-clamp-4 text-xs leading-5 text-foreground/80">
+                    {getWhatsAppBody(template) || "Sin body disponible"}
+                  </p>
+                  {template.rejection_reason && (
+                    <div className="rounded-lg bg-destructive/10 p-3 text-xs text-destructive">
+                      {template.rejection_reason}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {template.is_default && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
+                        <ShieldCheck className="h-3 w-3" /> Predeterminada
+                      </span>
+                    )}
+                    <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+                      {template.is_enabled ? "Visible para recruiters" : "No seleccionable"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 border-t border-border/60 pt-3">
+                    {getTemplatePositions(getWhatsAppBody(template)).length > 0 && (
+                      <button
+                        onClick={() => setMappingTemplate(template)}
+                        className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+                      >
+                        Mapear variables
+                      </button>
+                    )}
+                    {approved && (
+                      <button
+                        onClick={() =>
+                          updateMutation.mutate({
+                            templateId: template.id,
+                            is_enabled: !template.is_enabled,
+                          })
+                        }
+                        disabled={template.is_default || updateMutation.isPending}
+                        className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted disabled:opacity-40"
+                      >
+                        {template.is_enabled ? "Deshabilitar" : "Habilitar"}
+                      </button>
+                    )}
+                    {approved && !template.is_default && (
+                      <button
+                        onClick={() =>
+                          updateMutation.mutate({ templateId: template.id, is_default: true })
+                        }
+                        disabled={updateMutation.isPending}
+                        className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/15 disabled:opacity-40"
+                      >
+                        Definir como predeterminada
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </GlassCard>
+            );
+          })}
+        </div>
+      )}
+
+      <CreateWhatsAppTemplateDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <WhatsAppMappingDialog template={mappingTemplate} onClose={() => setMappingTemplate(null)} />
+    </section>
+  );
+}
+
+function CreateWhatsAppTemplateDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [language, setLanguage] = useState("es_CO");
+  const [header, setHeader] = useState("");
+  const [body, setBody] = useState(
+    "Hola {{1}}, queremos solicitar tu autorización para una entrevista automatizada del cargo {{2}}.",
+  );
+  const [footer, setFooter] = useState("Puedes responder libremente si tienes alguna pregunta.");
+  const [acceptText, setAcceptText] = useState("Sí, acepto");
+  const [rejectText, setRejectText] = useState("No, gracias");
+  const [bindings, setBindings] = useState<Record<string, string>>({
+    "1": "candidate_name",
+    "2": "job_title",
+  });
+  const [examples, setExamples] = useState<Record<string, string>>({
+    "1": "Ada Lovelace",
+    "2": "Backend senior",
+  });
+  const positions = getTemplatePositions(body);
+  const createMutation = useMutation({
+    mutationFn: () =>
+      createWhatsAppTemplate({
+        data: {
+          name,
+          language,
+          header_text: header.trim() || null,
+          body_text: body,
+          footer_text: footer.trim() || null,
+          accept_button_text: acceptText,
+          reject_button_text: rejectText,
+          variable_bindings: Object.fromEntries(
+            positions.map((position) => [String(position), bindings[String(position)] ?? ""]),
+          ),
+          variable_examples: Object.fromEntries(
+            positions.map((position) => [String(position), examples[String(position)] ?? ""]),
+          ),
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Plantilla enviada a revisión de Meta");
+      qc.invalidateQueries({ queryKey: ["whatsapp-templates"] });
+      onClose();
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo enviar la plantilla"),
+  });
+  const canSubmit =
+    name.trim().length > 0 &&
+    body.trim().length >= 10 &&
+    positions.every((position) => bindings[String(position)] && examples[String(position)]?.trim());
+
+  return (
+    <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto scrollbar-visible">
+        <DialogHeader>
+          <DialogTitle>Nueva plantilla de consentimiento</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-5 md:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
+              <label className="text-xs font-semibold">
+                Nombre en Meta
+                <input
+                  value={name}
+                  onChange={(event) => setName(event.target.value.toLowerCase())}
+                  placeholder="consentimiento_profiling_v3"
+                  className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="text-xs font-semibold">
+                Idioma
+                <input
+                  value={language}
+                  onChange={(event) => setLanguage(event.target.value)}
+                  className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            <label className="block text-xs font-semibold">
+              Header opcional
+              <input
+                value={header}
+                onChange={(event) => setHeader(event.target.value)}
+                maxLength={60}
+                className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block text-xs font-semibold">
+              Mensaje
+              <textarea
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                className="mt-1.5 min-h-36 w-full rounded-xl border border-border bg-background p-3 text-sm"
+              />
+              <span className="mt-1 block text-[11px] font-normal text-muted-foreground">
+                Usa variables consecutivas: {"{{1}}"}, {"{{2}}"}, etc.
+              </span>
+            </label>
+            <label className="block text-xs font-semibold">
+              Footer opcional
+              <input
+                value={footer}
+                onChange={(event) => setFooter(event.target.value)}
+                maxLength={60}
+                className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-xs font-semibold">
+                Botón aceptar
+                <input
+                  value={acceptText}
+                  onChange={(event) => setAcceptText(event.target.value)}
+                  maxLength={25}
+                  className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="text-xs font-semibold">
+                Botón rechazar
+                <input
+                  value={rejectText}
+                  onChange={(event) => setRejectText(event.target.value)}
+                  maxLength={25}
+                  className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+          </div>
+          <div className="space-y-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+            <div>
+              <div className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">
+                Variables y muestras para Meta
+              </div>
+              <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                El mapeo determina qué dato real reemplaza cada posición al enviar.
+              </p>
+            </div>
+            {positions.length === 0 ? (
+              <p className="rounded-lg bg-background/70 p-3 text-xs text-muted-foreground">
+                Esta plantilla no usa variables.
+              </p>
+            ) : (
+              positions.map((position) => (
+                <div
+                  key={position}
+                  className="rounded-xl border border-border bg-background/70 p-3"
+                >
+                  <div className="text-xs font-bold text-primary">{"{{" + position + "}}"}</div>
+                  <AppSelect
+                    value={bindings[String(position)] ?? "none"}
+                    onValueChange={(value) =>
+                      setBindings((current) => ({ ...current, [String(position)]: value }))
+                    }
+                    className="mt-2 w-full"
+                  >
+                    <AppSelectItem value="none">Selecciona el dato</AppSelectItem>
+                    {WHATSAPP_BINDING_OPTIONS.map((option) => (
+                      <AppSelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </AppSelectItem>
+                    ))}
+                  </AppSelect>
+                  <input
+                    value={examples[String(position)] ?? ""}
+                    onChange={(event) =>
+                      setExamples((current) => ({
+                        ...current,
+                        [String(position)]: event.target.value,
+                      }))
+                    }
+                    placeholder="Ejemplo para revisión"
+                    className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs"
+                  />
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <button onClick={onClose} className="rounded-xl border border-border px-4 py-2 text-sm">
+            Cancelar
+          </button>
+          <button
+            onClick={() => createMutation.mutate()}
+            disabled={!canSubmit || createMutation.isPending}
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            {createMutation.isPending ? "Enviando…" : "Enviar a revisión de Meta"}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function WhatsAppMappingDialog({
+  template,
+  onClose,
+}: {
+  template: WhatsAppTemplateOut | null;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [bindings, setBindings] = useState<Record<string, string>>({});
+  useEffect(() => {
+    setBindings(template?.variable_bindings.BODY ?? {});
+  }, [template]);
+  const positions = template ? getTemplatePositions(getWhatsAppBody(template)) : [];
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      updateWhatsAppTemplate({
+        data: { templateId: template!.id, variable_bindings: bindings },
+      }),
+    onSuccess: () => {
+      toast.success("Mapeo de variables guardado");
+      qc.invalidateQueries({ queryKey: ["whatsapp-templates"] });
+      onClose();
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo guardar el mapeo"),
+  });
+  return (
+    <Dialog open={template !== null} onOpenChange={(value) => !value && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Mapear variables — {template?.name}</DialogTitle>
+        </DialogHeader>
+        <p className="text-xs leading-5 text-muted-foreground">
+          El contenido aprobado no se modifica; aquí defines qué dato del proceso ocupa cada
+          variable cuando se envía el mensaje.
+        </p>
+        <div className="space-y-3">
+          {positions.map((position) => (
+            <div key={position} className="grid grid-cols-[60px_1fr] items-center gap-3">
+              <span className="text-xs font-bold text-primary">{"{{" + position + "}}"}</span>
+              <AppSelect
+                value={bindings[String(position)] ?? "none"}
+                onValueChange={(value) =>
+                  setBindings((current) => ({ ...current, [String(position)]: value }))
+                }
+              >
+                <AppSelectItem value="none">Selecciona el dato</AppSelectItem>
+                {WHATSAPP_BINDING_OPTIONS.map((option) => (
+                  <AppSelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </AppSelectItem>
+                ))}
+              </AppSelect>
+            </div>
+          ))}
+        </div>
+        <DialogFooter>
+          <button onClick={onClose} className="rounded-xl border border-border px-4 py-2 text-sm">
+            Cancelar
+          </button>
+          <button
+            onClick={() => updateMutation.mutate()}
+            disabled={
+              positions.some((position) => !bindings[String(position)]) || updateMutation.isPending
+            }
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+          >
+            Guardar mapeo
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -978,7 +1454,9 @@ function NewPromptDialog({
           <p className="text-[11px] text-muted-foreground">
             {taskType && GLOBAL_RUNTIME_TASKS.includes(taskType)
               ? "Las versiones son append-only. Al publicar, la siguiente ejecución de todos los procesos usará esta versión."
-              : "Las versiones son append-only. Se copian en procesos nuevos o al restaurarlas explícitamente."}
+              : taskType === "VOICE_CALL_AGENT"
+                ? "Saludo e instrucciones son obligatorios. Se copian al proceso y nunca se heredan dinámicamente."
+                : "Las versiones son append-only. Se copian en procesos nuevos o al restaurarlas explícitamente."}
           </p>
         </div>
         <DialogFooter>
@@ -987,7 +1465,12 @@ function NewPromptDialog({
           </button>
           <button
             onClick={() => createMutation.mutate()}
-            disabled={!versionName || !text || createMutation.isPending}
+            disabled={
+              !versionName ||
+              !text ||
+              (taskType === "VOICE_CALL_AGENT" && !firstMessage.trim()) ||
+              createMutation.isPending
+            }
             className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
           >
             {createMutation.isPending ? "Guardando…" : "Publicar plantilla"}
@@ -1071,7 +1554,7 @@ function PromptHistoryDialog({
                     {taskType === "VOICE_CALL_AGENT" && (
                       <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-xs">
                         <span className="font-semibold">Saludo: </span>
-                        {p.first_message_text || "Automático según el set de preguntas"}
+                        {p.first_message_text || "Sin saludo: esta versión no puede activarse"}
                       </div>
                     )}
                     <pre className="text-xs whitespace-pre-wrap break-words bg-muted/50 rounded-lg p-3 max-h-64 overflow-y-auto">

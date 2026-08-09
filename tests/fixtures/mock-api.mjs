@@ -46,7 +46,15 @@ const processDetail = {
   ...processItem,
   match_weights: null,
   question_set_id: "set-qa",
-  voice_override_first_message: null,
+  whatsapp_template: {
+    id: "57000000-0000-4000-8000-000000000001",
+    name: "autorizacion_llamada_ia_v2",
+    language: "es_CO",
+    status: "APPROVED",
+    is_enabled: true,
+    components: [{ type: "BODY", text: "Hola {{1}}, ¿aceptas una entrevista automatizada?" }],
+    variable_bindings: { BODY: { 1: "candidate_name" } },
+  },
   voice_override_language: "es",
   job_description: {
     jd_id: "jd-qa",
@@ -72,6 +80,33 @@ const processPrompts = ["WHATSAPP_MESSAGE", "VOICE_CALL_AGENT"].map((task_type) 
   created_by: "user-qa",
   created_at: now,
 }));
+
+const whatsappTemplate = {
+  id: "57000000-0000-4000-8000-000000000001",
+  meta_template_id: "meta-template-qa",
+  name: "autorizacion_llamada_ia_v2",
+  language: "es_CO",
+  category: "UTILITY",
+  status: "APPROVED",
+  components: [
+    { type: "BODY", text: "Hola {{1}}, ¿aceptas una entrevista automatizada?" },
+    {
+      type: "BUTTONS",
+      buttons: [
+        { type: "QUICK_REPLY", text: "Sí, acepto" },
+        { type: "QUICK_REPLY", text: "No, gracias" },
+      ],
+    },
+  ],
+  variable_bindings: { BODY: { 1: "candidate_name" } },
+  rejection_reason: null,
+  is_enabled: true,
+  is_default: true,
+  is_selectable: true,
+  last_synced_at: now,
+  created_at: now,
+  updated_at: now,
+};
 
 const candidate = {
   rank: 1,
@@ -104,7 +139,6 @@ const questionSet = {
   created_at: now,
   updated_at: now,
   default_agent_id: null,
-  default_first_message: null,
   default_language: "es",
   default_llm_model: null,
   default_voice_id: null,
@@ -321,6 +355,14 @@ function responseFor(method, pathname, searchParams) {
     });
   if (pathname === "/api/v1/ai-config/models") return json({ models: [] });
   if (pathname === "/api/v1/ai-config/prompts") return json({ prompts: [] });
+  if (method === "POST" && pathname === "/api/v1/ai-config/whatsapp-templates/sync")
+    return json({ remote: 1, created: 0, updated: 1 });
+  if (method === "GET" && pathname === "/api/v1/ai-config/whatsapp-templates")
+    return json({ templates: [whatsappTemplate] });
+  if (method === "GET" && pathname === "/api/v1/whatsapp-templates")
+    return json({ templates: [whatsappTemplate] });
+  if (method === "POST" && pathname === "/api/v1/ai-config/whatsapp-templates")
+    return json({ ...whatsappTemplate, id: "template-new", status: "PENDING" }, 201);
   if (pathname === "/api/v1/ai-config/global-settings")
     return json({
       settings: [

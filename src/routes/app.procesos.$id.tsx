@@ -76,7 +76,9 @@ import {
   createProcessAIPrompt,
   getProcessAIPrompts,
   restoreProcessAIPromptTemplate,
+  assignProcessWhatsAppTemplate,
 } from "@/lib/api/processes.functions";
+import { getSelectableWhatsAppTemplates } from "@/lib/api/whatsapp-templates.functions";
 import {
   getCandidates,
   analyzeCVs,
@@ -124,6 +126,8 @@ import type {
   PipelineCandidate,
   AvailabilityPreference,
   ProcessAIPromptOut,
+  ProcessWhatsAppTemplate,
+  WhatsAppTemplateOut,
 } from "@/lib/types/api";
 import { useAuth } from "@/lib/auth-context";
 import { cn, cleanAnswerText } from "@/lib/utils";
@@ -1968,8 +1972,16 @@ function KanbanTab({
 
 const PROCESS_COMMUNICATION_TASKS: AITaskType[] = ["WHATSAPP_MESSAGE", "VOICE_CALL_AGENT"];
 
+function whatsappTemplateBody(template?: ProcessWhatsAppTemplate | WhatsAppTemplateOut | null) {
+  return (
+    template?.components.find((component) => component.type.toUpperCase() === "BODY")?.text ??
+    "Sin vista previa disponible"
+  );
+}
+
 function ProcessCommunicationPanel({
   processId,
+  whatsappTemplate,
   isActive,
   canEdit,
   voiceLanguage,
@@ -1978,6 +1990,7 @@ function ProcessCommunicationPanel({
   isSavingVoiceLanguage,
 }: {
   processId: string;
+  whatsappTemplate: ProcessWhatsAppTemplate | null;
   isActive: boolean;
   canEdit: boolean;
   voiceLanguage: string;
@@ -1989,12 +2002,23 @@ function ProcessCommunicationPanel({
   const [editingTask, setEditingTask] = useState<AITaskType | null>(null);
   const [historyTask, setHistoryTask] = useState<AITaskType | null>(null);
   const [text, setText] = useState("");
-  const [greeting, setGreeting] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState(whatsappTemplate?.id ?? "none");
+  useEffect(() => {
+    setSelectedTemplateId(whatsappTemplate?.id ?? "none");
+  }, [whatsappTemplate?.id]);
   const { data, isLoading } = useQuery({
     queryKey: ["process-ai-prompts", processId],
     queryFn: () => getProcessAIPrompts({ data: { processId } }),
   });
   const prompts = data?.prompts ?? [];
+  const { data: whatsappTemplatesData, isLoading: isLoadingWhatsAppTemplates } = useQuery({
+    queryKey: ["whatsapp-templates", "selectable"],
+    queryFn: () => getSelectableWhatsAppTemplates(),
+  });
+  const whatsappTemplates = whatsappTemplatesData?.templates ?? [];
+  const selectedWhatsAppTemplate = whatsappTemplates.find(
+    (template) => template.id === selectedTemplateId,
+  );
   const activeByTask = new Map(
     prompts.filter((prompt) => prompt.is_active).map((prompt) => [prompt.task_type, prompt]),
   );
@@ -2006,8 +2030,6 @@ function ProcessCommunicationPanel({
           processId,
           taskType: editingTask!,
           systemPromptText: text,
-          firstMessageText:
-            editingTask === "VOICE_CALL_AGENT" ? greeting.trim() || null : undefined,
         },
       }),
     onSuccess: () => {
@@ -2019,10 +2041,21 @@ function ProcessCommunicationPanel({
       invalidate();
       setEditingTask(null);
       setText("");
-      setGreeting("");
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "No se pudo guardar el prompt"),
+  });
+  const assignWhatsAppTemplateMutation = useMutation({
+    mutationFn: () =>
+      assignProcessWhatsAppTemplate({
+        data: { processId, templateId: selectedTemplateId },
+      }),
+    onSuccess: () => {
+      toast.success("Plantilla inicial de WhatsApp actualizada");
+      qc.invalidateQueries({ queryKey: ["process", processId] });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo asignar la plantilla"),
   });
   const restoreMutation = useMutation({
     mutationFn: (taskType: AITaskType) =>
@@ -2068,7 +2101,7 @@ function ProcessCommunicationPanel({
               onValueChange={(value) => onVoiceLanguageChange(value === "auto" ? "" : value)}
               className="mt-3 w-full sm:max-w-sm"
             >
-              <AppSelectItem value="auto">Automático según el set de preguntas</AppSelectItem>
+              <AppSelectItem value="auto">Usar idioma técnico del set</AppSelectItem>
               {VOICE_LANGUAGES.map((language) => (
                 <AppSelectItem key={language.value} value={language.value}>
                   {language.label}
@@ -2126,8 +2159,58 @@ function ProcessCommunicationPanel({
                     Saludo inicial
                   </div>
                   <p className="mt-1 line-clamp-2 text-xs text-foreground/80">
-                    {prompt?.first_message_text || "Automático según el set de preguntas"}
+                    {prompt?.first_message_text || "Falta aplicar una plantilla de Admin"}
                   </p>
+                </div>
+              )}
+              {!isCallAgent && (
+                <div className="space-y-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                      Plantilla inicial aprobada por Meta
+                    </div>
+                    {whatsappTemplate && (
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                        {whatsappTemplate.language}
+                      </span>
+                    )}
+                  </div>
+                  <AppSelect
+                    value={selectedTemplateId}
+                    onValueChange={setSelectedTemplateId}
+                    disabled={!isActive || !canEdit || isLoadingWhatsAppTemplates}
+                    className="w-full"
+                  >
+                    <AppSelectItem value="none">
+                      {isLoadingWhatsAppTemplates
+                        ? "Cargando plantillas…"
+                        : "Selecciona una plantilla aprobada"}
+                    </AppSelectItem>
+                    {whatsappTemplates.map((template) => (
+                      <AppSelectItem key={template.id} value={template.id}>
+                        {template.name} · {template.language}
+                        {template.is_default ? " (predeterminada)" : ""}
+                      </AppSelectItem>
+                    ))}
+                  </AppSelect>
+                  <p className="line-clamp-3 text-[11px] leading-5 text-muted-foreground">
+                    {whatsappTemplateBody(selectedWhatsAppTemplate ?? whatsappTemplate)}
+                  </p>
+                  <button
+                    onClick={() => assignWhatsAppTemplateMutation.mutate()}
+                    disabled={
+                      !isActive ||
+                      !canEdit ||
+                      selectedTemplateId === "none" ||
+                      selectedTemplateId === whatsappTemplate?.id ||
+                      assignWhatsAppTemplateMutation.isPending
+                    }
+                    className="text-xs font-semibold text-emerald-700 hover:underline disabled:opacity-40 dark:text-emerald-300"
+                  >
+                    {assignWhatsAppTemplateMutation.isPending
+                      ? "Asignando…"
+                      : "Usar esta plantilla en el proceso"}
+                  </button>
                 </div>
               )}
               <p className="text-xs text-muted-foreground line-clamp-2 min-h-8">
@@ -2138,7 +2221,6 @@ function ProcessCommunicationPanel({
                   onClick={() => {
                     setEditingTask(taskType);
                     setText(prompt?.system_prompt_text ?? "");
-                    setGreeting(prompt?.first_message_text ?? "");
                   }}
                   disabled={!isActive || !canEdit}
                   className="text-primary font-medium hover:underline disabled:opacity-40"
@@ -2156,7 +2238,8 @@ function ProcessCommunicationPanel({
                   disabled={!isActive || !canEdit || restoreMutation.isPending}
                   className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground disabled:opacity-40"
                 >
-                  <RotateCcw className="h-3.5 w-3.5" /> Restaurar
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  {isCallAgent ? "Aplicar base Admin" : "Restaurar prompt base"}
                 </button>
               </div>
             </div>
@@ -2178,19 +2261,21 @@ function ProcessCommunicationPanel({
             consentimiento y las preguntas se agregan automáticamente al ejecutar el flujo.
           </p>
           {editingTask === "VOICE_CALL_AGENT" && (
-            <div>
-              <label htmlFor="call-agent-greeting" className="text-xs font-semibold">
-                Saludo inicial
-              </label>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Si queda vacío, se utilizará el saludo definido en el set de preguntas.
+            <div className="rounded-xl border border-border bg-muted/35 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-semibold">Saludo inicial</span>
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  Gestionado por Admin
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-foreground/85">
+                {activeByTask.get("VOICE_CALL_AGENT")?.first_message_text ??
+                  "Falta aplicar una plantilla de Admin"}
               </p>
-              <textarea
-                id="call-agent-greeting"
-                value={greeting}
-                onChange={(event) => setGreeting(event.target.value)}
-                className="mt-2 min-h-24 w-full rounded-xl border border-border bg-background/70 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Puedes personalizar las instrucciones. Para cambiar el saludo, aplica una nueva
+                plantilla base publicada por Admin.
+              </p>
             </div>
           )}
           <div>
@@ -2244,7 +2329,7 @@ function ProcessCommunicationPanel({
                 {historyTask === "VOICE_CALL_AGENT" && (
                   <div className="mt-2 rounded-lg border border-border/60 p-2 text-[11px]">
                     <span className="font-semibold">Saludo: </span>
-                    {prompt.first_message_text || "Automático según el set de preguntas"}
+                    {prompt.first_message_text || "Sin saludo registrado"}
                   </div>
                 )}
               </div>
@@ -2694,6 +2779,7 @@ function ConfigTab({
 
           <ProcessCommunicationPanel
             processId={processId}
+            whatsappTemplate={process.whatsapp_template}
             isActive={isActive}
             canEdit={canEditPrompts}
             voiceLanguage={voiceLanguage}

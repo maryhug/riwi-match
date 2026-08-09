@@ -73,9 +73,43 @@ test("los ajustes del proceso dejan solo la comunicación propia", async ({ page
   await expect(page.getByText("Mensaje de WhatsApp", { exact: true })).toBeVisible();
   await expect(page.getByText("Agente de llamada", { exact: true })).toBeVisible();
   await expect(page.getByText("Hola Ada, te llamo de Riwi.", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Plantilla inicial aprobada por Meta", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("autorizacion_llamada_ia_v2", { exact: false })).toBeVisible();
   await expect(page.getByText("Extracción de CV", { exact: true })).not.toBeVisible();
   await expect(page.getByText("Evaluación de profiling", { exact: true })).not.toBeVisible();
   await expect(page.getByText("Primer saludo", { exact: true })).not.toBeVisible();
+});
+
+test("el saludo vive en el proceso pero el recruiter no puede editarlo libremente", async ({
+  page,
+}) => {
+  await page.goto("/app/procesos/process-qa");
+  await page.getByRole("button", { name: "Configuración" }).click();
+  const callCard = page
+    .getByText("Agente de llamada", { exact: true })
+    .locator("xpath=ancestor::div[contains(@class,'rounded-xl')][1]");
+  await callCard.getByRole("button", { name: "Editar" }).click();
+  const dialog = page.getByRole("dialog", { name: "Editar agente de llamada" });
+  await expect(dialog.getByText("Gestionado por Admin", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Hola Ada, te llamo de Riwi.", { exact: true })).toBeVisible();
+  await expect(dialog.locator("#call-agent-greeting")).toHaveCount(0);
+  await expect(page.getByText(/saludo definido en el set de preguntas/i)).toHaveCount(0);
+});
+
+test("Admin distingue plantillas oficiales de WhatsApp de los prompts", async ({ page }) => {
+  await page.goto("/app/admin");
+  await page.getByRole("button", { name: "Parámetros de IA" }).click();
+  await expect(page.getByText("Plantillas oficiales de WhatsApp", { exact: true })).toBeVisible();
+  await expect(page.getByText("autorizacion_llamada_ia_v2", { exact: true })).toBeVisible();
+  await expect(page.getByText("Aprobada", { exact: true })).toBeVisible();
+  await expect(page.getByText("Predeterminada", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sincronizar Meta" })).toBeVisible();
+  const whatsappSection = page
+    .getByText("Plantillas oficiales de WhatsApp", { exact: true })
+    .locator("xpath=ancestor::section[1]");
+  await expect(whatsappSection.getByRole("button", { name: "Nueva plantilla" })).toBeVisible();
 });
 
 test("la configuración mantiene la navegación util en móvil", async ({ page }) => {

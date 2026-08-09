@@ -136,9 +136,49 @@ export interface ProcessDetailResponse {
   recruiter_id: string;
   recruiter_name: string;
   question_set_id: string | null;
-  voice_override_first_message: string | null;
   voice_override_language: string | null;
+  whatsapp_template: ProcessWhatsAppTemplate | null;
   job_description: JobDescriptionSummary | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type WhatsAppTemplateStatus =
+  | "SUBMITTING"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "PAUSED"
+  | "DISABLED"
+  | "SUBMISSION_FAILED"
+  | "DELETED"
+  | "UNKNOWN";
+
+export interface WhatsAppTemplateComponent {
+  type: string;
+  format?: string;
+  text?: string;
+  example?: { body_text?: string[][] };
+  buttons?: Array<{ type: string; text: string }>;
+}
+
+export interface ProcessWhatsAppTemplate {
+  id: string;
+  name: string;
+  language: string;
+  status: WhatsAppTemplateStatus;
+  is_enabled: boolean;
+  components: WhatsAppTemplateComponent[];
+  variable_bindings: Record<string, Record<string, string>>;
+}
+
+export interface WhatsAppTemplateOut extends ProcessWhatsAppTemplate {
+  meta_template_id: string | null;
+  category: string;
+  rejection_reason: string | null;
+  is_default: boolean;
+  is_selectable: boolean;
+  last_synced_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -399,7 +439,6 @@ export interface QuestionOut {
 
 export interface QuestionSetVoiceDefaults {
   default_agent_id: string | null;
-  default_first_message: string | null;
   default_language: string | null;
   default_llm_model: string | null;
   default_voice_id: string | null;

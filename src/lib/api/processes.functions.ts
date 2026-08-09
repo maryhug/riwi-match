@@ -16,6 +16,7 @@ import type {
   UploadJDResponse,
   VoiceConfig,
   ProcessOption,
+  WhatsAppTemplateOut,
 } from "../types/api";
 import type { ProcessStatus } from "../types/enums";
 
@@ -158,7 +159,6 @@ export const createProcessAIPrompt = createServerFn({ method: "POST" })
       processId: z.string(),
       taskType: z.string(),
       systemPromptText: z.string().min(1),
-      firstMessageText: z.string().nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -168,9 +168,17 @@ export const createProcessAIPrompt = createServerFn({ method: "POST" })
         method: "POST",
         body: {
           system_prompt_text: data.systemPromptText,
-          first_message_text: data.firstMessageText,
         },
       },
+    );
+  });
+
+export const assignProcessWhatsAppTemplate = createServerFn({ method: "POST" })
+  .validator(z.object({ processId: z.string(), templateId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    return apiCall<{ template: WhatsAppTemplateOut }>(
+      `/api/v1/processes/${data.processId}/whatsapp-template`,
+      { method: "PATCH", body: { template_id: data.templateId } },
     );
   });
 
