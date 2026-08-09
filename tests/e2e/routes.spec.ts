@@ -63,15 +63,19 @@ test("SetBuilder renderiza datos del backend mock a traves del BFF", async ({ pa
   await expect(page.getByText("Cuentanos tu experiencia con FastAPI")).toBeVisible();
 });
 
-test("los ajustes del proceso centralizan sus prompts de IA", async ({ page }) => {
+test("los ajustes del proceso dejan solo la comunicación propia", async ({ page }) => {
   await page.goto("/app/procesos/process-qa");
   await page.getByRole("button", { name: "Configuración" }).click();
   await expect(page.getByRole("heading", { name: "Ajustes del proceso" })).toBeVisible();
   await expect(page.getByText("Centro de control", { exact: true })).toBeVisible();
-  await expect(page.getByText("6/6 activa", { exact: true })).toBeVisible();
-  await expect(page.getByText("Comportamiento de IA", { exact: true })).toBeVisible();
-  await expect(page.getByText("Extracción de CV", { exact: true })).toBeVisible();
-  await expect(page.getByText("Agente de llamada (prompt base)", { exact: true })).toBeVisible();
+  await expect(page.getByText("2/2 canales", { exact: true })).toBeVisible();
+  await expect(page.getByText("Comunicación con candidatos", { exact: true })).toBeVisible();
+  await expect(page.getByText("Mensaje de WhatsApp", { exact: true })).toBeVisible();
+  await expect(page.getByText("Agente de llamada", { exact: true })).toBeVisible();
+  await expect(page.getByText("Hola Ada, te llamo de Riwi.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Extracción de CV", { exact: true })).not.toBeVisible();
+  await expect(page.getByText("Evaluación de profiling", { exact: true })).not.toBeVisible();
+  await expect(page.getByText("Primer saludo", { exact: true })).not.toBeVisible();
 });
 
 test("la configuración mantiene la navegación util en móvil", async ({ page }) => {
@@ -79,8 +83,64 @@ test("la configuración mantiene la navegación util en móvil", async ({ page }
   await page.goto("/app/procesos/process-qa");
   await page.getByRole("button", { name: "Configuración" }).click();
   await expect(page.getByRole("heading", { name: "Ajustes del proceso" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Voz" }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Comunicación" }).first()).toBeVisible();
   await expect(page.getByText("Centro de control", { exact: true })).not.toBeVisible();
+});
+
+test("inicio pagina en servidor y conserva los totales globales", async ({ page }) => {
+  await page.goto("/app");
+  await expect(page.getByText("Backend QA 2026", { exact: true })).toBeVisible();
+  await expect(page.locator("main")).toContainText("11 procesos encontrados");
+  await expect(page.getByText("Página 1 de 2", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: /Siguiente/ }).click();
+  await expect(page.getByText("Proceso página 2 QA", { exact: true })).toBeVisible();
+  await expect(page.getByText("Página 2 de 2", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Anterior/ }).click();
+  await expect(page.getByText("Backend QA 2026", { exact: true })).toBeVisible();
+});
+
+test("inicio reinicia la paginación al aplicar un filtro", async ({ page }) => {
+  await page.goto("/app");
+  await page.getByRole("button", { name: /Siguiente/ }).click();
+  await expect(page.getByText("Página 2 de 2", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Área" }).click();
+  await page.getByRole("menuitem", { name: "Tecnologia" }).click();
+
+  await expect(page.getByText("Backend QA 2026", { exact: true })).toBeVisible();
+  await expect(page.getByText("Página 1 de 2", { exact: true })).toBeVisible();
+});
+
+test("inicio encuentra cerrados y archivados desde el filtro de etapa", async ({ page }) => {
+  await page.goto("/app");
+
+  await page.getByRole("button", { name: "Etapa" }).click();
+  await page.getByRole("menuitem", { name: "Archivado" }).click();
+  await expect(page.getByText("Proceso archivado QA", { exact: true })).toBeVisible();
+  await expect(page.locator("tbody")).toContainText("Archivado");
+
+  await page.getByRole("button", { name: "Archivado", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Cerrado" }).click();
+  await expect(page.getByText("Proceso cerrado QA", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Cerrado", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Procesos vigentes" }).click();
+  await expect(page.getByText("Backend QA 2026", { exact: true })).toBeVisible();
+});
+
+test("inicio distingue resultados vacíos de errores recuperables", async ({ page }) => {
+  await page.goto("/app");
+
+  await page.getByRole("button", { name: "Área" }).click();
+  await page.getByRole("menuitem", { name: "Diseño" }).click();
+  await expect(page.getByText("Ningún proceso coincide con los filtros aplicados.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Diseño" }).click();
+  await page.getByRole("menuitem", { name: "Error QA" }).click();
+  await expect(page.getByRole("alert")).toContainText("No pudimos cargar los procesos");
+  await expect(page.getByRole("alert")).toContainText("Fallo controlado del listado");
+  await expect(page.getByRole("button", { name: "Reintentar" })).toBeVisible();
 });
 
 test("rutas clave no presentan violaciones graves de accesibilidad", async ({ page }) => {

@@ -1,7 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { apiCall } from "./client.server";
-import type { MetricsDashboardResponse } from "../types/api";
+import type { HomeMetricsResponse, MetricsDashboardResponse } from "../types/api";
+
+export const getHomeMetrics = createServerFn({ method: "GET" }).handler(async () => {
+  return apiCall<HomeMetricsResponse>("/api/v1/metrics/home");
+});
 
 export const getDashboardMetrics = createServerFn({ method: "GET" }).handler(async () => {
   return apiCall<MetricsDashboardResponse>("/api/v1/metrics/dashboard");

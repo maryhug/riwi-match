@@ -7,7 +7,12 @@ import { PipelineBoard } from "../../src/components/app/PipelineBoard";
 import { ProfilingResultModal } from "../../src/components/app/ProfilingResultModal";
 import { QuestionFormDialog } from "../../src/components/app/QuestionFormDialog";
 import { UploadCvsModal } from "../../src/components/app/UploadCvsModal";
-import type { PipelineCandidate, ProfilingRunOut } from "../../src/lib/types/api";
+import type {
+  PipelineCandidate,
+  ProcessHomeResponse,
+  ProfilingRunOut,
+} from "../../src/lib/types/api";
+import { homeProcessesRefetchInterval } from "../../src/lib/polling";
 import { TestQueryProvider } from "./TestQueryProvider";
 
 const run: ProfilingRunOut = {
@@ -79,6 +84,30 @@ test("GlassCard conserva contenido y semantica", async ({ mount, page }) => {
 test("LoadingIndicator anuncia el estado", async ({ mount, page }) => {
   await mount(<LoadingIndicator label="Validando datos" />);
   await expect(page.getByRole("status")).toHaveText("Validando datos");
+});
+
+test("polling de inicio se acelera solo cuando hay trabajo activo", async () => {
+  expect(homeProcessesRefetchInterval(undefined)).toBe(30_000);
+  const activeData = {
+    items: [{ progress: { counts: { cv_processing: 1 } } }],
+  } as ProcessHomeResponse;
+  const settledData = {
+    items: [
+      {
+        progress: {
+          counts: {
+            cv_processing: 0,
+            match_processing: 0,
+            profiling_active: 0,
+            calls_active: 0,
+          },
+        },
+      },
+    ],
+  } as ProcessHomeResponse;
+
+  expect(homeProcessesRefetchInterval(activeData)).toBe(5_000);
+  expect(homeProcessesRefetchInterval(settledData)).toBe(30_000);
 });
 
 test("PipelineBoard distribuye candidatos y estados vacios", async ({ mount, page }) => {

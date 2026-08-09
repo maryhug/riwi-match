@@ -15,7 +15,7 @@ import {
   getProfilingRunDetail,
   triggerProfiling,
 } from "@/lib/api/profiling.functions";
-import { getProcesses } from "@/lib/api/processes.functions";
+import { getProcessOptions } from "@/lib/api/processes.functions";
 import type { CandidateListItem, PipelineCandidate, ProfilingRunOut } from "@/lib/types/api";
 import { LIVE_REFRESH_INTERVAL_MS } from "@/lib/polling";
 import { cn } from "@/lib/utils";
@@ -49,11 +49,11 @@ function Profiling() {
     candidate: PipelineCandidate;
   } | null>(null);
 
-  // getProcesses ya filtra por rol en el backend (recruiter -> solo los suyos,
+  // getProcessOptions ya filtra por rol en el backend (recruiter -> solo los suyos,
   // admin/TA_LEADER -> todos), así que el selector nunca ofrece procesos ajenos.
   const { data: processesData } = useQuery({
     queryKey: ["processes"],
-    queryFn: () => getProcesses(),
+    queryFn: () => getProcessOptions({ data: { includeInactive: false } }),
   });
 
   const { data, isLoading } = useQuery({

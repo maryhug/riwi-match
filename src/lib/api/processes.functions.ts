@@ -7,6 +7,7 @@ import type {
   JobDescriptionListResponse,
   ParseJDResponse,
   ProcessDetailResponse,
+  ProcessHomeResponse,
   ProcessListResponse,
   ProcessMetricsResponse,
   ProcessMutationResponse,
@@ -14,12 +15,42 @@ import type {
   ProcessAIPromptOut,
   UploadJDResponse,
   VoiceConfig,
+  ProcessOption,
 } from "../types/api";
 import type { ProcessStatus } from "../types/enums";
 
 export const getProcesses = createServerFn({ method: "GET" }).handler(async () => {
   return apiCall<ProcessListResponse>("/api/v1/processes");
 });
+
+export const getHomeProcesses = createServerFn({ method: "GET" })
+  .validator(
+    z.object({
+      page: z.number().int().positive(),
+      pageSize: z.number().int().positive().max(100).default(10),
+      stage: z.string().nullable().optional(),
+      recruiterId: z.string().uuid().nullable().optional(),
+      area: z.string().nullable().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const params = new URLSearchParams({
+      page: String(data.page),
+      page_size: String(data.pageSize),
+    });
+    if (data.stage) params.set("stage", data.stage);
+    if (data.recruiterId) params.set("recruiter_id", data.recruiterId);
+    if (data.area) params.set("area", data.area);
+    return apiCall<ProcessHomeResponse>(`/api/v1/processes/home?${params.toString()}`);
+  });
+
+export const getProcessOptions = createServerFn({ method: "GET" })
+  .validator(z.object({ includeInactive: z.boolean().default(false) }))
+  .handler(async ({ data }) => {
+    return apiCall<{ processes: ProcessOption[] }>(
+      `/api/v1/processes/options?include_inactive=${String(data.includeInactive)}`,
+    );
+  });
 
 export const getProcess = createServerFn({ method: "GET" })
   .validator(z.object({ processId: z.string() }))
@@ -97,7 +128,6 @@ export const updateVoiceConfig = createServerFn({ method: "POST" })
     z.object({
       processId: z.string(),
       voice_override_agent_id: z.string().nullable().optional(),
-      voice_override_first_message: z.string().nullable().optional(),
       voice_override_language: z.string().nullable().optional(),
       voice_override_llm_model: z.string().nullable().optional(),
       voice_override_voice_id: z.string().nullable().optional(),
@@ -124,12 +154,23 @@ export const getProcessAIPrompts = createServerFn({ method: "GET" })
 
 export const createProcessAIPrompt = createServerFn({ method: "POST" })
   .validator(
-    z.object({ processId: z.string(), taskType: z.string(), systemPromptText: z.string().min(1) }),
+    z.object({
+      processId: z.string(),
+      taskType: z.string(),
+      systemPromptText: z.string().min(1),
+      firstMessageText: z.string().nullable().optional(),
+    }),
   )
   .handler(async ({ data }) => {
     return apiCall<ProcessAIPromptOut>(
       `/api/v1/processes/${data.processId}/ai-prompts/${data.taskType}`,
-      { method: "POST", body: { system_prompt_text: data.systemPromptText } },
+      {
+        method: "POST",
+        body: {
+          system_prompt_text: data.systemPromptText,
+          first_message_text: data.firstMessageText,
+        },
+      },
     );
   });
 

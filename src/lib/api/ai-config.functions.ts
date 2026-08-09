@@ -38,6 +38,7 @@ export const createAIPrompt = createServerFn({ method: "POST" })
       task_type: z.string(),
       version_name: z.string().min(1),
       system_prompt_text: z.string().min(1),
+      first_message_text: z.string().nullable().optional(),
       activate: z.boolean().optional(),
     }),
   )

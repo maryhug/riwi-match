@@ -160,7 +160,7 @@ export const AI_TASK_TYPE_LABEL: Record<AITaskType, string> = {
   JD_ENHANCEMENT: "Mejora de JD",
   VOICE_PROFILING: "Evaluación de profiling",
   WHATSAPP_MESSAGE: "Mensaje WhatsApp",
-  VOICE_CALL_AGENT: "Agente de llamada (prompt base)",
+  VOICE_CALL_AGENT: "Agente de llamada",
 };
 
 export type OperationType =

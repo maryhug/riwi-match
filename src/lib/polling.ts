@@ -1,4 +1,5 @@
 import type { CandidateStatus, ProfilingRunStatus } from "./types/enums";
+import type { ProcessHomeResponse } from "./types/api";
 
 // Polling de tareas asíncronas del backend (parseo de CV, match, profiling) vía TanStack Query.
 // Fuente única de verdad para saber cuándo dejar de pollear.
@@ -10,6 +11,19 @@ export const PROFILING_POLL_INTERVAL_MS = 10000;
 // estados parecen asentados, así que mantenemos un pulso ligero mientras la
 // pantalla está abierta (no se ejecuta en segundo plano por defecto).
 export const LIVE_REFRESH_INTERVAL_MS = 5000;
+
+export function homeProcessesRefetchInterval(data: ProcessHomeResponse | undefined): number {
+  const hasActiveWork = data?.items.some((process) => {
+    const counts = process.progress.counts;
+    return (
+      counts.cv_processing > 0 ||
+      counts.match_processing > 0 ||
+      counts.profiling_active > 0 ||
+      counts.calls_active > 0
+    );
+  });
+  return hasActiveWork ? LIVE_REFRESH_INTERVAL_MS : 30_000;
+}
 
 // Tope de seguridad: si el backend no asienta todo tras este tiempo (worker caído/atascado),
 // dejamos de pollear para no golpear la API indefinidamente.

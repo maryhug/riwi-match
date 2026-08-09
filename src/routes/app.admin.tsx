@@ -605,14 +605,13 @@ function EditUserDialog({ user, onClose }: { user: User | null; onClose: () => v
 
 // ─── Parámetros de IA ───────────────────────────────────────────────────────
 
-const TASK_TYPES: AITaskType[] = [
+const GLOBAL_RUNTIME_TASKS: AITaskType[] = [
   "CV_EXTRACTION",
   "CV_MATCH",
   "JD_ENHANCEMENT",
   "VOICE_PROFILING",
-  "WHATSAPP_MESSAGE",
-  "VOICE_CALL_AGENT",
 ];
+const PROCESS_TEMPLATE_TASKS: AITaskType[] = ["WHATSAPP_MESSAGE", "VOICE_CALL_AGENT"];
 
 function ParametrosIATab() {
   const qc = useQueryClient();
@@ -642,9 +641,40 @@ function ParametrosIATab() {
       </section>
 
       <section className="space-y-3">
-        <SectionLabel>Modelos y plantillas para procesos nuevos</SectionLabel>
+        <div>
+          <SectionLabel>Prompts globales en ejecución</SectionLabel>
+          <p className="mt-1 text-xs text-muted-foreground">
+            La versión activa se aplica a la siguiente extracción, match, mejora de JD o evaluación,
+            incluso en procesos que ya existen.
+          </p>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {TASK_TYPES.map((taskType) => (
+          {GLOBAL_RUNTIME_TASKS.map((taskType) => (
+            <TaskTypeConfigCard
+              key={taskType}
+              taskType={taskType}
+              models={(modelsData?.models ?? []).filter((m) => m.task_type === taskType)}
+              activePrompt={(promptsData?.prompts ?? []).find(
+                (p) => p.task_type === taskType && p.is_active,
+              )}
+              onActivateModel={(modelId) => activateMutation.mutate(modelId)}
+              onNewPrompt={() => setNewPromptOpen(taskType)}
+              onOpenHistory={() => setHistoryOpen(taskType)}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <SectionLabel>Plantillas de comunicación por proceso</SectionLabel>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Se copian al crear un proceso o al restaurarlas manualmente; no reemplazan cambios
+            propios de procesos existentes.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {PROCESS_TEMPLATE_TASKS.map((taskType) => (
             <TaskTypeConfigCard
               key={taskType}
               taskType={taskType}
@@ -882,6 +912,7 @@ function NewPromptDialog({
   const qc = useQueryClient();
   const [versionName, setVersionName] = useState("");
   const [text, setText] = useState("");
+  const [firstMessage, setFirstMessage] = useState("");
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -890,6 +921,8 @@ function NewPromptDialog({
           task_type: taskType!,
           version_name: versionName,
           system_prompt_text: text,
+          first_message_text:
+            taskType === "VOICE_CALL_AGENT" ? firstMessage.trim() || null : undefined,
           activate: true,
         },
       }),
@@ -899,6 +932,7 @@ function NewPromptDialog({
       onClose();
       setVersionName("");
       setText("");
+      setFirstMessage("");
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "No se pudo crear el prompt"),
@@ -917,15 +951,34 @@ function NewPromptDialog({
             placeholder="Nombre de versión (ej. v4)"
             className="w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm"
           />
+          {taskType === "VOICE_CALL_AGENT" && (
+            <div>
+              <label htmlFor="global-call-greeting" className="text-xs font-semibold">
+                Saludo inicial de la plantilla
+              </label>
+              <textarea
+                id="global-call-greeting"
+                value={firstMessage}
+                onChange={(event) => setFirstMessage(event.target.value)}
+                placeholder="Saludo que se copiará a los procesos…"
+                className="mt-1.5 min-h-24 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+          <label htmlFor="global-prompt-text" className="text-xs font-semibold">
+            {taskType === "VOICE_CALL_AGENT" ? "Instrucciones del agente" : "Prompt del sistema"}
+          </label>
           <textarea
+            id="global-prompt-text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Texto de la plantilla…"
             className="w-full min-h-[160px] px-3 py-2 rounded-xl bg-background/70 border border-border text-sm"
           />
           <p className="text-[11px] text-muted-foreground">
-            Las plantillas son append-only. Afectan solo a procesos nuevos; los existentes pueden
-            restaurarla explícitamente desde sus ajustes.
+            {taskType && GLOBAL_RUNTIME_TASKS.includes(taskType)
+              ? "Las versiones son append-only. Al publicar, la siguiente ejecución de todos los procesos usará esta versión."
+              : "Las versiones son append-only. Se copian en procesos nuevos o al restaurarlas explícitamente."}
           </p>
         </div>
         <DialogFooter>
@@ -1014,9 +1067,17 @@ function PromptHistoryDialog({
                   </div>
                 </div>
                 {expanded && (
-                  <pre className="mt-3 text-xs whitespace-pre-wrap break-words bg-muted/50 rounded-lg p-3 max-h-64 overflow-y-auto">
-                    {p.system_prompt_text}
-                  </pre>
+                  <div className="mt-3 space-y-2">
+                    {taskType === "VOICE_CALL_AGENT" && (
+                      <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-xs">
+                        <span className="font-semibold">Saludo: </span>
+                        {p.first_message_text || "Automático según el set de preguntas"}
+                      </div>
+                    )}
+                    <pre className="text-xs whitespace-pre-wrap break-words bg-muted/50 rounded-lg p-3 max-h-64 overflow-y-auto">
+                      {p.system_prompt_text}
+                    </pre>
+                  </div>
                 )}
               </div>
             );

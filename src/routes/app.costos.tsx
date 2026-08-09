@@ -17,7 +17,7 @@ import { LoadingIndicator } from "@/components/app/LoadingIndicator";
 import { AppSelect, AppSelectItem } from "@/components/app/AppSelect";
 import { getDashboardMetrics, getProcessDashboardMetrics } from "@/lib/api/metrics.functions";
 import { getGlobalSettings, updateGlobalSetting } from "@/lib/api/ai-config.functions";
-import { getProcesses } from "@/lib/api/processes.functions";
+import { getProcessOptions } from "@/lib/api/processes.functions";
 import { useAuth } from "@/lib/auth-context";
 import { OPERATION_TYPE_LABEL } from "@/lib/types/enums";
 
@@ -93,7 +93,7 @@ function Costos() {
 
   const { data: processesData } = useQuery({
     queryKey: ["processes"],
-    queryFn: () => getProcesses(),
+    queryFn: () => getProcessOptions({ data: { includeInactive: true } }),
   });
 
   const metrics = processFilter ? filteredMetrics : globalMetrics;

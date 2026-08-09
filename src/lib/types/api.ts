@@ -88,6 +88,31 @@ export interface ProcessListResponse {
   processes: ProcessListItem[];
 }
 
+export interface ProcessHomeResponse {
+  items: ProcessListItem[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total: number;
+    total_pages: number;
+  };
+  summary: {
+    active_processes: number;
+    cv_processed: number;
+    profiling_completed: number;
+  };
+  filter_options: {
+    areas: string[];
+    recruiters: Array<{ id: string; name: string }>;
+  };
+}
+
+export interface ProcessOption {
+  process_id: string;
+  name: string;
+  status: ProcessStatus;
+}
+
 export interface JobDescriptionSummary {
   jd_id: string;
   version: number;
@@ -120,7 +145,6 @@ export interface ProcessDetailResponse {
 
 export interface VoiceConfig {
   voice_override_agent_id: string | null;
-  voice_override_first_message: string | null;
   voice_override_language: string | null;
   voice_override_llm_model: string | null;
   voice_override_voice_id: string | null;
@@ -556,6 +580,11 @@ export interface MetricsDashboardResponse {
   daily_costs: Array<{ date: string; cost: number }>;
 }
 
+export interface HomeMetricsResponse {
+  monthly_cost_usd: number;
+  daily_costs: Array<{ date: string; cost: number }>;
+}
+
 // ─── AI Config ───────────────────────────────────────────────────────────────
 
 export interface AIModelOut {
@@ -573,6 +602,7 @@ export interface AIPromptOut {
   task_type: string;
   version_name: string;
   system_prompt_text: string;
+  first_message_text: string | null;
   is_active: boolean;
   updated_by: string | null;
   created_at: string;
@@ -585,6 +615,7 @@ export interface ProcessAIPromptOut {
   task_type: string;
   version_name: string;
   system_prompt_text: string;
+  first_message_text: string | null;
   source_prompt_id: string | null;
   is_active: boolean;
   created_by: string | null;

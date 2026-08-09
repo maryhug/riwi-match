@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus,
   FileText,
@@ -18,8 +18,8 @@ import { toast } from "sonner";
 import { GlassCard } from "@/components/app/GlassCard";
 import { LoadingIndicator } from "@/components/app/LoadingIndicator";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
-import { getProcesses, updateProcessStatus } from "@/lib/api/processes.functions";
-import { getDashboardMetrics } from "@/lib/api/metrics.functions";
+import { getHomeProcesses, updateProcessStatus } from "@/lib/api/processes.functions";
+import { getHomeMetrics } from "@/lib/api/metrics.functions";
 import { PROCESS_STATUS_LABEL } from "@/lib/types/enums";
 import type { ProcessProgressResponse } from "@/lib/types/api";
 import {
@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { LIVE_REFRESH_INTERVAL_MS } from "@/lib/polling";
+import { homeProcessesRefetchInterval } from "@/lib/polling";
 
 const PAGE_SIZE = 10;
 
@@ -136,16 +136,31 @@ function Inicio() {
     setPage(1);
   };
 
-  const { data: processesData, isLoading } = useQuery({
-    queryKey: ["processes"],
-    queryFn: () => getProcesses(),
-    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+  const {
+    data: processesData,
+    isLoading,
+    isError,
+    error,
+    refetch: refetchProcesses,
+  } = useQuery({
+    queryKey: ["home-processes", page, estadoFilter, reclutadorFilter, areaFilter],
+    queryFn: () =>
+      getHomeProcesses({
+        data: {
+          page,
+          pageSize: PAGE_SIZE,
+          stage: estadoFilter,
+          recruiterId: reclutadorFilter,
+          area: areaFilter,
+        },
+      }),
+    refetchInterval: (query) => homeProcessesRefetchInterval(query.state.data),
   });
 
   const { data: metrics } = useQuery({
-    queryKey: ["dashboard-metrics"],
-    queryFn: () => getDashboardMetrics(),
-    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    queryKey: ["home-metrics"],
+    queryFn: () => getHomeMetrics(),
+    refetchInterval: 60_000,
   });
 
   const statusMutation = useMutation({
@@ -153,6 +168,7 @@ function Inicio() {
       updateProcessStatus({ data: vars }),
     onSuccess: () => {
       toast.success("Estado del proceso actualizado");
+      qc.invalidateQueries({ queryKey: ["home-processes"] });
       qc.invalidateQueries({ queryKey: ["processes"] });
     },
     onError: (err: unknown) => {
@@ -160,61 +176,19 @@ function Inicio() {
     },
   });
 
-  const procesos = useMemo(() => processesData?.processes ?? [], [processesData]);
+  const procesos = processesData?.items ?? [];
+  const totalPages = processesData?.pagination.total_pages ?? 1;
+  const totalProcesos = processesData?.pagination.total ?? 0;
+  const summary = processesData?.summary;
+  const areas = processesData?.filter_options.areas ?? [];
+  const reclutadores = processesData?.filter_options.recruiters ?? [];
+  const recruiterLabel = reclutadores.find((item) => item.id === reclutadorFilter)?.name;
+  const costoDelMes = metrics?.monthly_cost_usd ?? 0;
 
-  const { reclutadores, areas } = useMemo(() => {
-    const r = new Set<string>();
-    const a = new Set<string>();
-    for (const p of processesData?.processes ?? []) {
-      r.add(p.recruiter_name);
-      a.add(p.area);
-    }
-    return { reclutadores: [...r], areas: [...a] };
-  }, [processesData]);
-
-  const filtered = useMemo(() => {
-    return procesos.filter((p) => {
-      // Ocultar archivados por defecto a menos que se filtre explícitamente por ARCHIVED
-      if (estadoFilter !== "ARCHIVED" && p.status === "ARCHIVED") {
-        return false;
-      }
-      if (estadoFilter && (p.progress?.stage ?? p.status) !== estadoFilter) return false;
-      if (reclutadorFilter && p.recruiter_name !== reclutadorFilter) return false;
-      if (areaFilter && p.area !== areaFilter) return false;
-      return true;
-    });
-  }, [procesos, estadoFilter, reclutadorFilter, areaFilter]);
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
-
-  const paginated = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, page]);
-
-  const procesosActivos = procesos.filter(
-    (p) => p.status !== "CLOSED" && p.status !== "ARCHIVED",
-  ).length;
-
-  const progressTotals = useMemo(
-    () =>
-      procesos.reduce(
-        (totals, process) => {
-          totals.cvProcessed += process.progress?.counts.cv_processed ?? 0;
-          totals.profilingCompleted += process.progress?.counts.profiling_completed ?? 0;
-          return totals;
-        },
-        { cvProcessed: 0, profilingCompleted: 0 },
-      ),
-    [procesos],
-  );
-
-  const now = new Date();
-  const costoDelMes = (metrics?.daily_costs ?? [])
-    .filter((d) =>
-      d.date.startsWith(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`),
-    )
-    .reduce((sum, d) => sum + d.cost, 0);
+  useEffect(() => {
+    const effectivePage = processesData?.pagination.page;
+    if (effectivePage && effectivePage !== page) setPage(effectivePage);
+  }, [page, processesData?.pagination.page]);
 
   const sparkline = (metrics?.daily_costs ?? []).slice(-14).map((d) => ({ v: d.cost }));
 
@@ -227,8 +201,8 @@ function Inicio() {
           </div>
           <h1 className="mt-1 text-3xl font-bold tracking-tight">Procesos de contratación</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Operación viva del equipo · {procesos.length} proceso{procesos.length === 1 ? "" : "s"}{" "}
-            registrado{procesos.length === 1 ? "" : "s"}
+            Operación viva del equipo · {totalProcesos} proceso{totalProcesos === 1 ? "" : "s"}{" "}
+            encontrado{totalProcesos === 1 ? "" : "s"}
           </p>
         </div>
         <Link
@@ -243,19 +217,19 @@ function Inicio() {
         <KPI
           icon={FileText}
           label="Procesos activos"
-          value={String(procesosActivos)}
+          value={String(summary?.active_processes ?? 0)}
           accent="bg-primary"
         />
         <KPI
           icon={CheckCircle2}
           label="CVs procesados"
-          value={String(progressTotals.cvProcessed)}
+          value={String(summary?.cv_processed ?? 0)}
           accent="bg-success"
         />
         <KPI
           icon={PhoneCall}
           label="Profilings evaluados"
-          value={String(progressTotals.profilingCompleted)}
+          value={String(summary?.profiling_completed ?? 0)}
           accent="bg-info text-info-foreground"
         />
         <KPI
@@ -284,7 +258,9 @@ function Inicio() {
               {estadoFilter ? STAGE_LABEL[estadoFilter] : "Etapa"}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleEstadoFilter(null)}>Todos</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEstadoFilter(null)}>
+                Procesos vigentes
+              </DropdownMenuItem>
               {(Object.keys(STAGE_LABEL) as ProcessStage[]).map((s) => (
                 <DropdownMenuItem key={s} onClick={() => handleEstadoFilter(s)}>
                   {STAGE_LABEL[s]}
@@ -301,15 +277,18 @@ function Inicio() {
                   : "bg-background/60 border-border hover:bg-background",
               )}
             >
-              <Filter className="h-3.5 w-3.5" /> {reclutadorFilter ?? "Reclutador"}
+              <Filter className="h-3.5 w-3.5" /> {recruiterLabel ?? "Reclutador"}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => handleReclutadorFilter(null)}>
                 Todos
               </DropdownMenuItem>
-              {reclutadores.map((r) => (
-                <DropdownMenuItem key={r} onClick={() => handleReclutadorFilter(r)}>
-                  {r}
+              {reclutadores.map((recruiter) => (
+                <DropdownMenuItem
+                  key={recruiter.id}
+                  onClick={() => handleReclutadorFilter(recruiter.id)}
+                >
+                  {recruiter.name}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -338,11 +317,24 @@ function Inicio() {
 
         {isLoading ? (
           <LoadingIndicator className="p-10" label="Cargando procesos…" />
-        ) : filtered.length === 0 ? (
+        ) : isError ? (
+          <div role="alert" className="p-10 text-center">
+            <div className="text-sm font-semibold">No pudimos cargar los procesos</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {error instanceof Error ? error.message : "Intenta nuevamente en unos segundos."}
+            </p>
+            <button
+              onClick={() => refetchProcesses()}
+              className="mt-4 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold hover:bg-muted"
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : procesos.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">
-            {procesos.length === 0
-              ? "No tienes procesos aún. Crea uno para comenzar."
-              : "Ningún proceso coincide con los filtros aplicados."}
+            {estadoFilter || reclutadorFilter || areaFilter
+              ? "Ningún proceso coincide con los filtros aplicados."
+              : "No tienes procesos vigentes. Puedes consultar cerrados o archivados desde Etapa."}
           </div>
         ) : (
           <>
@@ -360,7 +352,7 @@ function Inicio() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginated.map((p) => (
+                  {procesos.map((p) => (
                     <tr
                       key={p.process_id}
                       onClick={() =>
@@ -448,7 +440,7 @@ function Inicio() {
               <div className="flex items-center justify-between px-5 py-3 border-t border-border/40 text-xs text-muted-foreground">
                 <div>
                   Mostrando {(page - 1) * PAGE_SIZE + 1} -{" "}
-                  {Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length} procesos
+                  {Math.min(page * PAGE_SIZE, totalProcesos)} de {totalProcesos} procesos
                 </div>
                 <div className="flex items-center gap-2">
                   <button

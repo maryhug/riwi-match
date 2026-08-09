@@ -33,7 +33,6 @@ import {
   Trash2,
   X,
   Clock,
-  Bot,
   History,
   RotateCcw,
 } from "lucide-react";
@@ -1967,28 +1966,30 @@ function KanbanTab({
 
 // ─── Configuración Tab ──────────────────────────────────────────────────────
 
-const PROCESS_PROMPT_TASKS: AITaskType[] = [
-  "CV_EXTRACTION",
-  "CV_MATCH",
-  "JD_ENHANCEMENT",
-  "WHATSAPP_MESSAGE",
-  "VOICE_CALL_AGENT",
-  "VOICE_PROFILING",
-];
+const PROCESS_COMMUNICATION_TASKS: AITaskType[] = ["WHATSAPP_MESSAGE", "VOICE_CALL_AGENT"];
 
-function ProcessAIPromptsPanel({
+function ProcessCommunicationPanel({
   processId,
   isActive,
   canEdit,
+  voiceLanguage,
+  onVoiceLanguageChange,
+  onSaveVoiceLanguage,
+  isSavingVoiceLanguage,
 }: {
   processId: string;
   isActive: boolean;
   canEdit: boolean;
+  voiceLanguage: string;
+  onVoiceLanguageChange: (value: string) => void;
+  onSaveVoiceLanguage: () => void;
+  isSavingVoiceLanguage: boolean;
 }) {
   const qc = useQueryClient();
   const [editingTask, setEditingTask] = useState<AITaskType | null>(null);
   const [historyTask, setHistoryTask] = useState<AITaskType | null>(null);
   const [text, setText] = useState("");
+  const [greeting, setGreeting] = useState("");
   const { data, isLoading } = useQuery({
     queryKey: ["process-ai-prompts", processId],
     queryFn: () => getProcessAIPrompts({ data: { processId } }),
@@ -2001,13 +2002,24 @@ function ProcessAIPromptsPanel({
   const saveMutation = useMutation({
     mutationFn: () =>
       createProcessAIPrompt({
-        data: { processId, taskType: editingTask!, systemPromptText: text },
+        data: {
+          processId,
+          taskType: editingTask!,
+          systemPromptText: text,
+          firstMessageText:
+            editingTask === "VOICE_CALL_AGENT" ? greeting.trim() || null : undefined,
+        },
       }),
     onSuccess: () => {
-      toast.success("Prompt del proceso actualizado");
+      toast.success(
+        editingTask === "VOICE_CALL_AGENT"
+          ? "Agente de llamada actualizado"
+          : "Mensaje de WhatsApp actualizado",
+      );
       invalidate();
       setEditingTask(null);
       setText("");
+      setGreeting("");
     },
     onError: (err: unknown) =>
       toast.error(err instanceof Error ? err.message : "No se pudo guardar el prompt"),
@@ -2025,34 +2037,76 @@ function ProcessAIPromptsPanel({
   const history = historyTask ? prompts.filter((prompt) => prompt.task_type === historyTask) : [];
 
   return (
-    <GlassCard id="config-ia" className="p-5 space-y-4 scroll-mt-6">
+    <GlassCard id="communication" className="space-y-5 p-5 sm:p-6 scroll-mt-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="text-sm font-semibold flex items-center gap-2">
-            <Bot className="h-4 w-4 text-primary" /> Comportamiento de IA
+            <PhoneCall className="h-4 w-4 text-primary" /> Comunicación con candidatos
           </div>
           <p className="mt-1 text-xs text-muted-foreground max-w-2xl">
-            Estas seis versiones pertenecen solo a este proceso. Las plantillas globales no se
-            aplican automáticamente: puedes restaurarlas cuando lo necesites.
+            Ajusta cómo inicia la llamada y cómo se comunica este proceso por WhatsApp. Los prompts
+            de análisis se administran globalmente desde Admin.
           </p>
         </div>
         <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-semibold">
-          {isLoading ? "Cargando…" : `${activeByTask.size}/6 configurados`}
+          {isLoading ? "Cargando…" : `${activeByTask.size}/2 canales configurados`}
         </span>
       </div>
+
+      <div className="rounded-xl border border-border/70 bg-background/45 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Idioma de comunicación
+            </label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Se comparte entre la llamada de ElevenLabs y los mensajes de WhatsApp.
+            </p>
+            <AppSelect
+              disabled={!isActive || !canEdit}
+              value={voiceLanguage || "auto"}
+              onValueChange={(value) => onVoiceLanguageChange(value === "auto" ? "" : value)}
+              className="mt-3 w-full sm:max-w-sm"
+            >
+              <AppSelectItem value="auto">Automático según el set de preguntas</AppSelectItem>
+              {VOICE_LANGUAGES.map((language) => (
+                <AppSelectItem key={language.value} value={language.value}>
+                  {language.label}
+                </AppSelectItem>
+              ))}
+            </AppSelect>
+          </div>
+          <button
+            onClick={onSaveVoiceLanguage}
+            disabled={!isActive || !canEdit || isSavingVoiceLanguage}
+            className="h-10 rounded-xl border border-border bg-background px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-40"
+          >
+            {isSavingVoiceLanguage ? "Guardando…" : "Guardar idioma"}
+          </button>
+        </div>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-3">
-        {PROCESS_PROMPT_TASKS.map((taskType) => {
+        {PROCESS_COMMUNICATION_TASKS.map((taskType) => {
           const prompt = activeByTask.get(taskType) as ProcessAIPromptOut | undefined;
+          const isCallAgent = taskType === "VOICE_CALL_AGENT";
           return (
             <div
               key={taskType}
-              className="rounded-xl border border-border/70 bg-background/50 p-3 space-y-3"
+              className="rounded-xl border border-border/70 bg-background/50 p-4 space-y-3"
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold">{AI_TASK_TYPE_LABEL[taskType]}</div>
-                  <div className="mt-0.5 text-[11px] text-muted-foreground truncate">
-                    {prompt?.version_name ?? "Sin versión activa"}
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                    {isCallAgent ? <PhoneCall className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold">
+                      {isCallAgent ? "Agente de llamada" : "Mensaje de WhatsApp"}
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-muted-foreground truncate">
+                      {prompt?.version_name ?? "Sin versión activa"}
+                    </div>
                   </div>
                 </div>
                 <span
@@ -2066,14 +2120,25 @@ function ProcessAIPromptsPanel({
                   {prompt?.source_prompt_id ? "Plantilla" : "Propio"}
                 </span>
               </div>
+              {isCallAgent && (
+                <div className="rounded-lg bg-muted/45 px-3 py-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Saludo inicial
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-xs text-foreground/80">
+                    {prompt?.first_message_text || "Automático según el set de preguntas"}
+                  </p>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground line-clamp-2 min-h-8">
-                {prompt?.system_prompt_text ?? "Este proceso aún no tiene este prompt."}
+                {prompt?.system_prompt_text ?? "Este canal aún no tiene instrucciones propias."}
               </p>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
                 <button
                   onClick={() => {
                     setEditingTask(taskType);
                     setText(prompt?.system_prompt_text ?? "");
+                    setGreeting(prompt?.first_message_text ?? "");
                   }}
                   disabled={!isActive || !canEdit}
                   className="text-primary font-medium hover:underline disabled:opacity-40"
@@ -2103,18 +2168,44 @@ function ProcessAIPromptsPanel({
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              Editar prompt — {editingTask && AI_TASK_TYPE_LABEL[editingTask]}
+              {editingTask === "VOICE_CALL_AGENT"
+                ? "Editar agente de llamada"
+                : "Editar mensaje de WhatsApp"}
             </DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
-            Al guardar se crea una nueva versión para este proceso. El candidato, la JD, el
+            Al guardar se crea una nueva versión para este proceso. Los datos del candidato, el
             consentimiento y las preguntas se agregan automáticamente al ejecutar el flujo.
           </p>
-          <textarea
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            className="min-h-80 w-full rounded-xl border border-border bg-background/70 p-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
+          {editingTask === "VOICE_CALL_AGENT" && (
+            <div>
+              <label htmlFor="call-agent-greeting" className="text-xs font-semibold">
+                Saludo inicial
+              </label>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Si queda vacío, se utilizará el saludo definido en el set de preguntas.
+              </p>
+              <textarea
+                id="call-agent-greeting"
+                value={greeting}
+                onChange={(event) => setGreeting(event.target.value)}
+                className="mt-2 min-h-24 w-full rounded-xl border border-border bg-background/70 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </div>
+          )}
+          <div>
+            <label htmlFor="communication-instructions" className="text-xs font-semibold">
+              {editingTask === "VOICE_CALL_AGENT"
+                ? "Instrucciones del agente"
+                : "Contenido e instrucciones"}
+            </label>
+            <textarea
+              id="communication-instructions"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              className="mt-2 min-h-64 w-full rounded-xl border border-border bg-background/70 p-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
           <DialogFooter>
             <button
               onClick={() => setEditingTask(null)}
@@ -2150,6 +2241,12 @@ function ProcessAIPromptsPanel({
                 <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-lg bg-muted/50 p-2 text-[11px] scrollbar-visible">
                   {prompt.system_prompt_text}
                 </pre>
+                {historyTask === "VOICE_CALL_AGENT" && (
+                  <div className="mt-2 rounded-lg border border-border/60 p-2 text-[11px]">
+                    <span className="font-semibold">Saludo: </span>
+                    {prompt.first_message_text || "Automático según el set de preguntas"}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -2174,7 +2271,6 @@ function ConfigTab({
   const [seniority, setSeniority] = useState(process.seniority);
   const [budget, setBudget] = useState(String(process.budget_max_usd || ""));
   const [selectedSetId, setSelectedSetId] = useState(process.question_set_id ?? "");
-  const [voiceGreeting, setVoiceGreeting] = useState(process.voice_override_first_message ?? "");
   const [voiceLanguage, setVoiceLanguage] = useState(process.voice_override_language ?? "");
   const [jdAnalysis, setJdAnalysis] = useState<ParseJDResponse | null>(null);
   const [jdText, setJdText] = useState(process.job_description?.jd_raw_text ?? "");
@@ -2235,7 +2331,6 @@ function ConfigTab({
       updateVoiceConfig({
         data: {
           processId,
-          voice_override_first_message: voiceGreeting || null,
           voice_override_language: voiceLanguage || null,
         },
       }),
@@ -2307,8 +2402,7 @@ function ConfigTab({
             ["general", "General"],
             ["jd", "Job Description"],
             ["profiling", "Profiling"],
-            ["voice", "Voz"],
-            ["config-ia", "IA"],
+            ["communication", "Comunicación"],
           ].map(([target, label]) => (
             <a
               key={target}
@@ -2598,55 +2692,14 @@ function ConfigTab({
             </div>
           </GlassCard>
 
-          <GlassCard id="voice" className="p-5 sm:p-6 space-y-3 scroll-mt-6">
-            <div>
-              <div className="text-sm font-semibold">Configuración técnica de voz</div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                El prompt de la llamada se edita en Comportamiento de IA; aquí solo ajustas saludo e
-                idioma.
-              </p>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Primer saludo
-              </label>
-              <input
-                disabled={!isActive}
-                value={voiceGreeting}
-                onChange={(e) => setVoiceGreeting(e.target.value)}
-                className="mt-1.5 w-full px-3 py-2 rounded-xl bg-background/70 border border-border text-sm disabled:opacity-50"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Idioma (llamada ElevenLabs y mensajes de WhatsApp)
-              </label>
-              <AppSelect
-                disabled={!isActive}
-                value={voiceLanguage || "auto"}
-                onValueChange={(value) => setVoiceLanguage(value === "auto" ? "" : value)}
-                className="mt-1.5 w-full"
-              >
-                <AppSelectItem value="auto">Automático (según el set de preguntas)</AppSelectItem>
-                {VOICE_LANGUAGES.map((lang) => (
-                  <AppSelectItem key={lang.value} value={lang.value}>
-                    {lang.label}
-                  </AppSelectItem>
-                ))}
-              </AppSelect>
-            </div>
-            <button
-              onClick={() => voiceMutation.mutate()}
-              disabled={!isActive || voiceMutation.isPending}
-              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
-            >
-              {voiceMutation.isPending ? "Guardando…" : "Guardar configuración de voz"}
-            </button>
-          </GlassCard>
-          <ProcessAIPromptsPanel
+          <ProcessCommunicationPanel
             processId={processId}
             isActive={isActive}
             canEdit={canEditPrompts}
+            voiceLanguage={voiceLanguage}
+            onVoiceLanguageChange={setVoiceLanguage}
+            onSaveVoiceLanguage={() => voiceMutation.mutate()}
+            isSavingVoiceLanguage={voiceMutation.isPending}
           />
         </div>
 
@@ -2681,8 +2734,8 @@ function ConfigTab({
                 </span>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground">IA del proceso</span>
-                <span className="font-medium tabular-nums">{activePromptCount}/6 activa</span>
+                <span className="text-muted-foreground">Comunicación</span>
+                <span className="font-medium tabular-nums">{activePromptCount}/2 canales</span>
               </div>
             </div>
 
@@ -2691,8 +2744,7 @@ function ConfigTab({
                 ["general", "Datos básicos", Settings2],
                 ["jd", "Job Description", FileText],
                 ["profiling", "Profiling", Users],
-                ["voice", "Voz", PhoneCall],
-                ["config-ia", "Comportamiento IA", Bot],
+                ["communication", "Comunicación", PhoneCall],
               ].map(([target, label, Icon]) => {
                 const SectionIcon = Icon as typeof Settings2;
                 return (

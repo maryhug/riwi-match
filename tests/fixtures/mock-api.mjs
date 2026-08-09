@@ -60,19 +60,13 @@ const processDetail = {
   updated_at: now,
 };
 
-const processPrompts = [
-  "CV_EXTRACTION",
-  "CV_MATCH",
-  "JD_ENHANCEMENT",
-  "WHATSAPP_MESSAGE",
-  "VOICE_CALL_AGENT",
-  "VOICE_PROFILING",
-].map((task_type) => ({
+const processPrompts = ["WHATSAPP_MESSAGE", "VOICE_CALL_AGENT"].map((task_type) => ({
   id: `prompt-${task_type}`,
   process_id: "process-qa",
   task_type,
   version_name: "v1-migrada",
   system_prompt_text: `Instrucciones específicas para ${task_type}.`,
+  first_message_text: task_type === "VOICE_CALL_AGENT" ? "Hola Ada, te llamo de Riwi." : null,
   source_prompt_id: "template-qa",
   is_active: true,
   created_by: "user-qa",
@@ -149,7 +143,7 @@ function json(response, status = 200) {
   return { status, body: JSON.stringify(response) };
 }
 
-function responseFor(method, pathname) {
+function responseFor(method, pathname, searchParams) {
   if (pathname === "/health") return json({ status: "ok" });
   if (pathname === "/api/v1/auth/login")
     return json({
@@ -168,6 +162,57 @@ function responseFor(method, pathname) {
   if (pathname === "/api/v1/users/me") return json(user);
   if (pathname === "/api/v1/users") return json([user]);
   if (pathname === "/api/v1/notifications") return json({ notifications: [], unread_count: 0 });
+  if (pathname === "/api/v1/processes/home") {
+    const stage = searchParams.get("stage");
+    const page = Number(searchParams.get("page") ?? "1");
+    const area = searchParams.get("area");
+    const recruiterId = searchParams.get("recruiter_id");
+    if (area === "Error QA") return json({ detail: "Fallo controlado del listado" }, 503);
+    const status = stage === "ARCHIVED" ? "ARCHIVED" : stage === "CLOSED" ? "CLOSED" : null;
+    const matchesFilters =
+      (!area || area === processItem.area) &&
+      (!recruiterId || recruiterId === processItem.recruiter_id);
+    const visibleItem = status
+      ? {
+          ...processItem,
+          name: status === "ARCHIVED" ? "Proceso archivado QA" : "Proceso cerrado QA",
+          status,
+          progress: {
+            ...progress,
+            process_status: status,
+            stage: status,
+            stage_label: status === "ARCHIVED" ? "Archivado" : "Cerrado",
+          },
+        }
+      : processItem;
+    const total = status ? 1 : matchesFilters ? 11 : 0;
+    const items = matchesFilters
+      ? page === 1
+        ? [visibleItem]
+        : page === 2 && !status
+          ? [{ ...visibleItem, process_id: "process-page-2", name: "Proceso página 2 QA" }]
+          : []
+      : [];
+    return json({
+      items,
+      pagination: { page, page_size: 10, total, total_pages: status ? 1 : matchesFilters ? 2 : 1 },
+      summary: {
+        active_processes: status ? 0 : matchesFilters ? 1 : 0,
+        cv_processed: matchesFilters ? 1 : 0,
+        profiling_completed: 0,
+      },
+      filter_options: {
+        areas: [processItem.area, "Diseño", "Error QA"],
+        recruiters: [{ id: processItem.recruiter_id, name: processItem.recruiter_name }],
+      },
+    });
+  }
+  if (pathname === "/api/v1/processes/options")
+    return json({
+      processes: [
+        { process_id: processItem.process_id, name: processItem.name, status: processItem.status },
+      ],
+    });
   if (pathname === "/api/v1/processes") return json({ total: 1, processes: [processItem] });
   if (pathname === "/api/v1/processes/process-qa") return json(processDetail);
   if (pathname === "/api/v1/processes/process-qa/ai-prompts")
@@ -252,6 +297,11 @@ function responseFor(method, pathname) {
       cost_by_operation: [{ operation_type: "CV_MATCH", total_cost: 0.12, count: 1 }],
       daily_costs: [{ date: "2026-08-08", cost: 0.12 }],
     });
+  if (pathname === "/api/v1/metrics/home")
+    return json({
+      monthly_cost_usd: 0.12,
+      daily_costs: [{ date: "2026-08-08", cost: 0.12 }],
+    });
   if (pathname === "/api/v1/reports/ta-dashboard")
     return json({
       total_processes: 1,
@@ -298,7 +348,7 @@ function responseFor(method, pathname) {
 const server = createServer((request, response) => {
   const url = new URL(request.url ?? "/", "http://127.0.0.1:9090");
   process.stdout.write(`[mock-api] ${request.method ?? "GET"} ${url.pathname}\n`);
-  const result = responseFor(request.method ?? "GET", url.pathname);
+  const result = responseFor(request.method ?? "GET", url.pathname, url.searchParams);
   response.writeHead(result.status, { "content-type": "application/json; charset=utf-8" });
   response.end(result.body);
 });
