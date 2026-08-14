@@ -3,7 +3,7 @@ name: Frontend QA
 on:
   pull_request:
   push:
-    branches: [feature/backend-integration]
+    branches: [main, feature/backend-integration]
 
 jobs:
   qa:
