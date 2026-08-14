@@ -1,21 +1,21 @@
-# Routes
+# Rutas TanStack Start
 
-TanStack Start uses **file-based routing**. Every `.tsx` file in this directory
-is a route. Do **not** create `src/pages/`, `src/routes/_app/index.tsx`, or
-`app/layout.tsx` — those are Next.js / Remix conventions. The only root layout
-is `src/routes/__root.tsx`.
+Esta carpeta usa file-based routing. No crear `src/pages`, `app/layout.tsx` ni estructuras de
+Next.js/Remix. `__root.tsx` es el shell global y `app.tsx` protege `/app/*`.
 
-## Conventions
-
-| File | URL |
+| Archivo | URL |
 | --- | --- |
-| `index.tsx` | `/` |
-| `about.tsx` | `/about` |
-| `users/index.tsx` | `/users` |
-| `users/$id.tsx` | `/users/:id` (dynamic — bare `$`, no curly braces) |
-| `posts/{-$category}.tsx` | `/posts/:category?` (optional segment) |
-| `files/$.tsx` | `/files/*` (splat — read via `_splat` param, never `*`) |
-| `_layout.tsx` | layout route (renders children via `<Outlet />`) |
-| `__root.tsx` | app shell — wraps every page; preserve `<Outlet />` |
+| `index.tsx` | `/` (login) |
+| `app.index.tsx` | `/app` |
+| `app.procesos.nuevo.tsx` | `/app/procesos/nuevo` |
+| `app.procesos.$id.tsx` | `/app/procesos/:id` |
+| `app.sets.index.tsx` | `/app/sets` |
+| `app.sets.$id.tsx` | `/app/sets/:id` |
+| `app.profiling.tsx` | `/app/profiling` |
+| `app.costos.tsx` | `/app/costos` |
+| `app.equipo.tsx` | `/app/equipo` |
+| `app.buscar.tsx` | `/app/buscar` |
+| `app.admin.tsx` | `/app/admin` |
 
-`routeTree.gen.ts` is auto-generated. Don't edit it by hand.
+Las rutas deben consumir server functions, manejar acceso por rol y conservar estados de carga,
+vacío y error. `routeTree.gen.ts` es generado: no editarlo manualmente.
