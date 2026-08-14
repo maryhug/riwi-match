@@ -100,6 +100,9 @@ test("el saludo vive en el proceso pero el recruiter no puede editarlo librement
 
 test("Admin distingue plantillas oficiales de WhatsApp de los prompts", async ({ page }) => {
   await page.goto("/app/admin");
+  // El shell llega por SSR; esperar el dato del tab inicial confirma que React ya hidrató
+  // antes de cambiar de pestaña y evita perder el click en runners más lentos.
+  await expect(page.getByText("Admin QA", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Parámetros de IA" }).click();
   await expect(page.getByText("Plantillas oficiales de WhatsApp", { exact: true })).toBeVisible();
   await expect(page.getByText("autorizacion_llamada_ia_v2", { exact: true })).toBeVisible();
