@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import ReactMarkdown from "react-markdown";
 import {
   ArrowLeft,
   PlayCircle,
@@ -149,6 +150,16 @@ const VOICE_LANGUAGES = [
   { value: "en", label: "Inglés" },
   { value: "pt", label: "Portugués" },
 ];
+
+const JD_MARKDOWN_CLASSNAME =
+  "rounded-xl border border-border bg-background/50 p-3 text-sm " +
+  "[&_h1]:mt-2 [&_h1]:mb-1.5 [&_h1]:text-base [&_h1]:font-bold [&_h1]:first:mt-0 " +
+  "[&_h2]:mt-2 [&_h2]:mb-1.5 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:first:mt-0 " +
+  "[&_h3]:mt-1.5 [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold " +
+  "[&_p]:my-1.5 [&_strong]:font-semibold [&_em]:italic " +
+  "[&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 " +
+  "[&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 " +
+  "[&_li]:my-0.5";
 
 const CATEGORY_COLOR: Record<MatchCategory, { text: string; bg: string; ring: string }> = {
   HIGH: { text: "text-success", bg: "bg-success/15", ring: "#22c55e" },
@@ -2360,6 +2371,7 @@ function ConfigTab({
   const [jdAnalysis, setJdAnalysis] = useState<ParseJDResponse | null>(null);
   const [jdText, setJdText] = useState(process.job_description?.jd_raw_text ?? "");
   const [preEnhanceJdText, setPreEnhanceJdText] = useState<string | null>(null);
+  const [jdEditing, setJdEditing] = useState(() => !process.job_description?.jd_raw_text);
 
   const { data: questionSets } = useQuery({
     queryKey: ["question-sets"],
@@ -2457,6 +2469,7 @@ function ConfigTab({
       toast.success("Nueva versión de la JD guardada");
       setJdAnalysis(null);
       setPreEnhanceJdText(null);
+      setJdEditing(false);
       qc.invalidateQueries({ queryKey: ["job-descriptions", processId] });
       qc.invalidateQueries({ queryKey: ["process", processId] });
       qc.invalidateQueries({ queryKey: ["process-progress", processId] });
@@ -2578,7 +2591,17 @@ function ConfigTab({
           </GlassCard>
 
           <GlassCard id="jd" className="p-5 sm:p-6 space-y-3 scroll-mt-6">
-            <div className="text-sm font-semibold">Job Description</div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold">Job Description</div>
+              {!jdEditing && isActive && jdText.trim().length > 0 && (
+                <button
+                  onClick={() => setJdEditing(true)}
+                  className="px-3 py-1.5 rounded-lg border border-border bg-background/60 text-xs font-medium"
+                >
+                  Editar
+                </button>
+              )}
+            </div>
             {jds && jds.length > 0 ? (
               <div className="space-y-1.5">
                 {jds.map((jd) => (
@@ -2594,38 +2617,57 @@ function ConfigTab({
               <p className="text-xs text-muted-foreground">Sin JD aún.</p>
             )}
 
-            <textarea
-              disabled={!isActive}
-              value={jdText}
-              onChange={(e) => setJdText(e.target.value)}
-              placeholder="Pega aquí la descripción del cargo…"
-              className="w-full min-h-[140px] rounded-xl bg-background/70 border border-border p-3 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => saveJDMutation.mutate()}
-                disabled={!isActive || jdText.trim().length < 10 || saveJDMutation.isPending}
-                className="px-3 py-1.5 rounded-lg border border-border bg-background/60 text-xs font-medium disabled:opacity-40"
-              >
-                {saveJDMutation.isPending ? "Guardando…" : "Guardar como nueva versión"}
-              </button>
-              <button
-                onClick={() => analyzeJDMutation.mutate()}
-                disabled={!isActive || jdText.trim().length < 10 || analyzeJDMutation.isPending}
-                className="px-3 py-1.5 rounded-lg border border-primary/40 text-primary bg-primary/5 text-xs font-medium disabled:opacity-40"
-              >
-                {analyzeJDMutation.isPending ? "Analizando…" : "Analizar y enriquecer con IA"}
-              </button>
-              {preEnhanceJdText !== null && (
-                <button
-                  onClick={undoEnhance}
-                  title="Restaurar el texto anterior a la mejora de IA"
-                  className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition"
-                >
-                  Deshacer
-                </button>
-              )}
-            </div>
+            {!jdEditing ? (
+              <div className={JD_MARKDOWN_CLASSNAME}>
+                <ReactMarkdown>{jdText}</ReactMarkdown>
+              </div>
+            ) : (
+              <>
+                <textarea
+                  disabled={!isActive}
+                  value={jdText}
+                  onChange={(e) => setJdText(e.target.value)}
+                  placeholder="Pega aquí la descripción del cargo…"
+                  className="w-full min-h-[140px] rounded-xl bg-background/70 border border-border p-3 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => saveJDMutation.mutate()}
+                    disabled={!isActive || jdText.trim().length < 10 || saveJDMutation.isPending}
+                    className="px-3 py-1.5 rounded-lg border border-border bg-background/60 text-xs font-medium disabled:opacity-40"
+                  >
+                    {saveJDMutation.isPending ? "Guardando…" : "Guardar como nueva versión"}
+                  </button>
+                  <button
+                    onClick={() => analyzeJDMutation.mutate()}
+                    disabled={!isActive || jdText.trim().length < 10 || analyzeJDMutation.isPending}
+                    className="px-3 py-1.5 rounded-lg border border-primary/40 text-primary bg-primary/5 text-xs font-medium disabled:opacity-40"
+                  >
+                    {analyzeJDMutation.isPending ? "Analizando…" : "Analizar y enriquecer con IA"}
+                  </button>
+                  {preEnhanceJdText !== null && (
+                    <button
+                      onClick={undoEnhance}
+                      title="Restaurar el texto anterior a la mejora de IA"
+                      className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition"
+                    >
+                      Deshacer
+                    </button>
+                  )}
+                </div>
+
+                {preEnhanceJdText !== null && (
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                      Vista previa (JD mejorada por IA)
+                    </div>
+                    <div className={JD_MARKDOWN_CLASSNAME}>
+                      <ReactMarkdown>{jdText}</ReactMarkdown>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
             {jdAnalysis && (
               <div className="space-y-3 pt-2 border-t border-border/40">
@@ -3240,45 +3282,69 @@ export function CandidatoDrawer({
           <div className="p-6 grid md:grid-cols-2 gap-6 bg-slate-50/50">
             {/* ── Columna izquierda: análisis de match ── */}
             <div className="space-y-5">
-              <div className="p-5 space-y-3 rounded-2xl border border-primary/20 bg-primary/5 shadow-xs">
-                <div>
-                  <div className="text-sm font-bold text-slate-900">
-                    Información adicional para el análisis
+              {detail && !["LOADED", "CV_ERROR"].includes(detail.status) ? (
+                <details className="group rounded-2xl border border-primary/20 bg-primary/5 shadow-xs">
+                  <summary className="cursor-pointer select-none list-none p-5 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-bold text-slate-900">
+                        Información adicional para el análisis
+                      </div>
+                      <div className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                        {analysisContext.trim()
+                          ? "Comentario guardado antes del análisis — ya no es necesario."
+                          : "Sin comentario para este CV."}
+                      </div>
+                    </div>
+                    <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition group-open:rotate-180" />
+                  </summary>
+                  <div className="px-5 pb-5 space-y-3">
+                    <textarea
+                      value={analysisContext}
+                      disabled
+                      className="w-full min-h-[110px] px-3 py-2.5 rounded-xl bg-slate-100 border border-primary/20 text-xs text-slate-500 leading-relaxed cursor-not-allowed"
+                    />
+                    <span className="text-[10px] text-slate-500">
+                      El análisis ya comenzó; este comentario es de solo lectura.
+                    </span>
                   </div>
-                  <div className="mt-1 text-[11px] leading-relaxed text-slate-600">
-                    Escribe aquí cualquier dato que ayude a interpretar este CV. Se enviará a la IA
-                    junto con la hoja de vida cuando ejecutes el análisis.
+                </details>
+              ) : (
+                <div className="p-5 space-y-3 rounded-2xl border border-primary/20 bg-primary/5 shadow-xs">
+                  <div>
+                    <div className="text-sm font-bold text-slate-900">
+                      Información adicional para el análisis
+                    </div>
+                    <div className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                      Escribe aquí cualquier dato que ayude a interpretar este CV. Se enviará a la
+                      IA junto con la hoja de vida cuando ejecutes el análisis.
+                    </div>
+                  </div>
+                  <textarea
+                    value={analysisContext}
+                    onChange={(e) => setAnalysisContext(e.target.value)}
+                    maxLength={4000}
+                    placeholder="Ejemplo: el nombre correcto es Juan Pérez y su número es 3001234567; el documento no lo muestra claramente."
+                    className="w-full min-h-[110px] px-3 py-2.5 rounded-xl bg-white border border-primary/20 text-xs text-slate-900 leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] text-slate-500">
+                      {analysisContext.length}/4000 caracteres
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => analysisContextMutation.mutate()}
+                      disabled={
+                        analysisContextMutation.isPending ||
+                        !detail ||
+                        analysisContext.trim() === (detail.analysis_context ?? "").trim()
+                      }
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {analysisContextMutation.isPending ? "Guardando…" : "Guardar comentario"}
+                    </button>
                   </div>
                 </div>
-                <textarea
-                  value={analysisContext}
-                  onChange={(e) => setAnalysisContext(e.target.value)}
-                  disabled={!!detail && !["LOADED", "CV_ERROR"].includes(detail.status)}
-                  maxLength={4000}
-                  placeholder="Ejemplo: el nombre correcto es Juan Pérez y su número es 3001234567; el documento no lo muestra claramente."
-                  className="w-full min-h-[110px] px-3 py-2.5 rounded-xl bg-white border border-primary/20 text-xs text-slate-900 leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-                />
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] text-slate-500">
-                    {detail?.status === "LOADED" || detail?.status === "CV_ERROR"
-                      ? `${analysisContext.length}/4000 caracteres`
-                      : "El análisis ya comenzó; este comentario es de solo lectura."}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => analysisContextMutation.mutate()}
-                    disabled={
-                      analysisContextMutation.isPending ||
-                      !detail ||
-                      !["LOADED", "CV_ERROR"].includes(detail.status) ||
-                      analysisContext.trim() === (detail.analysis_context ?? "").trim()
-                    }
-                    className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {analysisContextMutation.isPending ? "Guardando…" : "Guardar comentario"}
-                  </button>
-                </div>
-              </div>
+              )}
 
               {detail?.match && (
                 <div className="p-5 space-y-4 rounded-2xl border border-slate-200 bg-white shadow-xs">

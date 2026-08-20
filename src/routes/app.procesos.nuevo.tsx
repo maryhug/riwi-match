@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import {
   ArrowLeft,
   ArrowRight,
@@ -34,6 +35,16 @@ export const Route = createFileRoute("/app/procesos/nuevo")({
 });
 
 const steps = ["Datos básicos", "Job Description", "CVs y profiling"];
+
+const JD_MARKDOWN_CLASSNAME =
+  "w-full min-h-[140px] rounded-xl bg-background/70 border border-border p-3 text-sm " +
+  "[&_h1]:mt-2 [&_h1]:mb-1.5 [&_h1]:text-base [&_h1]:font-bold [&_h1]:first:mt-0 " +
+  "[&_h2]:mt-2 [&_h2]:mb-1.5 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:first:mt-0 " +
+  "[&_h3]:mt-1.5 [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold " +
+  "[&_p]:my-1.5 [&_strong]:font-semibold [&_em]:italic " +
+  "[&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 " +
+  "[&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 " +
+  "[&_li]:my-0.5";
 
 const AREAS = [
   "Tecnología",
@@ -92,6 +103,7 @@ function Wizard() {
   const [jdSaved, setJdSaved] = useState(false);
   const [parseResult, setParseResult] = useState<ParseJDResponse | null>(null);
   const [preEnhanceJdText, setPreEnhanceJdText] = useState<string | null>(null);
+  const [jdEditing, setJdEditing] = useState(true);
 
   // Paso 2
   const [files, setFiles] = useState<File[]>([]);
@@ -170,6 +182,7 @@ function Wizard() {
         setPreEnhanceJdText(jdText);
         setJdText(res.enhanced_jd);
         setJdSaved(false);
+        setJdEditing(false);
       }
       toast.success("JD analizada y enriquecida por IA", {
         description: "La versión mejorada ya está en el campo de texto — puedes editarla.",
@@ -185,6 +198,7 @@ function Wizard() {
     setJdText(preEnhanceJdText);
     setPreEnhanceJdText(null);
     setJdSaved(false);
+    setJdEditing(true);
     toast.info("Se restauró el texto anterior a la mejora de IA");
   };
 
@@ -460,15 +474,29 @@ function Wizard() {
 
             {jdTab === "text" ? (
               <>
-                <textarea
-                  value={jdText}
-                  onChange={(e) => {
-                    setJdText(e.target.value);
-                    setJdSaved(false);
-                  }}
-                  placeholder="Pega aquí la descripción del cargo…"
-                  className="w-full min-h-[140px] rounded-xl bg-background/70 border border-border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
+                {!jdEditing && jdText.trim().length > 0 ? (
+                  <div className="space-y-1.5">
+                    <div className={JD_MARKDOWN_CLASSNAME}>
+                      <ReactMarkdown>{jdText}</ReactMarkdown>
+                    </div>
+                    <button
+                      onClick={() => setJdEditing(true)}
+                      className="px-3 py-1.5 rounded-lg border border-border bg-background/60 text-xs font-medium"
+                    >
+                      Editar
+                    </button>
+                  </div>
+                ) : (
+                  <textarea
+                    value={jdText}
+                    onChange={(e) => {
+                      setJdText(e.target.value);
+                      setJdSaved(false);
+                    }}
+                    placeholder="Pega aquí la descripción del cargo…"
+                    className="w-full min-h-[140px] rounded-xl bg-background/70 border border-border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                )}
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => saveJDMutation.mutate()}
@@ -491,6 +519,7 @@ function Wizard() {
                   setJdSaved(true);
                   setJdTab("text");
                   setPreEnhanceJdText(null);
+                  setJdEditing(true);
                 }}
               />
             )}
