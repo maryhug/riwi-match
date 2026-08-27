@@ -1,9 +1,28 @@
-# RIWI MATCH Frontend
+<div align="center">
+  <img src="./src/assets/CurvaMatch.svg" alt="RIWI MATCH" width="360" />
+  <h1>Frontend & BFF</h1>
+  <p>Interfaz autenticada y capa BFF de RIWI MATCH.</p>
 
-Frontend autenticado y BFF de RIWI MATCH, construido con TanStack Start, React 19, TypeScript,
-Vite y Tailwind 4.
+  <img src="https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white" alt="React 19" />
+  <img src="https://img.shields.io/badge/TanStack_Start-BFF-FF4154?logo=tanstack&logoColor=white" alt="TanStack Start" />
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Tailwind-4-38BDF8?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
+</div>
 
-## Ejecutar
+## Qué contiene
+
+Aplicación TanStack Start con React, rutas file-based y TanStack Query. El navegador no llama a
+FastAPI directamente: las server functions forman un BFF que mantiene los JWT en cookies `httpOnly`
+y añade el Bearer solo en el runtime server.
+
+```text
+Browser -> rutas y componentes -> createServerFn -> BFF -> FastAPI
+```
+
+Incluye inicio paginado, procesos, carga/análisis de CV, match, Question Sets, profiling, costos,
+búsqueda, equipo y administración según rol.
+
+## Inicio local
 
 ```bash
 npm install
@@ -11,42 +30,37 @@ cp .env.example .env
 npm run dev
 ```
 
-Desarrollo: <http://localhost:8080>. `API_BASE_URL` debe apuntar al FastAPI accesible desde el
-proceso server de TanStack Start (normalmente `http://localhost:8000`).
+Abre <http://localhost:8080>. `API_BASE_URL` debe apuntar a FastAPI desde el proceso server de
+TanStack Start; no uses `VITE_`, `NEXT_PUBLIC_`, `localhost` remoto ni tokens en el navegador.
 
-El contenedor/Railway usa:
+Para validar el artefacto Node desplegable:
 
 ```bash
 npm run build:railway
 node .output/server/index.mjs
 ```
 
-y sirve en el puerto 3000 o el puerto del ambiente.
+## Documentación
 
-## Arquitectura
+El portal Docusaurus vive en [`documentation/`](documentation/README.md) y publica el contenido de
+[`docs/`](docs/).
 
-- `src/routes/`: rutas file-based y loaders.
-- `src/lib/api/`: server functions por dominio y cliente FastAPI server-only.
-- `src/lib/types/`: contratos y enums reflejados del backend.
-- `src/components/app/`: componentes de negocio.
-- `src/components/ui/`: primitives compartidos.
-- `src/lib/download-proxy.server.ts`: descargas autenticadas sin exponer JWT.
+| Tema | Referencia |
+| --- | --- |
+| Arquitectura y sesión | [Arquitectura](docs/architecture.md) · [BFF y sesión](docs/bff-and-session.md) |
+| Funciones y contratos | [Server functions](docs/server-functions.md) · [Datos](docs/data-and-contracts.md) |
+| Rutas y componentes | [Rutas](docs/routes.md) |
+| Entrega y calidad | [Despliegue](docs/deployment.md) · [Pruebas](docs/testing.md) |
 
-El browser no llama FastAPI directamente. La sesión usa cookies httpOnly y la autorización final
-siempre la decide el backend.
+Para navegarlo localmente:
 
-## Pantallas
+```bash
+cd documentation
+npm install
+npm run start
+```
 
-- Inicio paginado con búsqueda/filtros y métricas agregadas.
-- Procesos: dashboard, ranking, kanban y configuración.
-- Question Sets sin system prompts.
-- Profiling global y resultados completos.
-- Costos auditables, equipo, búsqueda y administración según rol.
-
-En proceso, la comunicación reúne plantilla/mensaje WhatsApp y agente de voz (saludo + contenido).
-Los prompts de extracción, match, mejora de JD y evaluación solo aparecen en Admin global.
-
-## QA
+## Calidad
 
 ```bash
 npm run lint
@@ -56,7 +70,5 @@ npm run test:components
 npm run test:e2e
 ```
 
-Playwright usa una API mock controlada para componentes/E2E. Eso valida el frontend, no sustituye
-una prueba integrada con backend, DB o proveedores.
-
-Consulta [`AGENTS.md`](AGENTS.md) y [`CLAUDE.md`](CLAUDE.md) antes de editar.
+Los mocks de Playwright no representan una integración real. Para validarla se requiere FastAPI,
+PostgreSQL, Redis y las credenciales autorizadas del proveedor correspondiente.
