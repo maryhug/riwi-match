@@ -9,7 +9,7 @@ const ACCESS_COOKIE = "rm_access";
 const REFRESH_COOKIE = "rm_refresh";
 const USER_COOKIE = "rm_user";
 
-function getApiBaseUrl(): string {
+export function getApiBaseUrl(): string {
   return process.env.API_BASE_URL ?? "http://localhost:8000";
 }
 
@@ -34,20 +34,27 @@ export interface SessionUser {
 
 const isProduction = process.env.NODE_ENV === "production";
 
-export function setSessionCookies(tokens: { access_token: string; refresh_token: string }): void {
+export function setSessionCookies(tokens: {
+  access_token: string;
+  refresh_token: string;
+  expires_in?: number;
+  session_expires_in?: number;
+}): void {
+  const sessionMaxAge = tokens.session_expires_in ?? 60 * 60 * 24 * 7;
+  const accessMaxAge = Math.min(tokens.expires_in ?? 60 * 60, sessionMaxAge);
   setCookie(ACCESS_COOKIE, tokens.access_token, {
     httpOnly: true,
     secure: isProduction,
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60,
+    maxAge: accessMaxAge,
   });
   setCookie(REFRESH_COOKIE, tokens.refresh_token, {
     httpOnly: true,
     secure: isProduction,
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: sessionMaxAge,
   });
 }
 
@@ -192,6 +199,8 @@ async function tryRefresh(): Promise<{ access_token: string; refresh_token: stri
       refresh_token: string;
       token_type: string;
       role: string;
+      expires_in?: number;
+      session_expires_in?: number;
     }>("/api/v1/auth/refresh", {
       method: "POST",
       body: { refresh_token: refreshToken },

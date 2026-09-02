@@ -60,6 +60,19 @@ npm install
 npm run start
 ```
 
+## Inicio de sesión con Órbita
+
+El login conserva email/contraseña y ofrece “Continuar con Órbita”. El BFF implementa dos rutas HTTP:
+
+- `/auth/orbita/login`: genera un `state` aleatorio en cookie HTTP-only y solicita al API la URL
+  de autorización.
+- `/auth/orbita/callback`: consume `state`, entrega el código al API de Match y crea las cookies
+  locales `rm_access`, `rm_refresh` y `rm_user` antes de redirigir a `/app`.
+
+El navegador nunca recibe el `client_secret` ni conserva el código/JWT de Órbita. La única variable
+del frontend sigue siendo `API_BASE_URL`; toda variable `ORBITA_SSO_*` pertenece al servicio API.
+
+
 ## Calidad
 
 ```bash

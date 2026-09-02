@@ -23,8 +23,15 @@ function Login() {
   const [error, setError] = useState<string | null>(null);
   const [showLogoEntrance, setShowLogoEntrance] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [orbitaError, setOrbitaError] = useState<string | null>(null);
 
   useEffect(() => {
+    const errorCode = new URLSearchParams(window.location.search).get("error");
+    if (errorCode) {
+      setOrbitaError(
+        ORBITA_ERROR_MESSAGES[errorCode] ?? "No fue posible iniciar sesión con Órbita.",
+      );
+    }
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     setShowLogoEntrance(true);
   }, []);
@@ -64,9 +71,9 @@ function Login() {
 
           <form onSubmit={handleSubmit} className="mt-8 glass rounded-2xl p-6 space-y-4 text-left">
             <h1 className="text-center text-2xl font-bold tracking-tight">Bienvenido de vuelta</h1>
-            {error && (
+            {(error || orbitaError) && (
               <div className="rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
-                {error}
+                {error || orbitaError}
               </div>
             )}
             <div>
@@ -125,9 +132,29 @@ function Login() {
             >
               {loading ? "Ingresando…" : "Iniciar sesión"}
             </button>
+            <div className="flex items-center gap-3" aria-hidden="true">
+              <span className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">o</span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
+            <a
+              href="/auth/orbita/login"
+              className="mx-auto block w-60 rounded-xl border border-primary/40 bg-background/70 px-4 py-2.5 text-center font-semibold text-foreground shadow-sm transition hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/40"
+            >
+              Continuar con Órbita
+            </a>
           </form>
         </div>
       </div>
     </div>
   );
 }
+
+const ORBITA_ERROR_MESSAGES: Record<string, string> = {
+  orbita_invalid_state: "La respuesta de Órbita no es válida o ya venció. Intenta nuevamente.",
+  orbita_access_denied: "Tu cuenta no tiene permisos para ingresar a Match.",
+  orbita_account_conflict:
+    "El correo de Órbita ya pertenece a una cuenta local. Solicita la vinculación a un administrador.",
+  orbita_unavailable: "Órbita no está disponible temporalmente. Intenta nuevamente.",
+  orbita_authentication_failed: "No fue posible iniciar sesión con Órbita.",
+};

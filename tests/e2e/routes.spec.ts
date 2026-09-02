@@ -33,6 +33,32 @@ for (const route of routeModules) {
   });
 }
 
+test("el login ofrece el inicio de sesión con Órbita", async ({ page }) => {
+  await page.context().clearCookies();
+  await page.goto("/");
+  const orbitaLink = page.getByRole("link", { name: "Continuar con Órbita" });
+  await expect(orbitaLink).toBeVisible();
+  await expect(orbitaLink).toHaveAttribute("href", "/auth/orbita/login");
+});
+
+test("el callback de Órbita crea la sesión local y entra a Match", async ({ page }) => {
+  await page.context().clearCookies();
+  await page.goto("/");
+  await page.getByRole("link", { name: "Continuar con Órbita" }).click();
+  await expect(page).toHaveURL(/\/app$/);
+  const cookies = await page.context().cookies();
+  expect(cookies.find((cookie) => cookie.name === "rm_access")?.httpOnly).toBe(true);
+  expect(cookies.find((cookie) => cookie.name === "rm_refresh")?.httpOnly).toBe(true);
+  expect(cookies.some((cookie) => cookie.name === "rm_orbita_sso_state")).toBe(false);
+});
+
+test("el callback de Órbita rechaza state ausente con un error legible", async ({ page }) => {
+  await page.context().clearCookies();
+  await page.goto("/auth/orbita/callback?code=qa-orbita-code&state=invalid");
+  await expect(page).toHaveURL(/\/?error=orbita_invalid_state$/);
+  await expect(page.getByText(/respuesta de Órbita no es válida o ya venció/i)).toBeVisible();
+});
+
 test("Topbar y FloatingNav respetan el shell autenticado", async ({ page }) => {
   await page.goto("/app");
   await expect(page.getByPlaceholder("Buscar procesos, candidatos, sets…")).toBeVisible();

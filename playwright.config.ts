@@ -33,8 +33,12 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
-      command: `API_BASE_URL=http://127.0.0.1:9090 APP_ENV=test npm run dev -- --host 127.0.0.1 --port ${e2ePort}`,
+      command: `npm run dev -- --host 127.0.0.1 --port ${e2ePort}`,
       url: baseURL,
+      env: {
+        API_BASE_URL: "http://127.0.0.1:9090",
+        APP_ENV: "test",
+      },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },

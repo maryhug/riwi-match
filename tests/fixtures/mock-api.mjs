@@ -179,6 +179,24 @@ function json(response, status = 200) {
 
 function responseFor(method, pathname, searchParams) {
   if (pathname === "/health") return json({ status: "ok" });
+  if (method === "GET" && pathname === "/api/v1/auth/orbita/authorize-url") {
+    const state = searchParams.get("state") ?? "";
+    const frontendPort = process.env.PLAYWRIGHT_PORT ?? "8080";
+    return json({
+      authorization_url:
+        `http://127.0.0.1:${frontendPort}/auth/orbita/callback` +
+        `?code=qa-orbita-code&state=${encodeURIComponent(state)}`,
+    });
+  }
+  if (method === "POST" && pathname === "/api/v1/auth/orbita/exchange")
+    return json({
+      access_token: "qa-orbita-access-token",
+      refresh_token: "qa-orbita-refresh-token",
+      token_type: "bearer",
+      role: "ADMIN",
+      expires_in: 900,
+      session_expires_in: 3600,
+    });
   if (pathname === "/api/v1/auth/login")
     return json({
       access_token: "qa-access-token",
