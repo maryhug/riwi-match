@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleDownloadRequest } from "./lib/download-proxy.server";
+import { handleOrbitaSsoRequest } from "./lib/orbita-sso.server";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -41,6 +42,9 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const orbitaResponse = await handleOrbitaSsoRequest(request);
+      if (orbitaResponse) return orbitaResponse;
+
       const downloadResponse = await handleDownloadRequest(request);
       if (downloadResponse) return downloadResponse;
 

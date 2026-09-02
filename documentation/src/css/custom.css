@@ -6,7 +6,7 @@
   --ifm-code-font-size: 92%;
 }
 
-[data-theme='dark'] {
+[data-theme="dark"] {
   --ifm-color-primary: #8ab4ff;
   --ifm-background-color: #101827;
 }
