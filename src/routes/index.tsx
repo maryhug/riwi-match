@@ -3,7 +3,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import curvaMatchLogo from "@/assets/CurvaMatch.svg";
-import orbitaLogo from "@/assets/orbita-logo.svg";
+import orbitaLogoLight from "@/assets/orbita-logo-light.svg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -135,9 +135,9 @@ function Login() {
             </button>
             <a
               href="/auth/orbita/login"
-              className="mx-auto flex w-60 items-center justify-center gap-2 rounded-xl border border-primary/35 bg-primary/5 px-4 py-2.5 font-semibold text-primary shadow-sm transition hover:-translate-y-px hover:bg-primary/10 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="mx-auto flex w-60 items-center justify-center gap-2 rounded-xl border border-border bg-background/85 px-4 py-2.5 font-semibold text-foreground shadow-sm transition hover:-translate-y-px hover:border-primary/35 hover:bg-primary/5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
-              <img src={orbitaLogo} alt="" aria-hidden="true" className="h-5 w-5 shrink-0" />
+              <img src={orbitaLogoLight} alt="" aria-hidden="true" className="h-5 w-5 shrink-0" />
               Continuar con Órbita
             </a>
           </form>
