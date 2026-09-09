@@ -66,15 +66,27 @@ test("Topbar y FloatingNav respetan el shell autenticado", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Profiling" })).toBeVisible();
 });
 
-test("la barra flotante restaura la expansión bloqueada", async ({ page }) => {
+test("la barra flotante inicia expandida y bloqueada por defecto", async ({ page }) => {
   await page.goto("/app");
-  await page.evaluate(() => localStorage.setItem("navExpandedLocked", "true"));
-  await page.reload();
 
   await expect(page.getByRole("link", { name: "Sets" }).locator("span")).toHaveClass(/max-w-24/);
-  await expect
-    .poll(() => page.evaluate(() => localStorage.getItem("navExpandedLocked")))
-    .toBe("true");
+  await page.getByRole("button", { name: /Opciones de/i }).click();
+  await expect(page.getByRole("menuitemcheckbox", { name: /Bloquear expandida/i })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+});
+
+test("la barra flotante respeta la preferencia desbloqueada guardada", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("navExpandedLocked", "false"));
+  await page.goto("/app");
+
+  await expect(page.getByRole("link", { name: "Sets" }).locator("span")).toHaveClass(/max-w-0/);
+  await page.getByRole("button", { name: /Opciones de/i }).click();
+  await expect(page.getByRole("menuitemcheckbox", { name: /Bloquear expandida/i })).toHaveAttribute(
+    "aria-checked",
+    "false",
+  );
 });
 
 test("SetBuilder renderiza datos del backend mock a traves del BFF", async ({ page }) => {
@@ -106,6 +118,15 @@ test("los ajustes del proceso dejan solo la comunicación propia", async ({ page
   await expect(page.getByText("Extracción de CV", { exact: true })).not.toBeVisible();
   await expect(page.getByText("Evaluación de profiling", { exact: true })).not.toBeVisible();
   await expect(page.getByText("Primer saludo", { exact: true })).not.toBeVisible();
+});
+
+test("el inicio de profiling permanece deshabilitado por feature flag", async ({ page }) => {
+  await page.goto("/app/procesos/process-qa");
+  await page.getByRole("button", { name: "Ranking de candidatos" }).click();
+
+  const profilingButton = page.getByRole("button", { name: "Profiling no disponible" });
+  await expect(profilingButton).toBeDisabled();
+  await expect(profilingButton).toHaveAttribute("title", "Profiling temporalmente deshabilitado");
 });
 
 test("el saludo vive en el proceso pero el recruiter no puede editarlo libremente", async ({

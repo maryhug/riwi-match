@@ -130,6 +130,7 @@ import type {
   WhatsAppTemplateOut,
 } from "@/lib/types/api";
 import { useAuth } from "@/lib/auth-context";
+import { VOICE_PROFILING_ENABLED } from "@/lib/feature-flags";
 import { cn, cleanAnswerText } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/procesos/$id")({
@@ -678,7 +679,11 @@ function Detalle() {
           includeCvMatch
           onOpenLatest={openProfilingRun}
           onOpenHistory={setHistoryCandidate}
-          onRetry={(item) => profilingMutation.mutate([item.process_candidate_id])}
+          onRetry={
+            VOICE_PROFILING_ENABLED
+              ? (item) => profilingMutation.mutate([item.process_candidate_id])
+              : undefined
+          }
           onCancel={(item) => cancelProfilingMutation.mutate(item)}
           actionPending={profilingMutation.isPending || cancelProfilingMutation.isPending}
         />
@@ -1520,15 +1525,22 @@ function RankingTab({
             <div className="flex-1" />
             <button
               onClick={() => onActivateProfiling([...selected])}
-              disabled={!hasQuestionSet || selected.size === 0 || activating}
-              title={
-                !hasQuestionSet
-                  ? "Asigna un set de preguntas al proceso para habilitar profiling"
-                  : undefined
+              disabled={
+                !VOICE_PROFILING_ENABLED || !hasQuestionSet || selected.size === 0 || activating
               }
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 cursor-pointer"
+              title={
+                !VOICE_PROFILING_ENABLED
+                  ? "Profiling temporalmente deshabilitado"
+                  : !hasQuestionSet
+                    ? "Asigna un set de preguntas al proceso para habilitar profiling"
+                    : undefined
+              }
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Phone className="h-3.5 w-3.5" /> Activar profiling ({selected.size})
+              <Phone className="h-3.5 w-3.5" />
+              {VOICE_PROFILING_ENABLED
+                ? `Activar profiling (${selected.size})`
+                : "Profiling no disponible"}
             </button>
           </div>
           {selected.size > 4 && (

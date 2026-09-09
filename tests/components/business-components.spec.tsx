@@ -13,6 +13,8 @@ import type {
   ProfilingRunOut,
 } from "../../src/lib/types/api";
 import { homeProcessesRefetchInterval } from "../../src/lib/polling";
+import { isAssignableProcessOwner } from "../../src/lib/process-assignment";
+import type { User } from "../../src/lib/types/api";
 import { TestQueryProvider } from "./TestQueryProvider";
 
 const run: ProfilingRunOut = {
@@ -64,6 +66,22 @@ const pipelineItem: PipelineCandidate = {
   consistency: "OK",
   consistency_explanation: null,
 };
+
+const taLeader: User = {
+  id: "ta-leader-qa",
+  name: "Lina",
+  last_name: "Líder",
+  email: "lina@example.test",
+  role: "TA_LEADER",
+  status: "ACTIVE",
+  password_change_required: false,
+  created_at: "2026-08-08T10:00:00Z",
+};
+
+test("el Líder TA solo puede aparecer como responsable para asignarse a sí mismo", async () => {
+  expect(isAssignableProcessOwner(taLeader, taLeader)).toBe(true);
+  expect(isAssignableProcessOwner({ ...taLeader, id: "other-ta-leader" }, taLeader)).toBe(false);
+});
 
 test("AppSelect muestra y permite escoger opciones", async ({ mount, page }) => {
   await mount(

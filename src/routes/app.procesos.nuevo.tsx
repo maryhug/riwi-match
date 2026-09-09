@@ -26,6 +26,7 @@ import { uploadCVs } from "@/lib/api/candidates.functions";
 import { getQuestionSets } from "@/lib/api/question-sets.functions";
 import { getUsers } from "@/lib/api/users.functions";
 import { useAuth } from "@/lib/auth-context";
+import { isAssignableProcessOwner } from "@/lib/process-assignment";
 import type { ParseJDResponse } from "@/lib/types/api";
 
 export const Route = createFileRoute("/app/procesos/nuevo")({
@@ -113,8 +114,8 @@ function Wizard() {
     queryFn: () => getUsers(),
     enabled: canAssignRecruiter,
   });
-  const recruiters = (usersData ?? []).filter(
-    (candidate) => candidate.role === "RECRUITER" && candidate.status === "ACTIVE",
+  const processOwners = (usersData ?? []).filter((candidate) =>
+    isAssignableProcessOwner(candidate, user),
   );
 
   const createProcessMutation = useMutation({
@@ -326,7 +327,7 @@ function Wizard() {
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Reclutador responsable
+                  Responsable del proceso
                 </label>
                 {canAssignRecruiter ? (
                   <AppSelect
@@ -334,10 +335,11 @@ function Wizard() {
                     onValueChange={(value) => setRecruiterId(value === "none" ? "" : value)}
                     className="mt-1.5 w-full"
                   >
-                    <AppSelectItem value="none">Selecciona un recruiter</AppSelectItem>
-                    {recruiters.map((recruiter) => (
-                      <AppSelectItem key={recruiter.id} value={recruiter.id}>
-                        {recruiter.name} {recruiter.last_name}
+                    <AppSelectItem value="none">Selecciona una persona responsable</AppSelectItem>
+                    {processOwners.map((owner) => (
+                      <AppSelectItem key={owner.id} value={owner.id}>
+                        {owner.name} {owner.last_name}
+                        {owner.id === user?.id ? " (tú)" : ""}
                       </AppSelectItem>
                     ))}
                   </AppSelect>

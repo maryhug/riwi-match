@@ -21,7 +21,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [navPosition, setNavPositionState] = useState<NavPosition>("top");
-  const [navExpandedLocked, setNavExpandedLockedState] = useState(false);
+  const [navExpandedLocked, setNavExpandedLockedState] = useState(true);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -33,7 +33,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (saved && ["top", "bottom", "left", "right"].includes(saved)) {
         setNavPositionState(saved);
       }
-      setNavExpandedLockedState(localStorage.getItem("navExpandedLocked") === "true");
+      const savedExpandedLocked = localStorage.getItem("navExpandedLocked");
+      if (savedExpandedLocked !== null) {
+        setNavExpandedLockedState(savedExpandedLocked === "true");
+      }
     } catch {
       // localStorage may be unavailable in private or restricted browsing contexts.
     }
