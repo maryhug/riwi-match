@@ -3423,7 +3423,7 @@ export function CandidatoDrawer({
                         <div className="flex items-center gap-2 min-w-0">
                           <Sparkles className="h-4 w-4 text-primary shrink-0" />
                           <span className="text-xs font-semibold text-primary truncate">
-                            CV Normalizado
+                            CV Normalizado (ES)
                           </span>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -3445,6 +3445,17 @@ export function CandidatoDrawer({
                           >
                             <Download className="h-3.5 w-3.5" />
                           </a>
+                          {detail.candidate.normalized_cv_urls?.en && (
+                            <a
+                              href={`/dl/cv-normalized/${processId}/${candidate.process_candidate_id}?language=en`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="h-7 px-2 grid place-items-center rounded-lg bg-primary/10 hover:bg-primary/20 transition text-[10px] font-bold text-primary"
+                              title="Descargar CV normalizado en inglés"
+                            >
+                              EN
+                            </a>
+                          )}
                         </div>
                       </div>
                     )}

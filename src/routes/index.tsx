@@ -44,7 +44,7 @@ function Login() {
     const result = await login(email, password);
     setLoading(false);
     if (result.ok) {
-      navigate({ to: "/app" });
+      navigate({ to: result.passwordChangeRequired ? "/cambiar-contrasena" : "/app" });
     } else {
       setError(result.error);
     }

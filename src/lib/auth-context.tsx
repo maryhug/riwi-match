@@ -10,13 +10,18 @@ export interface AuthUser {
   email: string;
   role: "ADMIN" | "RECRUITER" | "TA_LEADER";
   status: "ACTIVE" | "SUSPENDED";
+  password_change_required: boolean;
 }
 
 interface AuthCtx {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{ ok: true; passwordChangeRequired: boolean } | { ok: false; error: string }>;
+  completeInitialPasswordChange: () => void;
   logout: () => Promise<void>;
 }
 
@@ -38,7 +43,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { ok: false as const, error: result.error ?? "No se pudo iniciar sesión." };
     }
     setUser(result.user as AuthUser);
-    return { ok: true as const };
+    return {
+      ok: true as const,
+      passwordChangeRequired: Boolean(result.user.password_change_required),
+    };
+  };
+
+  const completeInitialPasswordChange = () => {
+    setUser((currentUser) =>
+      currentUser ? { ...currentUser, password_change_required: false } : currentUser,
+    );
   };
 
   const logout = async () => {
@@ -53,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: user !== null,
         isLoading,
         login,
+        completeInitialPasswordChange,
         logout,
       }}
     >

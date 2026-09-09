@@ -12,6 +12,9 @@ export const Route = createFileRoute("/app")({
     if (!session.isAuthenticated) {
       throw redirect({ to: "/" });
     }
+    if (session.user?.password_change_required) {
+      throw redirect({ to: "/cambiar-contrasena" });
+    }
     return { user: session.user };
   },
   component: AppLayout,
