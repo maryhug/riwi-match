@@ -1,4 +1,4 @@
-// Activación operativa: configura VITE_ENABLE_VOICE_PROFILING=true y vuelve a desplegar.
-// El valor seguro por defecto mantiene deshabilitada la originación de nuevas llamadas.
-export const VOICE_PROFILING_ENABLED =
-  import.meta.env.VITE_ENABLE_VOICE_PROFILING?.toLowerCase() === "true";
+// Activación operativa: configura VITE_ENABLE_PROFILING_OUTREACH=true y vuelve a desplegar.
+// Gobierna el inicio completo del profiling: consentimiento por WhatsApp y llamada de voz.
+export const PROFILING_OUTREACH_ENABLED =
+  import.meta.env.VITE_ENABLE_PROFILING_OUTREACH?.toLowerCase() === "true";

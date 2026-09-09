@@ -130,7 +130,7 @@ import type {
   WhatsAppTemplateOut,
 } from "@/lib/types/api";
 import { useAuth } from "@/lib/auth-context";
-import { VOICE_PROFILING_ENABLED } from "@/lib/feature-flags";
+import { PROFILING_OUTREACH_ENABLED } from "@/lib/feature-flags";
 import { cn, cleanAnswerText } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/procesos/$id")({
@@ -680,7 +680,7 @@ function Detalle() {
           onOpenLatest={openProfilingRun}
           onOpenHistory={setHistoryCandidate}
           onRetry={
-            VOICE_PROFILING_ENABLED
+            PROFILING_OUTREACH_ENABLED
               ? (item) => profilingMutation.mutate([item.process_candidate_id])
               : undefined
           }
@@ -1526,10 +1526,10 @@ function RankingTab({
             <button
               onClick={() => onActivateProfiling([...selected])}
               disabled={
-                !VOICE_PROFILING_ENABLED || !hasQuestionSet || selected.size === 0 || activating
+                !PROFILING_OUTREACH_ENABLED || !hasQuestionSet || selected.size === 0 || activating
               }
               title={
-                !VOICE_PROFILING_ENABLED
+                !PROFILING_OUTREACH_ENABLED
                   ? "Profiling temporalmente deshabilitado"
                   : !hasQuestionSet
                     ? "Asigna un set de preguntas al proceso para habilitar profiling"
@@ -1538,7 +1538,7 @@ function RankingTab({
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Phone className="h-3.5 w-3.5" />
-              {VOICE_PROFILING_ENABLED
+              {PROFILING_OUTREACH_ENABLED
                 ? `Activar profiling (${selected.size})`
                 : "Profiling no disponible"}
             </button>

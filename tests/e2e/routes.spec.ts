@@ -120,7 +120,9 @@ test("los ajustes del proceso dejan solo la comunicación propia", async ({ page
   await expect(page.getByText("Primer saludo", { exact: true })).not.toBeVisible();
 });
 
-test("el inicio de profiling permanece deshabilitado por feature flag", async ({ page }) => {
+test("WhatsApp y llamada de profiling permanecen deshabilitados por feature flag", async ({
+  page,
+}) => {
   await page.goto("/app/procesos/process-qa");
   await page.getByRole("button", { name: "Ranking de candidatos" }).click();
 
