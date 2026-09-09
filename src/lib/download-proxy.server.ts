@@ -62,7 +62,12 @@ export async function handleDownloadRequest(request: Request): Promise<Response 
   }
 
   const baseUrl = process.env.API_BASE_URL ?? "http://localhost:8000";
-  const backendResponse = await fetch(`${baseUrl}${route.backendPath(match)}`, {
+  const language = url.searchParams.get("language");
+  const safeQuery =
+    route.pattern.source.includes("cv-normalized") && (language === "es" || language === "en")
+      ? `?language=${language}`
+      : "";
+  const backendResponse = await fetch(`${baseUrl}${route.backendPath(match)}${safeQuery}`, {
     headers: reqHeaders,
     redirect: "manual",
   });

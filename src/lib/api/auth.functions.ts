@@ -17,6 +17,7 @@ interface TokenResponse {
   refresh_token: string;
   token_type: string;
   role: string;
+  password_change_required: boolean;
 }
 
 export const login = createServerFn({ method: "POST" })
@@ -41,6 +42,29 @@ export const login = createServerFn({ method: "POST" })
         return { error: err.detail };
       }
       return { error: "No se pudo conectar con el servidor." };
+    }
+  });
+
+export const changeInitialPassword = createServerFn({ method: "POST" })
+  .validator(z.object({ newPassword: z.string().min(8) }))
+  .handler(async ({ data }) => {
+    try {
+      await apiCall<void>("/api/v1/auth/change-initial-password", {
+        method: "POST",
+        body: { new_password: data.newPassword },
+      });
+      const currentUser = getSessionUserCookie();
+      if (!currentUser) {
+        return { error: "No se pudo actualizar la sesión." };
+      }
+      const user = { ...currentUser, password_change_required: false };
+      setSessionUserCookie(user);
+      return { user };
+    } catch (err) {
+      if (err instanceof ApiError) {
+        return { error: err.detail };
+      }
+      return { error: "No se pudo actualizar la contraseña." };
     }
   });
 

@@ -616,6 +616,7 @@ function EditUserDialog({ user, onClose }: { user: User | null; onClose: () => v
 
 const GLOBAL_RUNTIME_TASKS: AITaskType[] = [
   "CV_EXTRACTION",
+  "CV_TRANSLATION",
   "CV_MATCH",
   "JD_ENHANCEMENT",
   "VOICE_PROFILING",

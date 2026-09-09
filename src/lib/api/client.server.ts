@@ -30,6 +30,7 @@ export interface SessionUser {
   email: string;
   role: "ADMIN" | "RECRUITER" | "TA_LEADER";
   status: "ACTIVE" | "SUSPENDED";
+  password_change_required: boolean;
 }
 
 const isProduction = process.env.NODE_ENV === "production";

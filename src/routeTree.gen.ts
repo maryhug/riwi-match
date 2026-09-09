@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as CambiarContrasenaRouteImport } from './routes/cambiar-contrasena'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
@@ -24,6 +25,11 @@ import { Route as AppSetsIdRouteImport } from './routes/app.sets.$id'
 import { Route as AppProcesosNuevoRouteImport } from './routes/app.procesos.nuevo'
 import { Route as AppProcesosIdRouteImport } from './routes/app.procesos.$id'
 
+const CambiarContrasenaRoute = CambiarContrasenaRouteImport.update({
+  id: '/cambiar-contrasena',
+  path: '/cambiar-contrasena',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
@@ -98,6 +104,7 @@ const AppProcesosIdRoute = AppProcesosIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/cambiar-contrasena': typeof CambiarContrasenaRoute
   '/app/admin': typeof AppAdminRoute
   '/app/buscar': typeof AppBuscarRoute
   '/app/costos': typeof AppCostosRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/cambiar-contrasena': typeof CambiarContrasenaRoute
   '/app/admin': typeof AppAdminRoute
   '/app/buscar': typeof AppBuscarRoute
   '/app/costos': typeof AppCostosRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/cambiar-contrasena': typeof CambiarContrasenaRoute
   '/app/admin': typeof AppAdminRoute
   '/app/buscar': typeof AppBuscarRoute
   '/app/costos': typeof AppCostosRoute
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/cambiar-contrasena'
     | '/app/admin'
     | '/app/buscar'
     | '/app/costos'
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/cambiar-contrasena'
     | '/app/admin'
     | '/app/buscar'
     | '/app/costos'
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/app'
+    | '/cambiar-contrasena'
     | '/app/admin'
     | '/app/buscar'
     | '/app/costos'
@@ -194,10 +206,18 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  CambiarContrasenaRoute: typeof CambiarContrasenaRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/cambiar-contrasena': {
+      id: '/cambiar-contrasena'
+      path: '/cambiar-contrasena'
+      fullPath: '/cambiar-contrasena'
+      preLoaderRoute: typeof CambiarContrasenaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app': {
       id: '/app'
       path: '/app'
@@ -343,6 +363,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  CambiarContrasenaRoute: CambiarContrasenaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

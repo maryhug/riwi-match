@@ -22,6 +22,7 @@ export interface TokenResponse {
   refresh_token: string;
   token_type: string;
   role: string;
+  password_change_required: boolean;
 }
 
 // ─── Users ───────────────────────────────────────────────────────────────────
@@ -33,6 +34,7 @@ export interface User {
   email: string;
   role: UserRole;
   status: UserStatus;
+  password_change_required: boolean;
   created_at: string;
 }
 
@@ -205,7 +207,7 @@ export interface ParseJDResponse {
   nice_to_have: string[];
   deal_breakers: string[];
   summary: string;
-  /** Version reescrita/enriquecida por IA, en Markdown — sugerida, no aplicada. */
+  /** Versión reescrita/enriquecida por IA, en texto plano — sugerida, no aplicada. */
   enhanced_jd: string;
   recommendations: string[];
   missing_elements: string[];
@@ -347,6 +349,7 @@ export interface CandidateListItem {
   match_category: MatchCategory | null;
   whatsapp_consent: WhatsAppConsentStatus;
   normalized_cv_url: string | null;
+  normalized_cv_urls?: { es: string | null; en: string | null };
   city: string | null;
   availability_preference: AvailabilityPreference | null;
   /** Suma de todos los CostLog de este candidato en el proceso (CV, match, llamadas, WhatsApp). */
@@ -375,6 +378,7 @@ export interface CandidateDetailResponse {
     phone: string | null;
     cv_url: string | null;
     normalized_cv_url: string | null;
+    normalized_cv_urls?: { es: string | null; en: string | null };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     profile: Record<string, any> | null;
   };

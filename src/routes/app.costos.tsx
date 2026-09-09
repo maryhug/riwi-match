@@ -143,7 +143,13 @@ function Costos() {
   const profilingEvaluation = metrics.cost_by_operation.find(
     (o) => o.operation_type === "ANSWER_EVALUATION",
   );
-  const cvPipelineTypes = new Set(["CV_STORAGE", "CV_EXTRACTION", "CV_EMBEDDING", "CV_MATCH"]);
+  const cvPipelineTypes = new Set([
+    "CV_STORAGE",
+    "CV_EXTRACTION",
+    "CV_TRANSLATION",
+    "CV_EMBEDDING",
+    "CV_MATCH",
+  ]);
   const profilingTypes = new Set(["VOICE_CALL", "TWILIO_CALL", "ANSWER_EVALUATION"]);
   const cvPipelineCost = metrics.cost_by_operation
     .filter((o) => cvPipelineTypes.has(o.operation_type))
