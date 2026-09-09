@@ -143,6 +143,9 @@ function Wizard() {
           }),
     onSuccess: (res) => {
       setProcessId(res.process_id);
+      if (res.default_question_set_template_id) {
+        setSelectedQuestionSetId(res.default_question_set_template_id);
+      }
       setStep(1);
       qc.invalidateQueries({ queryKey: ["processes"] });
     },
@@ -693,7 +696,7 @@ function Wizard() {
 
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Set de preguntas (opcional)
+                Set de preguntas
               </label>
               <AppSelect
                 value={selectedQuestionSetId || "none"}
@@ -704,7 +707,6 @@ function Wizard() {
                 }}
                 className="mt-1.5 w-full"
               >
-                <AppSelectItem value="none">— Asignar después —</AppSelectItem>
                 {(questionSets?.question_sets ?? [])
                   .filter((qs) => qs.status === "ACTIVE")
                   .map((qs) => (

@@ -66,6 +66,9 @@ export interface ProcessMutationResponse {
   seniority: string;
   status: ProcessStatus;
   budget_max_usd: number;
+  question_set_id?: string;
+  default_question_set_template_id?: string;
+  question_set_name?: string;
 }
 
 /** Item dentro de GET /processes (lista) */
